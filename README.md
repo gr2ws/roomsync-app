@@ -85,3 +85,42 @@ Web-based application with the following features:
 ## Location Coverage
 
 Dumaguete City, Valencia, Bacong, Sibulan.
+
+## Setup & Running Instructions
+
+This project uses [Expo](https://expo.dev/) for development and testing. You can run the app on your local machine and preview it on your mobile device using the Expo Go app.
+
+### Prerequisites
+
+- [Node.js](https://nodejs.org/) (v16 or newer recommended)
+- [npm](https://www.npmjs.com/)
+- [Expo Go](https://expo.dev/client) app installed on your Android or iOS device
+
+### Setup
+
+1. **Clone the repository:**
+	```sh
+	git clone <repo-url>
+	cd roomsync-app
+	```
+
+2. **Install dependencies:**
+	```sh
+	npm install
+	```
+
+3. **Start the Expo development server:**
+	```sh
+	npm start
+	```
+
+4. **Run on your device:**
+	- Open the Expo Go app on your phone.
+	- Scan the QR code displayed in your terminal or browser after running the start command.
+	- The app will load on your device.
+
+### Additional Notes
+
+- For development, you can also use an Android/iOS emulator or simulator.
+- Make sure your computer and mobile device are on the same Wi-Fi network for Expo Go to connect.
+- For more details, see the [Expo documentation](https://docs.expo.dev/).
