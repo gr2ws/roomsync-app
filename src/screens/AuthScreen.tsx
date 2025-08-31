@@ -1,5 +1,6 @@
-import { View, Text, TouchableOpacity, TextInput, Alert } from 'react-native';
+import { View, Text, TextInput, Alert } from 'react-native';
 import { useLoggedIn } from '../store/useLoggedIn';
+import Button from '../components/Button';
 
 export default function AuthScreen() {
   const { setIsLoggedIn, setAuthView } = useLoggedIn();
@@ -34,28 +35,24 @@ export default function AuthScreen() {
           autoCapitalize="none"
         />
 
-        <TouchableOpacity
-          onPress={handleLogin}
-          className="rounded-lg bg-blue-500 px-6 py-3 shadow-lg"
-          activeOpacity={0.8}>
-          <Text className="text-center text-lg font-semibold text-white">Log In</Text>
-        </TouchableOpacity>
+        <Button onPress={handleLogin} variant="primary">
+          Log In
+        </Button>
 
-        <TouchableOpacity
-          onPress={() => Alert.alert('Google Login', 'Google login functionality not yet implemented')}
-          className="rounded-lg border border-gray-300 bg-white px-6 py-3"
-          activeOpacity={0.8}>
-          <Text className="text-center text-lg font-semibold text-gray-700">
-            Continue with Google
-          </Text>
-        </TouchableOpacity>
+        <Button
+          onPress={() =>
+            Alert.alert('Google Login', 'Google login functionality not yet implemented')
+          }
+          variant="secondary">
+          Continue with Google
+        </Button>
 
         <View className="mt-6 items-center">
           <View className="flex-row">
             <Text className="text-gray-600">Don&apos;t have an account? </Text>
-            <TouchableOpacity onPress={handleSignUp} activeOpacity={0.7}>
-              <Text className="font-semibold text-blue-500">Sign up</Text>
-            </TouchableOpacity>
+            <Button onPress={handleSignUp} variant="text">
+              Sign up
+            </Button>
           </View>
         </View>
       </View>

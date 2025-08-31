@@ -1,5 +1,6 @@
-import { View, Text, TouchableOpacity, TextInput, Alert } from 'react-native';
+import { View, Text, TextInput, Alert } from 'react-native';
 import { useLoggedIn } from '../store/useLoggedIn';
+import Button from '../components/Button';
 
 export default function RegisterScreen() {
   const { setAuthView } = useLoggedIn();
@@ -56,28 +57,20 @@ export default function RegisterScreen() {
           autoCapitalize="none"
         />
 
-        <TouchableOpacity
-          onPress={handleSignUp}
-          className="rounded-lg bg-blue-500 px-6 py-3 shadow-lg"
-          activeOpacity={0.8}>
-          <Text className="text-center text-lg font-semibold text-white">Sign Up</Text>
-        </TouchableOpacity>
+        <Button onPress={handleSignUp} variant="primary">
+          Sign Up
+        </Button>
 
-        <TouchableOpacity
-          onPress={handleGoogleSignUp}
-          className="rounded-lg border border-gray-300 bg-white px-6 py-3"
-          activeOpacity={0.8}>
-          <Text className="text-center text-lg font-semibold text-gray-700">
-            Continue with Google
-          </Text>
-        </TouchableOpacity>
+        <Button onPress={handleGoogleSignUp} variant="secondary">
+          Continue with Google
+        </Button>
 
         <View className="mt-6 items-center">
           <View className="flex-row">
             <Text className="text-gray-600">Already have an account? </Text>
-            <TouchableOpacity onPress={handleLogin} activeOpacity={0.7}>
-              <Text className="font-semibold text-blue-500">Log in</Text>
-            </TouchableOpacity>
+            <Button onPress={handleLogin} variant="text">
+              Log in
+            </Button>
           </View>
         </View>
 
@@ -86,13 +79,13 @@ export default function RegisterScreen() {
             <Text className="text-center text-sm text-gray-600">
               By creating an account, you agree with our{' '}
             </Text>
-            <TouchableOpacity onPress={handleTermsOfService} activeOpacity={0.7}>
-              <Text className="text-sm text-blue-500">Terms of Service</Text>
-            </TouchableOpacity>
+            <Button onPress={handleTermsOfService} variant="text" size="sm">
+              Terms of Service
+            </Button>
             <Text className="text-sm text-gray-600"> and </Text>
-            <TouchableOpacity onPress={handlePrivacyPolicy} activeOpacity={0.7}>
-              <Text className="text-sm text-blue-500">Privacy Policy</Text>
-            </TouchableOpacity>
+            <Button onPress={handlePrivacyPolicy} variant="text" size="sm">
+              Privacy Policy
+            </Button>
           </View>
         </View>
       </View>
