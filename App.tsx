@@ -1,7 +1,6 @@
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { StatusBar } from 'expo-status-bar';
-import { Text } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Platform, Text } from 'react-native';
 import HomeScreen from './src/screens/HomeScreen';
