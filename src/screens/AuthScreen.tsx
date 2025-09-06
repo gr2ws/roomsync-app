@@ -1,17 +1,10 @@
 import { View, Text, TextInput, Alert } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useLoggedIn } from '../store/useLoggedIn';
 import Button from '../components/Button';
 
 export default function AuthScreen() {
   const { setIsLoggedIn, setAuthView } = useLoggedIn();
-
-  const handleLogin = () => {
-    setIsLoggedIn(true);
-  };
-
-  const handleSignUp = () => {
-    setAuthView('register');
-  };
 
   return (
     <View className="flex-1 items-center justify-center bg-white px-4">

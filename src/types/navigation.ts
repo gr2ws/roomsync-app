@@ -3,6 +3,7 @@ export type RootTabParamList = {
   Search: undefined;
   Profile: undefined;
   Notifications: undefined;
+  Admin: undefined;
 };
 
 // Add new screens here as you create them
