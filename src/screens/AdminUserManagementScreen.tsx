@@ -331,12 +331,12 @@ const { width } = Dimensions.get('window');
 const CARD_WIDTH = (width - 72) / 2; // 2 cards per row with padding
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#F9FAFB' },
-  content: { paddingHorizontal: 16, paddingVertical: 16 },
+  safe: { flex: 1, backgroundColor: '#FFFFFF' },
+  content: { paddingHorizontal: 16, paddingVertical: 0 },
   
   header: {
-    marginBottom: 12,
-    marginTop: 8,
+    marginBottom: 16,
+    marginTop: 0,
   },
   title: {
     fontSize: 28,
@@ -357,6 +357,7 @@ const styles = StyleSheet.create({
     width: CARD_WIDTH,
     backgroundColor: '#fff',
     borderRadius: 12,
+    borderWidth: 0.075,
     padding: 20,
     marginBottom: 16,
     shadowColor: '#000',

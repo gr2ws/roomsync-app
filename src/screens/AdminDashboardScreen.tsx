@@ -407,12 +407,12 @@ function ReportsSafetyTab() {
 function OverviewTab() {
   const cards = useMemo(
     () => [
-      { icon: 'people-outline', label: 'Total Users', value: '1,234' },
-      { icon: 'home-outline', label: 'Active Listings', value: '89' },
-      { icon: 'time-outline', label: 'Pending Approvals', value: '12' },
-      { icon: 'document-text-outline', label: 'Reported Content', value: '5' },
-      { icon: 'trending-up-outline', label: 'Monthly Revenue', value: '₱125,000' },
-      { icon: 'calendar-outline', label: 'New Users', value: '123' },
+      { icon: 'people-outline', label: 'Total Users', value: '6', color: '#3B82F6' },
+      { icon: 'home-outline', label: 'Active Listings', value: '12', color: '#10B981' },
+      { icon: 'time-outline', label: 'Pending Approvals', value: '12', color: '#F59E0B' },
+      { icon: 'document-text-outline', label: 'Reported Content', value: '5', color: '#EF4444' },
+      { icon: 'trending-up-outline', label: 'Monthly Revenue', value: '₱125,000', color: '#8B5CF6' },
+      { icon: 'calendar-outline', label: 'New Users', value: '123', color: '#06B6D4' },
     ],
     []
   );
@@ -422,7 +422,7 @@ function OverviewTab() {
       {/* KPI Cards - 3x2 Grid */}
       <View style={styles.grid3x2}>
         {cards.map((c, idx) => (
-          <StatCard key={idx} icon={c.icon} label={c.label} value={c.value} />
+          <StatCard key={idx} icon={c.icon} label={c.label} value={c.value} color={c.color} />
         ))}
       </View>
 
@@ -676,14 +676,14 @@ function ReportCard({
 }
 
 /* ------------------- Small Components ------------------- */
-function StatCard({ icon, label, value }: { icon: any; label: string; value: string }) {
+function StatCard({ icon, label, value, color }: { icon: any; label: string; value: string; color?: string }) {
   return (
     <View style={styles.card}>
       <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
-        <Ionicons name={icon} size={18} />
+        <Ionicons name={icon} size={18} color={color || '#6B7280'} />
         <Text style={styles.cardLabel}>{label}</Text>
       </View>
-      <Text style={styles.cardValue}>{value}</Text>
+      <Text style={[styles.cardValue, color && { color }]}>{value}</Text>
     </View>
   );
 }

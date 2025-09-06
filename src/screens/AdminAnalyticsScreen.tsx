@@ -47,9 +47,9 @@ export default function AdminAnalyticsScreen() {
 
   return (
     <SafeAreaView style={[styles.safe, { paddingTop: Platform.OS === 'android' ? insets.top : 0 }]}>
-      <ScrollView contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 16 }]}>
+      <ScrollView contentContainerStyle={[styles.content, { paddingBottom: 0 }]}>
         {/* Header */}
-        <View>
+        <View style={styles.header}>
           <Text style={styles.title}>Platform Analytics</Text>
           <Text style={styles.caption}>
             Comprehensive analytics including user activity trends, most viewed listings, revenue metrics, and platform performance indicators.
@@ -209,16 +209,16 @@ function MetricCard({ title, value, icon, color }: { title: string; value: strin
 }
 
 /* ------------------- Styles ------------------- */
-const { width } = Dimensions.get('window');
+const { width, height } = Dimensions.get('window');
 const CARD_WIDTH = (width - 48) / 2; // 2 cards per row with padding
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#F9FAFB' },
-  content: { paddingHorizontal: 16, paddingVertical: 16 },
+  safe: { flex: 1, backgroundColor: '#FFFFFF'},
+  content: { paddingHorizontal: 16, paddingTop: 0, paddingBottom: 16 },
   
   header: {
-    marginBottom: 24,
-    marginTop: 8,
+    marginBottom: 12,
+    paddingTop: 0,
   },
   title: {
     fontSize: 28,
@@ -230,7 +230,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#6B7280',
     lineHeight: 24,
-    marginBottom: 8
+    marginBottom: 12,
   },
 
   section: {
@@ -281,11 +281,9 @@ const styles = StyleSheet.create({
   },
   metricTitle: {
     fontSize: 12,
-    color: '#6B7280',
-    marginLeft: 6,
     marginRight:6,
-    fontWeight: '500',
-  },
+    marginLeft: 6,
+    fontWeight: '500'},
   metricValue: {
     fontSize: 18,
     fontWeight: '700',
