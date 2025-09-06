@@ -28,7 +28,7 @@ export default function App() {
         <NavigationContainer>
           <Tab.Navigator
             initialRouteName="Home"
-            safeAreaInsets={{ bottom: Platform.OS === 'android' ? 10 : 0 }}
+            safeAreaInsets={{ bottom: Platform.OS === 'android' ? 35 : 0 }}
             screenOptions={{
               headerShown: false,
               tabBarShowLabel: true,
@@ -44,6 +44,7 @@ export default function App() {
                 shadowRadius: 0.5,
                 elevation: 1,
               },
+              tabBarAllowFontScaling: false,
               tabBarLabelStyle: {
                 fontSize: 10,
                 fontWeight: 400,
