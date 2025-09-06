@@ -17,6 +17,8 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import AdminAnalyticsScreen from './AdminAnalyticsScreen';
+import AdminUserManagementScreen from './AdminUserManagementScreen';
 
 const TABS = [
   { key: 'overview', label: 'Overview', icon: 'grid-outline' },
@@ -27,10 +29,19 @@ const TABS = [
 
 type TabKey = typeof TABS[number]['key'];
 
+const ADMIN_MENU_OPTIONS = [
+  { key: 'dashboard', label: 'Dashboard', icon: 'grid-outline', description: 'Overview and analytics' },
+  { key: 'analytics', label: 'Analytics', icon: 'bar-chart-outline', description: 'Detailed metrics and insights' },
+  { key: 'user-management', label: 'User Management', icon: 'people-outline', description: 'Manage users and permissions' },
+  { key: 'admin-profile', label: 'Admin Profile', icon: 'person-outline', description: 'Your admin settings' },
+];
+
 export default function AdminDashboard() {
   const insets = useSafeAreaInsets();
   const [active, setActive] = useState<TabKey>('overview');
   const [open, setOpen] = useState(false);
+  const [showAdminMenu, setShowAdminMenu] = useState(true);
+  const [activeAdminScreen, setActiveAdminScreen] = useState<string>('menu');
 
   // Sidebar animation
   const slide = useRef(new Animated.Value(0)).current; // 0 closed, 1 open
@@ -56,19 +67,67 @@ export default function AdminDashboard() {
     <SafeAreaView style={[styles.safe, { paddingTop: Platform.OS === 'android' ? insets.top : 0 }]}>      
       {/* Header */}
       <View style={styles.header}>        
-        <TouchableOpacity accessibilityRole="button" accessibilityLabel="Open menu" onPress={() => toggle()} style={styles.iconBtn}>
-          <Ionicons name="menu" size={24} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Admin Dashboard</Text>
-        <View style={{ width: 40 }} />
+        {activeAdminScreen === 'menu' ? (
+          <View style={{ width: 40 }} />
+        ) : (
+          <TouchableOpacity 
+            accessibilityRole="button" 
+            accessibilityLabel="Back to admin menu" 
+            onPress={() => {
+              setActiveAdminScreen('menu');
+              setShowAdminMenu(true);
+            }} 
+            style={styles.iconBtn}
+          >
+            <Ionicons name="arrow-back" size={24} />
+          </TouchableOpacity>
+        )}
+        <Text style={[styles.headerTitle, activeAdminScreen === 'menu' && { textAlign: 'left' }]}>
+          {activeAdminScreen === 'menu' ? 'Admin Panel' : 
+           activeAdminScreen === 'analytics' ? 'Analytics' : 
+           activeAdminScreen === 'user-management' ? 'User Management' : 'Admin Dashboard'}
+        </Text>
+        {activeAdminScreen === 'menu' ? (
+          <View style={{ width: 40 }} />
+        ) : activeAdminScreen === 'dashboard' ? (
+          <TouchableOpacity accessibilityRole="button" accessibilityLabel="Open menu" onPress={() => toggle()} style={styles.iconBtn}>
+            <Ionicons name="menu" size={24} />
+          </TouchableOpacity>
+        ) : (
+          <View style={{ width: 40 }} />
+        )}
       </View>
 
       {/* Content */}
       <ScrollView contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 16 }]}>        
-        {active === 'overview' && <OverviewTab />}
-        {active === 'listings' && <ManageListingsTab />}
-        {active === 'users' && <UserManagementTab />}
-        {active === 'reports' && <ReportsSafetyTab />}
+        {activeAdminScreen === 'menu' ? (
+          <AdminMenuScreen onSelectOption={(option) => {
+            if (option === 'dashboard') {
+              setActiveAdminScreen('dashboard');
+              setShowAdminMenu(false);
+            } else if (option === 'analytics') {
+              setActiveAdminScreen('analytics');
+              setShowAdminMenu(false);
+            } else if (option === 'user-management') {
+              setActiveAdminScreen('user-management');
+              setShowAdminMenu(false);
+            } else {
+              // Handle other options (Reports, Admin Profile)
+              console.log(`Selected: ${option}`);
+            }
+          }} />
+        ) : activeAdminScreen === 'analytics' ? (
+          <AdminAnalyticsScreen />
+        ) : activeAdminScreen === 'user-management' ? (
+          <AdminUserManagementScreen />
+        ) : (
+          <>
+            {active === 'overview' && <OverviewTab />}
+            {active === 'listings' && <ManageListingsTab />}
+            {active === 'users' && <UserManagementTab />}
+            {active === 'reports' && <ReportsSafetyTab />}
+          </>
+        )}
       </ScrollView>
 
       {/* Overlay */}
@@ -80,7 +139,7 @@ export default function AdminDashboard() {
       {/* Sidebar */}
       <Animated.View style={[styles.sidebar, { paddingTop: insets.top, transform: [{ translateX: sidebarTranslate }] }]}>        
         <View style={styles.sidebarHeader}>
-          <Text style={styles.sidebarTitle}>Menu</Text>
+          <Text style={styles.sidebarTitle}>Admin Dashboard</Text>
           <TouchableOpacity onPress={() => toggle(false)} style={styles.iconBtn}>
             <Ionicons name="close" size={22} />
           </TouchableOpacity>
@@ -100,6 +159,32 @@ export default function AdminDashboard() {
         ))}
       </Animated.View>
     </SafeAreaView>
+  );
+}
+
+/* ------------------- Admin Menu Screen ------------------- */
+function AdminMenuScreen({ onSelectOption }: { onSelectOption: (option: string) => void }) {
+  return (
+    <View>
+      <Text style={styles.adminMenuTitle}>Admin Panel</Text>
+      <Text style={styles.adminMenuSubtitle}>Choose an admin section to access</Text>
+      
+      <View style={styles.adminMenuGrid}>
+        {ADMIN_MENU_OPTIONS.map((option) => (
+          <TouchableOpacity
+            key={option.key}
+            style={styles.adminMenuCard}
+            onPress={() => onSelectOption(option.key)}
+          >
+            <View style={styles.adminMenuCardContent}>
+              <Ionicons name={option.icon as any} size={32} color="#3B82F6" />
+              <Text style={styles.adminMenuCardTitle}>{option.label}</Text>
+              <Text style={styles.adminMenuCardDescription}>{option.description}</Text>
+            </View>
+          </TouchableOpacity>
+        ))}
+      </View>
+    </View>
   );
 }
 
@@ -343,22 +428,22 @@ function OverviewTab() {
 
       {/* Recent User Activity Panel */}
       <Panel title="Recent User Activity" style={styles.fullWidthPanel}>
-        <ActivityItem title="New Registration: John Doe" timeAgo="2 Hours Ago" />
-        <ActivityItem title="Property listing submitted: Maria Santos" timeAgo="4 Hours Ago" />
-        <ActivityItem title="Report submitted against user: Spam Account" timeAgo="6 Hours Ago" dim />
+          <ActivityItem title="New Registration: John Doe" timeAgo="2 Hours Ago" />
+          <ActivityItem title="Property listing submitted: Maria Santos" timeAgo="4 Hours Ago" />
+          <ActivityItem title="Report submitted against user: Spam Account" timeAgo="6 Hours Ago" dim />
         <ActivityItem title="User profile updated: Sarah Johnson" timeAgo="8 Hours Ago" />
         <ActivityItem title="New property review submitted" timeAgo="10 Hours Ago" />
-      </Panel>
+        </Panel>
 
       {/* Platform Health Panel */}
       <Panel title="Platform Health" style={styles.fullWidthPanel}>
-        <HealthItem label="System Status" value="Operational" />
-        <HealthItem label="Database" value="Healthy" />
-        <HealthItem label="API Response Time" value="245 ms" />
-        <HealthItem label="Error Rate" value="0.02%" />
+          <HealthItem label="System Status" value="Operational" />
+          <HealthItem label="Database" value="Healthy" />
+          <HealthItem label="API Response Time" value="245 ms" />
+          <HealthItem label="Error Rate" value="0.02%" />
         <HealthItem label="Active Sessions" value="1,234" />
         <HealthItem label="Server Load" value="45%" />
-      </Panel>
+        </Panel>
     </View>
   );
 }
@@ -1111,5 +1196,56 @@ const styles = StyleSheet.create({
   },
   disabledButtonText: {
     color: '#9CA3AF',
+  },
+
+  // Admin Menu Styles
+  adminMenuTitle: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#111827',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  adminMenuSubtitle: {
+    fontSize: 16,
+    color: '#6B7280',
+    textAlign: 'center',
+    marginBottom: 32,
+  },
+  adminMenuGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+  },
+  adminMenuCard: {
+    width: '48%',
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 16,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowOffset: { width: 0, height: 1 },
+    shadowRadius: 3,
+    elevation: 1,
+  },
+  adminMenuCardContent: {
+    padding: 20,
+    alignItems: 'center',
+  },
+  adminMenuCardTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#111827',
+    marginTop: 12,
+    marginBottom: 4,
+    textAlign: 'center',
+  },
+  adminMenuCardDescription: {
+    fontSize: 12,
+    color: '#6B7280',
+    textAlign: 'center',
+    lineHeight: 16,
   },
 });
