@@ -20,7 +20,7 @@ export default function AuthScreen() {
         Please log in to access your room management features
       </Text>
 
-      <View className="w-full max-w-sm space-y-4">
+      <View className="flex w-full max-w-sm justify-center gap-4 space-y-4">
         <TextInput
           placeholder="Email"
           className="rounded-lg border border-gray-300 bg-white px-4 py-3 text-lg"

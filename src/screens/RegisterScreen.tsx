@@ -29,7 +29,7 @@ export default function RegisterScreen() {
       <Text className="mb-4 text-4xl font-bold text-gray-900">Create Account</Text>
       <Text className="mb-8 text-center text-lg text-gray-600">Join RoomSync today</Text>
 
-      <View className="w-full max-w-sm space-y-4">
+      <View className="flex w-full max-w-sm gap-4 space-y-4">
         <TextInput
           placeholder="Full Name"
           className="rounded-lg border border-gray-300 bg-white px-4 py-3 text-lg"
