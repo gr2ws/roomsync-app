@@ -1,9 +1,9 @@
-import { SafeAreaView, View } from 'react-native';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 
 export function MainScaffold({ children }: { children: React.ReactNode }) {
   return (
-    <View className="flex-1 bg-white">
+    <SafeAreaProvider>
       <SafeAreaView className="flex-1 bg-white">{children}</SafeAreaView>
-    </View>
+    </SafeAreaProvider>
   );
 }

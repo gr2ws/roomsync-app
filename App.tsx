@@ -3,6 +3,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { StatusBar } from 'expo-status-bar';
 import { Text } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { Platform, Text } from 'react-native';
 import HomeScreen from './src/screens/HomeScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
 import SearchScreen from './src/screens/SearchScreen';
@@ -28,15 +29,15 @@ export default function App() {
         <NavigationContainer>
           <Tab.Navigator
             initialRouteName="Home"
+            safeAreaInsets={{ bottom: Platform.OS === 'android' ? 10 : 0 }}
             screenOptions={{
               headerShown: false,
               tabBarShowLabel: true,
               tabBarStyle: {
-                height: 50,
-                paddingBottom: 8,
-                paddingTop: 8,
+                height: '5.5%',
                 backgroundColor: '#fff',
                 borderTopWidth: 1,
+                paddingTop: 2,
                 borderTopColor: '#e5e7eb',
                 shadowColor: '#000',
                 shadowOffset: { width: 0, height: -1 },
@@ -45,7 +46,7 @@ export default function App() {
                 elevation: 1,
               },
               tabBarLabelStyle: {
-                fontSize: 12,
+                fontSize: 10,
                 fontWeight: 400,
                 marginTop: 2,
               },
