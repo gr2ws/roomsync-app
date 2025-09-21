@@ -20,7 +20,7 @@ const Tab = createBottomTabNavigator<RootTabParamList>();
 // refer to https://reactnavigation.org/docs/bottom-tab-navigator?config=static for styling tabs and tab states
 
 export default function App() {
-  const { isLoggedIn, authView } = useLoggedIn();
+  const { isLoggedIn, authView, isAdmin } = useLoggedIn();
 
   return (
     <MainScaffold>
@@ -56,11 +56,7 @@ export default function App() {
               component={HomeScreen}
               options={{
                 tabBarIcon: ({ focused, color, size }) => (
-                  <Ionicons 
-                    name={focused ? "home" : "home-outline"} 
-                    size={size} 
-                    color={color} 
-                  />
+                  <Ionicons name={focused ? 'home' : 'home-outline'} size={size} color={color} />
                 ),
               }}
             />
@@ -69,10 +65,10 @@ export default function App() {
               component={SearchScreen}
               options={{
                 tabBarIcon: ({ focused, color, size }) => (
-                  <Ionicons 
-                    name={focused ? "search" : "search-outline"} 
-                    size={size} 
-                    color={color} 
+                  <Ionicons
+                    name={focused ? 'search' : 'search-outline'}
+                    size={size}
+                    color={color}
                   />
                 ),
               }}
@@ -82,10 +78,10 @@ export default function App() {
               component={ProfileScreen}
               options={{
                 tabBarIcon: ({ focused, color, size }) => (
-                  <Ionicons 
-                    name={focused ? "person" : "person-outline"} 
-                    size={size} 
-                    color={color} 
+                  <Ionicons
+                    name={focused ? 'person' : 'person-outline'}
+                    size={size}
+                    color={color}
                   />
                 ),
               }}
@@ -95,28 +91,30 @@ export default function App() {
               component={NotificationsScreen}
               options={{
                 tabBarIcon: ({ focused, color, size }) => (
-                  <Ionicons 
-                    name={focused ? "notifications" : "notifications-outline"} 
-                    size={size} 
-                    color={color} 
+                  <Ionicons
+                    name={focused ? 'notifications' : 'notifications-outline'}
+                    size={size}
+                    color={color}
                   />
                 ),
                 tabBarBadge: 1,
               }}
             />
-            <Tab.Screen
-              name="Admin"
-              component={AdminDashboardScreen}
-              options={{
-                tabBarIcon: ({ focused, color, size }) => (
-                  <Ionicons 
-                    name={focused ? "settings" : "settings-outline"} 
-                    size={size} 
-                    color={color} 
-                  />
-                ),
-              }}
-            />
+            {isAdmin && (
+              <Tab.Screen
+                name="Admin"
+                component={AdminDashboardScreen}
+                options={{
+                  tabBarIcon: ({ focused, color, size }) => (
+                    <Ionicons
+                      name={focused ? 'settings' : 'settings-outline'}
+                      size={size}
+                      color={color}
+                    />
+                  ),
+                }}
+              />
+            )}
           </Tab.Navigator>
           <StatusBar style="auto" />
         </NavigationContainer>

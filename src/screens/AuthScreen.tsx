@@ -1,11 +1,17 @@
 import { View, Text, TextInput, Alert } from 'react-native';
 import { useLoggedIn } from '../store/useLoggedIn';
 import Button from '../components/Button';
+import { useState } from 'react';
 
 export default function AuthScreen() {
-  const { setIsLoggedIn, setAuthView } = useLoggedIn();
+  const { setIsLoggedIn, setAuthView, setIsAdmin } = useLoggedIn();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
 
   const handleLogin = () => {
+    if (email === 'admin@gmail.com' && password === 'admin123') {
+      setIsAdmin(true);
+    }
     setIsLoggedIn(true);
   };
 
@@ -26,6 +32,7 @@ export default function AuthScreen() {
           className="rounded-lg border border-gray-300 bg-white px-4 py-3 text-lg"
           keyboardType="email-address"
           autoCapitalize="none"
+          onChangeText={setEmail}
         />
 
         <TextInput
@@ -33,6 +40,7 @@ export default function AuthScreen() {
           className="rounded-lg border border-gray-300 bg-white px-4 py-3 text-lg"
           secureTextEntry
           autoCapitalize="none"
+          onChangeText={setPassword}
         />
 
         <Button onPress={handleLogin} variant="primary">
