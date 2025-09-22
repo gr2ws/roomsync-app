@@ -1,3 +1,11 @@
+export type RootStackParamList = {
+  Introduction: undefined;
+  RoleSelection: undefined;
+  Auth: undefined;
+  Register: undefined;
+  Home: undefined;
+};
+
 export type RootTabParamList = {
   Home: undefined;
   Search: undefined;

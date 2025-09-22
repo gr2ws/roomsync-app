@@ -1,22 +1,30 @@
 import { View, Text, TextInput, Alert } from 'react-native';
-import { useLoggedIn } from '../store/useLoggedIn';
-import Button from '../components/Button';
+import { useLoggedIn } from '../../store/useLoggedIn';
+import Button from '../../components/Button';
 import { useState } from 'react';
+import { StackNavigationProp } from '@react-navigation/stack';
+import { RootStackParamList } from '../../types/navigation';
 
-export default function AuthScreen() {
-  const { setIsLoggedIn, setAuthView, setIsAdmin } = useLoggedIn();
+type AuthScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Auth'>;
+
+type Props = {
+  navigation: AuthScreenNavigationProp;
+};
+
+export default function AuthScreen({ navigation }: Props) {
+  const { setIsLoggedIn, setUserRole } = useLoggedIn();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
   const handleLogin = () => {
     if (email === 'admin@gmail.com' && password === 'admin123') {
-      setIsAdmin(true);
+      setUserRole('admin');
     }
     setIsLoggedIn(true);
   };
 
   const handleSignUp = () => {
-    setAuthView('register');
+    navigation.navigate('Register');
   };
 
   return (

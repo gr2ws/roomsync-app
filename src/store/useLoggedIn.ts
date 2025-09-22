@@ -1,19 +1,21 @@
 import { create } from 'zustand';
 
+export type UserRole = 'renter' | 'owner' | 'admin' | null;
+
 interface LoggedInState {
   isLoggedIn: boolean;
   authView: 'login' | 'register';
-  isAdmin: boolean;
+  userRole: UserRole;
   setIsLoggedIn: (isLoggedIn: boolean) => void;
   setAuthView: (authView: 'login' | 'register') => void;
-  setIsAdmin: (isAdmin: boolean) => void;
+  setUserRole: (role: UserRole) => void;
 }
 
 export const useLoggedIn = create<LoggedInState>((set) => ({
   isLoggedIn: false,
   authView: 'login',
-  isAdmin: false,
+  userRole: null,
   setIsLoggedIn: (isLoggedIn: boolean) => set({ isLoggedIn }),
   setAuthView: (authView: 'login' | 'register') => set({ authView }),
-  setIsAdmin: (isAdmin: boolean) => set({ isAdmin }),
+  setUserRole: (role: UserRole) => set({ userRole: role }),
 }));

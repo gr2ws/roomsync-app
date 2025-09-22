@@ -1,15 +1,24 @@
 import { View, Text, TextInput, Alert } from 'react-native';
-import { useLoggedIn } from '../store/useLoggedIn';
-import Button from '../components/Button';
+import { useLoggedIn } from '../../store/useLoggedIn';
+import Button from '../../components/Button';
+import { StackNavigationProp } from '@react-navigation/stack';
+import { RootStackParamList } from '../../types/navigation';
 
-export default function RegisterScreen() {
+type RegisterScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Register'>;
+
+type Props = {
+  navigation: RegisterScreenNavigationProp;
+};
+
+export default function RegisterScreen({ navigation }: Props) {
   const { setAuthView } = useLoggedIn();
+
   const handleSignUp = () => {
     Alert.alert('Registration functionality coming soon');
   };
 
   const handleLogin = () => {
-    setAuthView('login');
+    navigation.navigate('Auth');
   };
 
   const handleGoogleSignUp = () => {
@@ -26,8 +35,8 @@ export default function RegisterScreen() {
 
   return (
     <View className="flex-1 items-center justify-center bg-white px-4">
-      <Text className="mb-4 text-4xl font-bold text-gray-900">Create Account</Text>
-      <Text className="mb-8 text-center text-lg text-gray-600">Join RoomSync today</Text>
+      <Text className="mb-4 text-4xl font-bold text-gray-900">Join us</Text>
+      <Text className="mb-8 text-center text-lg text-gray-600">Find your perfect place</Text>
 
       <View className="flex w-full max-w-sm gap-4 space-y-4">
         <TextInput
