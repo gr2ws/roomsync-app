@@ -179,16 +179,6 @@ function MainApp() {
   } else if (userRole === 'admin') {
     tabScreens = [
       <Tab.Screen
-        key="Feed"
-        name="Feed"
-        component={FeedScreen}
-        options={{
-          tabBarIcon: ({ focused, color, size }) => (
-            <Ionicons name={focused ? 'list' : 'list-outline'} size={size} color={color} />
-          ),
-        }}
-      />,
-      <Tab.Screen
         key="Admin"
         name="Admin"
         component={AdminDashboardScreen}
@@ -198,8 +188,6 @@ function MainApp() {
           ),
         }}
       />,
-      notificationsScreen,
-      profileScreen,
     ];
   } else {
     // fallback for unknown role
