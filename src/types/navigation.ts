@@ -7,8 +7,12 @@ export type RootStackParamList = {
 };
 
 export type RootTabParamList = {
-  Home: undefined;
-  Search: undefined;
+  Feed: undefined;
+  Applications: undefined;
+  Chat: undefined;
+  AddProperty: undefined;
+  ManageProperties: undefined;
+  ViewReviews: undefined;
   Profile: undefined;
   Notifications: undefined;
   Admin: undefined;

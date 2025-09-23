@@ -16,9 +16,12 @@ export default function AuthScreen({ navigation }: Props) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
+  const { userRole } = useLoggedIn();
   const handleLogin = () => {
     if (email === 'admin@gmail.com' && password === 'admin123') {
       setUserRole('admin');
+    } else if (!userRole) {
+      setUserRole('renter');
     }
     setIsLoggedIn(true);
   };

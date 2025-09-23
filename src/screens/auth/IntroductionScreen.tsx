@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { View, Text, SafeAreaView } from 'react-native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import Button from '../../components/Button';
+import { useLoggedIn } from '../../store/useLoggedIn';
 import { RootStackParamList } from '../../types/navigation';
 
 type IntroductionScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Introduction'>;
@@ -11,6 +12,11 @@ type Props = {
 };
 
 const IntroductionScreen: React.FC<Props> = ({ navigation }) => {
+  // Set default role to 'renter' on introduction
+  const { setUserRole } = useLoggedIn();
+  useEffect(() => {
+    setUserRole('renter');
+  }, [setUserRole]);
   return (
     <SafeAreaView
       style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'white' }}>

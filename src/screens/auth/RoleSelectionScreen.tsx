@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, SafeAreaView } from 'react-native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import Button from '../../components/Button';
+import { useLoggedIn } from '../../store/useLoggedIn';
 import { RootStackParamList } from '../../types/navigation';
 
 type RoleSelectionScreenNavigationProp = StackNavigationProp<RootStackParamList, 'RoleSelection'>;
@@ -11,7 +12,15 @@ type Props = {
 };
 
 const RoleSelectionScreen: React.FC<Props> = ({ navigation }) => {
+  const { setUserRole } = useLoggedIn();
+
+  const handleSelectRole = (role: 'renter' | 'owner') => {
+    setUserRole(role);
+    navigation.navigate('Register');
+  };
+
   const handleLogin = () => {
+    // Do not change role here, let AuthScreen handle it
     navigation.navigate('Auth');
   };
 
@@ -20,10 +29,10 @@ const RoleSelectionScreen: React.FC<Props> = ({ navigation }) => {
       style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'white' }}>
       <View className="w-full max-w-sm gap-4">
         <Text style={{ fontSize: 24, textAlign: 'center', color: 'black' }}>Are you a...</Text>
-        <Button variant="primary" onPress={() => navigation.navigate('Register')}>
+        <Button variant="primary" onPress={() => handleSelectRole('renter')}>
           Renter
         </Button>
-        <Button variant="primary" onPress={() => navigation.navigate('Register')}>
+        <Button variant="primary" onPress={() => handleSelectRole('owner')}>
           Owner
         </Button>
 

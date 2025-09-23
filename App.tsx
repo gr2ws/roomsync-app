@@ -1,11 +1,12 @@
 import { NavigationContainer } from '@react-navigation/native';
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import {
+  createBottomTabNavigator,
+  BottomTabNavigationOptions,
+} from '@react-navigation/bottom-tabs';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import { Platform } from 'react-native';
-import HomeScreen from './src/screens/HomeScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
-import SearchScreen from './src/screens/SearchScreen';
 import NotificationsScreen from './src/screens/NotificationsScreen';
 import { RootStackParamList, RootTabParamList } from './src/types/navigation';
 import './src/style/global.css';
@@ -17,6 +18,12 @@ import AdminDashboardScreen from './src/screens/AdminDashboardScreen';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import IntroductionScreen from './src/screens/auth/IntroductionScreen';
 import RoleSelectionScreen from './src/screens/auth/RoleSelectionScreen';
+import FeedScreen from './src/screens/renter/FeedScreen';
+import ApplicationsScreen from './src/screens/renter/ApplicationsScreen';
+import ChatScreen from './src/screens/renter/ChatScreen';
+import AddPropertyScreen from './src/screens/owner/AddPropertyScreen';
+import ManagePropertiesScreen from './src/screens/owner/ManagePropertiesScreen';
+import ViewReviewsScreen from './src/screens/owner/ViewReviewsScreen';
 
 const Tab = createBottomTabNavigator<RootTabParamList>();
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -26,88 +33,198 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 function MainApp() {
   const { userRole } = useLoggedIn();
 
-  return (
-    <Tab.Navigator
-      initialRouteName="Home"
-      safeAreaInsets={{ bottom: Platform.OS === 'android' ? 35 : 0 }}
-      screenOptions={{
-        headerShown: false,
-        tabBarShowLabel: true,
-        tabBarStyle: {
-          height: '5.5%',
-          backgroundColor: '#fff',
-          borderTopWidth: 1,
-          paddingTop: 2,
-          borderTopColor: '#e5e7eb',
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: -1 },
-          shadowOpacity: 0.05,
-          shadowRadius: 0.5,
-          elevation: 1,
-        },
-        tabBarAllowFontScaling: false,
-        tabBarLabelStyle: {
-          fontSize: 10,
-          fontWeight: '400',
-          marginTop: 2,
-        },
-      }}>
+  const commonScreenOptions: BottomTabNavigationOptions = {
+    headerShown: false,
+    tabBarShowLabel: true,
+    tabBarStyle: {
+      height: 50, // Fixed height to prevent cut-off
+      backgroundColor: '#fff',
+      borderTopWidth: 1,
+      paddingTop: 2,
+      borderTopColor: '#e5e7eb',
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: -1 },
+      shadowOpacity: 0.05,
+      shadowRadius: 0.5,
+      elevation: 1,
+    },
+    tabBarAllowFontScaling: false,
+    tabBarLabelStyle: {
+      fontSize: 10,
+      fontWeight: '400',
+      marginTop: 2,
+    },
+  };
+
+  const notificationsScreen = (
+    <Tab.Screen
+      name="Notifications"
+      component={NotificationsScreen}
+      options={{
+        tabBarIcon: ({ focused, color, size }) => (
+          <Ionicons
+            name={focused ? 'notifications' : 'notifications-outline'}
+            size={size}
+            color={color}
+          />
+        ),
+        tabBarBadge: 1,
+      }}
+    />
+  );
+
+  const profileScreen = (
+    <Tab.Screen
+      name="Profile"
+      component={ProfileScreen}
+      options={{
+        tabBarIcon: ({ focused, color, size }) => (
+          <Ionicons name={focused ? 'person' : 'person-outline'} size={size} color={color} />
+        ),
+      }}
+    />
+  );
+
+  // Tab logic: explicit for each role, always include admin tab for admin
+  let tabScreens = [];
+  if (userRole === 'renter') {
+    tabScreens = [
       <Tab.Screen
-        name="Home"
-        component={HomeScreen}
+        key="Feed"
+        name="Feed"
+        component={FeedScreen}
         options={{
           tabBarIcon: ({ focused, color, size }) => (
-            <Ionicons name={focused ? 'home' : 'home-outline'} size={size} color={color} />
+            <Ionicons name={focused ? 'list' : 'list-outline'} size={size} color={color} />
           ),
         }}
-      />
+      />,
       <Tab.Screen
-        name="Search"
-        component={SearchScreen}
-        options={{
-          tabBarIcon: ({ focused, color, size }) => (
-            <Ionicons name={focused ? 'search' : 'search-outline'} size={size} color={color} />
-          ),
-        }}
-      />
-      <Tab.Screen
-        name="Profile"
-        component={ProfileScreen}
-        options={{
-          tabBarIcon: ({ focused, color, size }) => (
-            <Ionicons name={focused ? 'person' : 'person-outline'} size={size} color={color} />
-          ),
-        }}
-      />
-      <Tab.Screen
-        name="Notifications"
-        component={NotificationsScreen}
+        key="Applications"
+        name="Applications"
+        component={ApplicationsScreen}
         options={{
           tabBarIcon: ({ focused, color, size }) => (
             <Ionicons
-              name={focused ? 'notifications' : 'notifications-outline'}
+              name={focused ? 'document-text' : 'document-text-outline'}
               size={size}
               color={color}
             />
           ),
-          tabBarBadge: 1,
         }}
-      />
-      {userRole === 'admin' && (
-        <Tab.Screen
-          name="Admin"
-          component={AdminDashboardScreen}
-          options={{
-            tabBarIcon: ({ focused, color, size }) => (
-              <Ionicons
-                name={focused ? 'settings' : 'settings-outline'}
-                size={size}
-                color={color}
-              />
-            ),
-          }}
-        />
-      )}
+      />,
+      <Tab.Screen
+        key="Chat"
+        name="Chat"
+        component={ChatScreen}
+        options={{
+          tabBarIcon: ({ focused, color, size }) => (
+            <Ionicons
+              name={focused ? 'chatbubbles' : 'chatbubbles-outline'}
+              size={size}
+              color={color}
+            />
+          ),
+        }}
+      />,
+      notificationsScreen,
+      profileScreen,
+    ];
+  } else if (userRole === 'owner') {
+    tabScreens = [
+      <Tab.Screen
+        key="AddProperty"
+        name="AddProperty"
+        component={AddPropertyScreen}
+        options={{
+          tabBarLabel: 'Add',
+          tabBarIcon: ({ focused, color, size }) => (
+            <Ionicons
+              name={focused ? 'add-circle' : 'add-circle-outline'}
+              size={size}
+              color={color}
+            />
+          ),
+        }}
+      />,
+      <Tab.Screen
+        key="ManageProperties"
+        name="ManageProperties"
+        component={ManagePropertiesScreen}
+        options={{
+          tabBarLabel: 'Manage',
+          tabBarIcon: ({ focused, color, size }) => (
+            <Ionicons
+              name={focused ? 'file-tray-full' : 'file-tray-full-outline'}
+              size={size}
+              color={color}
+            />
+          ),
+        }}
+      />,
+      <Tab.Screen
+        key="ViewReviews"
+        name="ViewReviews"
+        component={ViewReviewsScreen}
+        options={{
+          tabBarLabel: 'Reviews',
+          tabBarIcon: ({ focused, color, size }) => (
+            <Ionicons name={focused ? 'star' : 'star-outline'} size={size} color={color} />
+          ),
+        }}
+      />,
+      notificationsScreen,
+      profileScreen,
+    ];
+  } else if (userRole === 'admin') {
+    tabScreens = [
+      <Tab.Screen
+        key="Feed"
+        name="Feed"
+        component={FeedScreen}
+        options={{
+          tabBarIcon: ({ focused, color, size }) => (
+            <Ionicons name={focused ? 'list' : 'list-outline'} size={size} color={color} />
+          ),
+        }}
+      />,
+      <Tab.Screen
+        key="Admin"
+        name="Admin"
+        component={AdminDashboardScreen}
+        options={{
+          tabBarIcon: ({ focused, color, size }) => (
+            <Ionicons name={focused ? 'settings' : 'settings-outline'} size={size} color={color} />
+          ),
+        }}
+      />,
+      notificationsScreen,
+      profileScreen,
+    ];
+  } else {
+    // fallback for unknown role
+    tabScreens = [
+      <Tab.Screen
+        key="Feed"
+        name="Feed"
+        component={FeedScreen}
+        options={{
+          tabBarIcon: ({ focused, color, size }) => (
+            <Ionicons name={focused ? 'list' : 'list-outline'} size={size} color={color} />
+          ),
+        }}
+      />,
+      notificationsScreen,
+      profileScreen,
+    ];
+  }
+
+  return (
+    <Tab.Navigator
+      initialRouteName={userRole === 'owner' ? 'ManageProperties' : 'Feed'}
+      safeAreaInsets={{ bottom: Platform.OS === 'android' ? 35 : 0 }}
+      screenOptions={commonScreenOptions}>
+      {tabScreens}
     </Tab.Navigator>
   );
 }
