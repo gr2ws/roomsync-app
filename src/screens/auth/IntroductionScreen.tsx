@@ -25,7 +25,7 @@ const IntroductionScreen: React.FC<Props> = ({ navigation }) => {
           Welcome to RoomSync
         </Text>
         <Text style={{ fontSize: 16, textAlign: 'center', marginTop: 10, color: 'black' }}>
-          Find your perfect roommate or rental with ease.
+          Find your perfect room or renter with ease.
         </Text>
         <Button variant="primary" onPress={() => navigation.navigate('RoleSelection')}>
           Get Started
