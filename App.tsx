@@ -15,6 +15,8 @@ import { useLoggedIn } from './src/store/useLoggedIn';
 import AuthScreen from './src/screens/auth/AuthScreen';
 import RegisterScreen from './src/screens/auth/RegisterScreen';
 import AdminDashboardScreen from './src/screens/AdminDashboardScreen';
+import AdminAnalyticsScreen from './src/screens/AdminAnalyticsScreen';
+import AdminUserManagementScreen from './src/screens/AdminUserManagementScreen';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import IntroductionScreen from './src/screens/auth/IntroductionScreen';
 import RoleSelectionScreen from './src/screens/auth/RoleSelectionScreen';
@@ -179,12 +181,46 @@ function MainApp() {
   } else if (userRole === 'admin') {
     tabScreens = [
       <Tab.Screen
-        key="Admin"
-        name="Admin"
+        key="AdminDashboard"
+        name="AdminDashboard"
         component={AdminDashboardScreen}
         options={{
+          tabBarLabel: 'Dashboard',
           tabBarIcon: ({ focused, color, size }) => (
-            <Ionicons name={focused ? 'settings' : 'settings-outline'} size={size} color={color} />
+            <Ionicons name={focused ? 'grid' : 'grid-outline'} size={size} color={color} />
+          ),
+        }}
+      />,
+      <Tab.Screen
+        key="AdminAnalytics"
+        name="AdminAnalytics"
+        component={AdminAnalyticsScreen}
+        options={{
+          tabBarLabel: 'Analytics',
+          tabBarIcon: ({ focused, color, size }) => (
+            <Ionicons name={focused ? 'bar-chart' : 'bar-chart-outline'} size={size} color={color} />
+          ),
+        }}
+      />,
+      <Tab.Screen
+        key="AdminUsers"
+        name="AdminUsers"
+        component={AdminUserManagementScreen}
+        options={{
+          tabBarLabel: 'User Management',
+          tabBarIcon: ({ focused, color, size }) => (
+            <Ionicons name={focused ? 'people' : 'people-outline'} size={size} color={color} />
+          ),
+        }}
+      />,
+      <Tab.Screen
+        key="AdminProfile"
+        name="AdminProfile"
+        component={ProfileScreen}
+        options={{
+          tabBarLabel: 'Admin Profile',
+          tabBarIcon: ({ focused, color, size }) => (
+            <Ionicons name={focused ? 'person' : 'person-outline'} size={size} color={color} />
           ),
         }}
       />,
@@ -209,7 +245,9 @@ function MainApp() {
 
   return (
     <Tab.Navigator
-      initialRouteName={userRole === 'owner' ? 'ManageProperties' : 'Feed'}
+      initialRouteName={
+        userRole === 'owner' ? 'ManageProperties' : userRole === 'admin' ? 'AdminDashboard' : 'Feed'
+      }
       safeAreaInsets={{ bottom: Platform.OS === 'android' ? 35 : 0 }}
       screenOptions={commonScreenOptions}>
       {tabScreens}

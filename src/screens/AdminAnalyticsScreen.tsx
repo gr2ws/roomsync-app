@@ -1,48 +1,22 @@
 // AdminAnalyticsScreen.tsx
 // Analytics dashboard for admin panel
 
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import {
   View,
   Text,
-  SafeAreaView,
   ScrollView,
   Dimensions,
   Platform,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useSafeAreaInsets, SafeAreaView } from 'react-native-safe-area-context';
+import { useAdminData } from '../store/useAdminData';
 import { Ionicons } from '@expo/vector-icons';
 
 export default function AdminAnalyticsScreen() {
   const insets = useSafeAreaInsets();
-
-  // Dummy analytics data
-  const analyticsData = useMemo(() => ({
-    userActivity: {
-      totalUsers: 1234,
-      activeUsers: 856,
-      newUsersThisMonth: 123,
-      userGrowthRate: 12.5,
-    },
-    listingMetrics: {
-      totalListings: 89,
-      activeListings: 76,
-      pendingApprovals: 12,
-      viewsThisMonth: 2456,
-    },
-    revenueMetrics: {
-      monthlyRevenue: 125000,
-      totalRevenue: 1450000,
-      averageListingPrice: 8500,
-      revenueGrowthRate: 8.3,
-    },
-    platformPerformance: {
-      averageResponseTime: 245,
-      uptime: 99.8,
-      errorRate: 0.02,
-      activeSessions: 1234,
-    },
-  }), []);
+  const { metrics } = useAdminData();
+  const analyticsData = metrics;
 
   return (
     <SafeAreaView className="flex-1 bg-white" style={{ paddingTop: Platform.OS === 'android' ? insets.top : 0 }}>

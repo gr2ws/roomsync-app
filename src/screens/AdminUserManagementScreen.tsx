@@ -1,113 +1,41 @@
 // AdminUserManagementScreen.tsx
 // User management dashboard for admin panel
 
-import React, { useState, useMemo } from 'react';
+import * as React from 'react';
+import { useState, useMemo } from 'react';
+import { useAdminData } from '../store/useAdminData';
+import type { AdminUser } from '../store/useAdminData';
 import {
   View,
   Text,
-  SafeAreaView,
   ScrollView,
   TouchableOpacity,
   Dimensions,
   Platform,
   TextInput,
   Image,
+  Linking,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+ 
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 
-interface User {
-  id: number;
-  name: string;
-  email: string;
-  role: 'renter' | 'property_owner' | 'both';
-  isVerified: boolean;
-  propertiesListed: number;
-  applications: number;
-  lastActive: string;
-  avatarUrl: string;
-}
+type User = AdminUser;
 
 export default function AdminUserManagementScreen() {
   const insets = useSafeAreaInsets();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedRole, setSelectedRole] = useState<string>('all');
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  // Dummy user data
-  const users: User[] = useMemo(() => [
-    {
-      id: 1,
-      name: "Maria Santos",
-      email: "maria.santos@email.com",
-      role: "property_owner",
-      isVerified: true,
-      propertiesListed: 3,
-      applications: 0,
-      lastActive: "2 hours ago",
-      avatarUrl: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&h=150&fit=crop&crop=face"
-    },
-    {
-      id: 2,
-      name: "John Dela Cruz",
-      email: "john.delacruz@email.com",
-      role: "renter",
-      isVerified: false,
-      propertiesListed: 0,
-      applications: 5,
-      lastActive: "1 day ago",
-      avatarUrl: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face"
-    },
-    {
-      id: 3,
-      name: "Ana Rodriguez",
-      email: "ana.rodriguez@email.com",
-      role: "both",
-      isVerified: true,
-      propertiesListed: 2,
-      applications: 3,
-      lastActive: "30 minutes ago",
-      avatarUrl: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150&h=150&fit=crop&crop=face"
-    },
-    {
-      id: 4,
-      name: "Carlos Mendoza",
-      email: "carlos.mendoza@email.com",
-      role: "property_owner",
-      isVerified: false,
-      propertiesListed: 1,
-      applications: 0,
-      lastActive: "3 days ago",
-      avatarUrl: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face"
-    },
-    {
-      id: 5,
-      name: "Sarah Johnson",
-      email: "sarah.johnson@email.com",
-      role: "renter",
-      isVerified: true,
-      propertiesListed: 0,
-      applications: 8,
-      lastActive: "1 hour ago",
-      avatarUrl: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150&h=150&fit=crop&crop=face"
-    },
-    {
-      id: 6,
-      name: "Michael Chen",
-      email: "michael.chen@email.com",
-      role: "property_owner",
-      isVerified: true,
-      propertiesListed: 4,
-      applications: 0,
-      lastActive: "4 hours ago",
-      avatarUrl: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&h=150&fit=crop&crop=face"
-    }
-  ], []);
+  const { users, verifyUser } = useAdminData();
 
   // Calculate user statistics
   const userStats = useMemo(() => {
     const totalUsers = users.length;
-    const renters = users.filter(user => user.role === 'renter' || user.role === 'both').length;
-    const propertyOwners = users.filter(user => user.role === 'property_owner' || user.role === 'both').length;
+    const renters = users.filter(user => user.role === 'renter').length;
+    const propertyOwners = users.filter(user => user.role === 'property_owner').length;
     const verificationPending = users.filter(user => !user.isVerified).length;
 
     return { totalUsers, renters, propertyOwners, verificationPending };
@@ -123,14 +51,25 @@ export default function AdminUserManagementScreen() {
     });
   }, [users, searchQuery, selectedRole]);
 
+  const handleVerifyUser = (userId: number) => {
+    verifyUser(userId);
+    setToastMessage('User verified successfully!');
+    setTimeout(() => setToastMessage(null), 2000);
+  };
+
   const handleViewUser = (userId: number) => {
     console.log(`Viewing user ${userId}`);
     // Add view user logic here
   };
 
   const handleMessageUser = (userId: number) => {
-    console.log(`Messaging user ${userId}`);
-    // Add message user logic here
+    const user = users.find(u => u.id === userId);
+    if (!user) return;
+    const smsUrl = `sms:${user.phoneNumber}`;
+    Linking.openURL(smsUrl).catch(() => {
+      setToastMessage('Unable to open SMS app');
+      setTimeout(() => setToastMessage(null), 2000);
+    });
   };
 
   const handleSuspendUser = (userId: number) => {
@@ -194,7 +133,6 @@ export default function AdminUserManagementScreen() {
                 { key: 'all', label: 'All' },
                 { key: 'renter', label: 'Renters' },
                 { key: 'property_owner', label: 'Owners' },
-                { key: 'both', label: 'Both' }
               ].map((filter) => (
                 <TouchableOpacity
                   key={filter.key}
@@ -228,10 +166,18 @@ export default function AdminUserManagementScreen() {
               onView={() => handleViewUser(user.id)}
               onMessage={() => handleMessageUser(user.id)}
               onSuspend={() => handleSuspendUser(user.id)}
+              onVerify={() => handleVerifyUser(user.id)}
             />
           ))}
         </View>
       </ScrollView>
+      {toastMessage && (
+        <View className="absolute bottom-6 left-0 right-0 items-center">
+          <View className="px-4 py-2 rounded-full bg-emerald-600 shadow">
+            <Text className="text-white text-sm font-medium">{toastMessage}</Text>
+          </View>
+        </View>
+      )}
     </SafeAreaView>
   );
 }
@@ -250,11 +196,12 @@ function StatCard({ title, value, icon, color }: { title: string; value: string;
   );
 }
 
-function UserCard({ user, onView, onMessage, onSuspend }: { 
+function UserCard({ user, onView, onMessage, onSuspend, onVerify }: { 
   user: User; 
   onView: () => void; 
   onMessage: () => void; 
   onSuspend: () => void; 
+  onVerify: () => void;
 }) {
   const getRoleDisplay = (role: string) => {
     switch (role) {
@@ -265,6 +212,8 @@ function UserCard({ user, onView, onMessage, onSuspend }: {
     }
   };
 
+  const isActive = (user.lastActive || '').toLowerCase().includes('ago');
+
   return (
     <View className="bg-white rounded-2xl p-5 mb-4 shadow-sm border border-gray-200">
       <View className="flex-row items-start mb-4">
@@ -274,16 +223,16 @@ function UserCard({ user, onView, onMessage, onSuspend }: {
             className="w-16 h-16 rounded-full"
             resizeMode="cover"
           />
-          {user.isVerified && (
-            <View className="absolute -top-1 -right-1 bg-green-500 px-2 py-1 rounded-full">
-              <Text className="text-xs text-white font-medium">Verified</Text>
-            </View>
-          )}
         </View>
         <View className="flex-1">
           <View className="flex-row items-center mb-1">
+            <View className="w-2 h-2 rounded-full mr-2" style={{ backgroundColor: isActive ? '#22c55e' : '#9CA3AF' }} />
             <Text className="text-lg font-semibold text-gray-900 mr-2">{user.name}</Text>
-            {!user.isVerified && (
+            {user.isVerified ? (
+              <View className="bg-green-100 px-2 py-1 rounded-full">
+                <Text className="text-xs text-green-700 font-medium">Verified</Text>
+              </View>
+            ) : (
               <View className="bg-yellow-100 px-2 py-1 rounded-full">
                 <Text className="text-xs text-yellow-800 font-medium">Pending</Text>
               </View>
@@ -294,34 +243,53 @@ function UserCard({ user, onView, onMessage, onSuspend }: {
         </View>
       </View>
       
-      <View className="flex-row justify-between mb-4">
-        <View className="items-center">
-          <Text className="text-lg font-bold text-gray-900">{user.propertiesListed}</Text>
-          <Text className="text-xs text-gray-600">Properties</Text>
+      <View className="flex-row justify-center items-center mb-4">
+        {user.role === 'property_owner' && (
+          <View className="items-center mx-6">
+            <Text className="text-lg font-bold text-gray-900 text-center">{user.propertiesListed}</Text>
+            <Text className="text-xs text-gray-600 text-center">Properties</Text>
         </View>
-        <View className="items-center">
-          <Text className="text-lg font-bold text-gray-900">{user.applications}</Text>
-          <Text className="text-xs text-gray-600">Applications</Text>
+        )}
+        {user.role === 'renter' && (
+          <View className="items-center mx-6">
+            <Text className="text-lg font-bold text-gray-900 text-center">{user.applications}</Text>
+            <Text className="text-xs text-gray-600 text-center">Applications</Text>
         </View>
-        <View className="items-center">
+        )}
+        <View className="items-center mx-6">
+          <View className="flex-row items-center">
+            <View className={`w-2 h-2 rounded-full mr-1.5 ${isActive ? 'bg-green-500' : 'bg-gray-400'}`} />
           <Text className="text-lg font-bold text-gray-900">{user.lastActive}</Text>
-          <Text className="text-xs text-gray-600">Last Active</Text>
+          </View>
+          <Text className="text-xs text-gray-600 text-center">Last Active</Text>
         </View>
       </View>
       
       <View className="flex-col justify-between gap-3">
+      <TouchableOpacity
+        className={`flex-row items-center px-4 py-2 rounded-lg ${user.isVerified ? 'bg-emerald-100' : 'bg-emerald-50'}`}
+        onPress={() => { if (!user.isVerified) onVerify(); }}
+        disabled={user.isVerified}
+        style={{ opacity: user.isVerified ? 0.1 : 1 }}   // 👈 dims everything
+      >
+        <Ionicons
+          name="checkmark-circle-outline"
+          size={16}
+          color="#059669"
+        />
+        <Text className="text-sm font-medium ml-2 text-emerald-700">
+          Verify
+        </Text>
+      </TouchableOpacity>
         <TouchableOpacity className="flex-row items-center bg-blue-50 px-4 py-2 rounded-lg" onPress={onView}>
           <Ionicons name="eye-outline" size={16} color="#3B82F6" />
           <Text className="text-sm font-medium text-blue-600 ml-2">View</Text>
         </TouchableOpacity>
-        <TouchableOpacity className="flex-row items-center bg-green-50 px-4 py-2 rounded-lg" onPress={onMessage}>
-          <Ionicons name="chatbubble-outline" size={16} color="#10B981" />
-          <Text className="text-sm font-medium text-green-600 ml-2">Message</Text>
+        <TouchableOpacity className="flex-row items-center bg-slate-100 px-4 py-2 rounded-lg" onPress={onMessage}>
+          <Ionicons name="chatbubble-outline" size={16} color="gray" />
+          <Text className="text-sm font-medium text-slate-800 ml-2">Message</Text>
         </TouchableOpacity>
-        <TouchableOpacity className="flex-row items-center bg-red-50 px-4 py-2 rounded-lg" onPress={onSuspend}>
-          <Ionicons name="ban-outline" size={16} color="#EF4444" />
-          <Text className="text-sm font-medium text-red-600 ml-2">Suspend</Text>
-        </TouchableOpacity>
+        {/* Removed Suspend button per requirements */}
       </View>
     </View>
   );

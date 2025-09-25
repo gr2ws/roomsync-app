@@ -1,11 +1,12 @@
 // AdminDashboard.tsx
 // Expo + React Native, no extra libs required. Optional: `npx expo install @expo/vector-icons react-native-safe-area-context` for icons & safe areas.
 
-import React, { useMemo, useRef, useState } from 'react';
+import * as React from 'react';
+import { useMemo, useRef, useState } from 'react';
+import { useAdminData } from '../store/useAdminData';
 import {
   View,
   Text,
-  SafeAreaView,
   ScrollView,
   TouchableOpacity,
   Dimensions,
@@ -13,16 +14,14 @@ import {
   Animated,
   Easing,
   Image,
+  TextInput,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useSafeAreaInsets, SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import AdminAnalyticsScreen from './AdminAnalyticsScreen';
-import AdminUserManagementScreen from './AdminUserManagementScreen';
 
 const TABS = [
   { key: 'overview', label: 'Overview', icon: 'grid-outline' },
-  { key: 'listings', label: 'Manage Listings', icon: 'home-outline' },
-  { key: 'users', label: 'User Management', icon: 'people-outline' },
+  { key: 'users', label: 'Moderation Panel', icon: 'people-outline' },
   { key: 'reports', label: 'Reports & Safety', icon: 'shield-checkmark-outline' },
 ];
 
@@ -31,7 +30,7 @@ type TabKey = typeof TABS[number]['key'];
 const ADMIN_MENU_OPTIONS = [
   { key: 'dashboard', label: 'Dashboard', icon: 'grid-outline', description: 'Overview and analytics' },
   { key: 'analytics', label: 'Analytics', icon: 'bar-chart-outline', description: 'Detailed metrics and insights' },
-  { key: 'user-management', label: 'User Management', icon: 'people-outline', description: 'Manage users and permissions' },
+  { key: 'user-management', label: 'Moderation Panel', icon: 'people-outline', description: 'Manage users and permissions' },
   { key: 'admin-profile', label: 'Admin Profile', icon: 'person-outline', description: "The admin's profile settings" },
 ];
 
@@ -39,8 +38,6 @@ export default function AdminDashboard() {
   const insets = useSafeAreaInsets();
   const [active, setActive] = useState<TabKey>('overview');
   const [open, setOpen] = useState(false);
-  const [showAdminMenu, setShowAdminMenu] = useState(true);
-  const [activeAdminScreen, setActiveAdminScreen] = useState<string>('menu');
 
   // Sidebar animation
   const slide = useRef(new Animated.Value(0)).current; // 0 closed, 1 open
@@ -63,70 +60,21 @@ export default function AdminDashboard() {
   const overlayOpacity = slide.interpolate({ inputRange: [0, 1], outputRange: [0, 0.35] });
 
   return (
-    <SafeAreaView className="flex-1 bg-white" style={{ paddingTop: Platform.OS === 'android' ? insets.top : 0 }}>      
+    <SafeAreaView className="flex-1 bg-white" style={{ paddingTop: Platform.OS === 'android' ? insets.top : 0 }}>
       {/* Header */}
-      <View className="flex-row items-center px-4 py-3 border-b border-gray-200 bg-white">        
-        {activeAdminScreen === 'menu' ? (
-          <View className="w-10" />
-        ) : (
-          <TouchableOpacity 
-            accessibilityRole="button" 
-            accessibilityLabel="Back to admin menu" 
-            onPress={() => {
-              setActiveAdminScreen('menu');
-              setShowAdminMenu(true);
-            }} 
-            className="w-10 h-10 rounded-xl items-center justify-center"
-          >
-            <Ionicons name="arrow-back" size={24} />
-          </TouchableOpacity>
-        )}
-        <Text className={`text-lg font-semibold ml-2 flex-1 ${activeAdminScreen === 'menu' ? 'text-left' : ''}`}>
-          {activeAdminScreen === 'menu' ? 'Administrator Options' : 
-           activeAdminScreen === 'analytics' ? 'Analytics' : 
-           activeAdminScreen === 'user-management' ? 'User Management' : 'Admin Dashboard'}
-        </Text>
-        {activeAdminScreen === 'menu' ? (
-          <View className="w-10" />
-        ) : activeAdminScreen === 'dashboard' ? (
-          <TouchableOpacity accessibilityRole="button" accessibilityLabel="Open menu" onPress={() => toggle()} className="w-10 h-10 rounded-xl items-center justify-center">
-            <Ionicons name="menu" size={24} />
-          </TouchableOpacity>
-        ) : (
-          <View className="w-10" />
-        )}
+      <View className="flex-row items-center px-4 py-3 border-b border-gray-200 bg-white">
+        <TouchableOpacity accessibilityRole="button" accessibilityLabel="Open menu" onPress={() => toggle()} className="w-10 h-10 rounded-xl items-center justify-center">
+          <Ionicons name="menu" size={24} />
+        </TouchableOpacity>
+        <Text className="text-lg font-semibold ml-2 flex-1">Admin Dashboard</Text>
+        <View className="w-10" />
       </View>
 
       {/* Content */}
-      <ScrollView className="px-2 py-4" contentContainerStyle={{ paddingBottom: insets.bottom + 16 }}>        
-        {activeAdminScreen === 'menu' ? (
-          <AdminMenuScreen onSelectOption={(option) => {
-            if (option === 'dashboard') {
-              setActiveAdminScreen('dashboard');
-              setShowAdminMenu(false);
-            } else if (option === 'analytics') {
-              setActiveAdminScreen('analytics');
-              setShowAdminMenu(false);
-            } else if (option === 'user-management') {
-              setActiveAdminScreen('user-management');
-              setShowAdminMenu(false);
-            } else {
-              // Handle other options (Reports, Admin Profile)
-              console.log(`Selected: ${option}`);
-            }
-          }} />
-        ) : activeAdminScreen === 'analytics' ? (
-          <AdminAnalyticsScreen />
-        ) : activeAdminScreen === 'user-management' ? (
-          <AdminUserManagementScreen />
-        ) : (
-          <>
-            {active === 'overview' && <OverviewTab />}
-            {active === 'listings' && <ManageListingsTab />}
-            {active === 'users' && <UserManagementTab />}
-            {active === 'reports' && <ReportsSafetyTab />}
-          </>
-        )}
+      <ScrollView className="px-2 py-4" contentContainerStyle={{ paddingBottom: insets.bottom + 16 }}>
+        {active === 'overview' && <OverviewTab />}
+        {active === 'users' && <UserManagementTab />}
+        {active === 'reports' && <ReportsSafetyTab />}
       </ScrollView>
 
       {/* Overlay */}
@@ -169,112 +117,6 @@ export default function AdminDashboard() {
         ))}
       </Animated.View>
     </SafeAreaView>
-  );
-}
-
-/* ------------------- Admin Menu Screen ------------------- */
-function AdminMenuScreen({ onSelectOption }: { onSelectOption: (option: string) => void }) {
-  return (
-    <View>
-      <Text className="text-3xl font-bold text-gray-900 text-center mb-2 mt-3">Admin Panel</Text>
-      <Text className="text-base text-gray-600 text-center mb-8">Choose an admin section to access</Text>
-      
-      <View className="flex-row flex-wrap justify-between px-4">
-        {ADMIN_MENU_OPTIONS.map((option) => (
-          <TouchableOpacity
-            key={option.key}
-            className="w-[48%] bg-white border border-gray-200 rounded-2xl mb-4 shadow-sm"
-            onPress={() => onSelectOption(option.key)}
-          >
-            <View className="p-5 items-center">
-              <Ionicons name={option.icon as any} size={32} color="#3B82F6" />
-              <Text className="text-base font-semibold text-gray-900 mt-3 mb-1 text-center">{option.label}</Text>
-              <Text className="text-xs text-gray-600 text-center leading-4">{option.description}</Text>
-            </View>
-          </TouchableOpacity>
-        ))}
-      </View>
-    </View>
-  );
-}
-
-/* ------------------- Manage Listings Tab ------------------- */
-function ManageListingsTab() {
-  const pendingProperties = [
-    {
-      id: 1,
-      title: "Elegant Apartment at Vista Alegre",
-      owner: "Roberto Garcia",
-      location: "Vista Alegre, Valencia City",
-      price: "₱12,000/month",
-      submittedDate: "Jan 3, 2025",
-      imageUrl: "https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=400&h=300&fit=crop"
-    },
-    {
-      id: 2,
-      title: "Cozy Studio near Coral Bay",
-      owner: "Angela Reyes",
-      location: "Reyes Residences, Sibulan",
-      price: "₱5,500/month",
-      submittedDate: "Jan 4, 2025",
-      imageUrl: "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=400&h=300&fit=crop"
-    },
-    {
-      id: 3,
-      title: "Family Home in San Marino Heights",
-      owner: "Maria Santos",
-      location: "San Marino Heights, Dumaguete City",
-      price: "₱15,000/month",
-      submittedDate: "Jan 5, 2025",
-      imageUrl: "https://images.unsplash.com/photo-1570129477492-45c003edd2be?w=400&h=300&fit=crop"
-    },
-    {
-      id: 4,
-      title: "Budget Room in Golden Fields",
-      owner: "John Dela Cruz",
-      location: "Brgy. Golden Fields, Valencia City",
-      price: "₱3,200/month",
-      submittedDate: "Jan 6, 2025",
-      imageUrl: "https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=400&h=300&fit=crop"
-    },
-    {
-      id: 5,
-      title: "Boarding House near Silliman University",
-      owner: "Karen Lim",
-      location: "Silliman Ave., Dumaguete City",
-      price: "₱25,000/month",
-      submittedDate: "Jan 7, 2025",
-      imageUrl: "https://images.unsplash.com/photo-1564013799919-ab600027ffc6?w=400&h=300&fit=crop"
-    }
-  ];
-
-  const handleApprove = (propertyId: number) => {
-    console.log(`Approving property ${propertyId}`);
-    // Add approval logic here
-  };
-
-  const handleDecline = (propertyId: number) => {
-    console.log(`Declining property ${propertyId}`);
-    // Add decline logic here
-  };
-
-  return (
-    <View className = "mx-4 mt-3">
-      <View className="mb-6 ml-2">
-        <Text className="text-2xl font-bold text-gray-900 mb-2">Pending Property Approvals</Text>
-        <Text className="text-sm text-gray-600">
-          Review and approve property listings submitted by users
-        </Text>
-      </View>
-      {pendingProperties.map((property) => (
-        <PropertyCard
-          key={property.id}
-          property={property}
-          onApprove={() => handleApprove(property.id)}
-          onDecline={() => handleDecline(property.id)}
-        />
-      ))}
-    </View>
   );
 }
 
@@ -328,10 +170,25 @@ function UserManagementTab() {
     // Add ban logic here
   };
 
+  const [query, setQuery] = useState('');
+  const filteredUsers = users.filter(u =>
+    u.name.toLowerCase().includes(query.toLowerCase()) ||
+    u.email.toLowerCase().includes(query.toLowerCase())
+  );
+
   return (
     <View className = "mx-4 mt-3">
-      <Text className="text-xl font-bold mb-4 ml-2 text-gray-900">User Management</Text>
-      {users.map((user) => (
+      <Text className="text-xl font-bold mb-3 ml-2 text-gray-900">Moderation Panel</Text>
+      <View className="mb-4 mx-2">
+        <TextInput
+          placeholder="Search users by name or email"
+          className="text-sm overflow-visible rounded-xl border border-gray-300 bg-white px-4 py-3"
+          autoCapitalize="none"
+          onChangeText={setQuery}
+          value={query}
+        />
+      </View>
+      {filteredUsers.map((user) => (
         <UserCard
           key={user.id}
           user={user}
@@ -420,16 +277,17 @@ function ReportsSafetyTab() {
 
 /* ------------------- Overview Tab ------------------- */
 function OverviewTab() {
+  const { metrics } = useAdminData();
   const cards = useMemo(
     () => [
-      { icon: 'people-outline', label: 'Total Users', value: '6', color: '#3B82F6' },
-      { icon: 'home-outline', label: 'Active Listings', value: '12', color: '#10B981' },
-      { icon: 'time-outline', label: 'Pending Approvals', value: '12', color: '#F59E0B' },
+      { icon: 'people-outline', label: 'Total Users', value: String(metrics.userActivity.totalUsers), color: '#3B82F6' },
+      { icon: 'home-outline', label: 'Active Listings', value: String(metrics.listingMetrics.activeListings), color: '#10B981' },
+      { icon: 'time-outline', label: 'Pending Approvals', value: String(metrics.listingMetrics.pendingApprovals), color: '#F59E0B' },
       { icon: 'document-text-outline', label: 'Reported Content', value: '5', color: '#EF4444' },
-      { icon: 'trending-up-outline', label: 'Monthly Revenue', value: '₱125,000', color: '#8B5CF6' },
-      { icon: 'calendar-outline', label: 'New Users', value: '123', color: '#06B6D4' },
+      { icon: 'trending-up-outline', label: 'Monthly Revenue', value: `₱${metrics.revenueMetrics.monthlyRevenue.toLocaleString()}`, color: '#8B5CF6' },
+      { icon: 'calendar-outline', label: 'New Users', value: String(metrics.userActivity.newUsersThisMonth), color: '#06B6D4' },
     ],
-    []
+    [metrics]
   );
 
   return (
@@ -463,65 +321,6 @@ function OverviewTab() {
   );
 }
 
-/* ------------------- Property Card Component ------------------- */
-function PropertyCard({ 
-  property, 
-  onApprove, 
-  onDecline 
-}: { 
-  property: {
-    id: number;
-    title: string;
-    owner: string;
-    location: string;
-    price: string;
-    submittedDate: string;
-    imageUrl: string;
-  };
-  onApprove: () => void;
-  onDecline: () => void;
-}) {
-  return (
-    <View className="bg-white border border-gray-200 rounded-2xl mb-4 shadow-sm overflow-hidden">
-      {/* Property Image */}
-      <View className="relative h-44 mb-3">
-        <Image 
-          source={{ uri: property.imageUrl }} 
-          className="w-full h-full"
-          resizeMode="cover"
-        />
-        <TouchableOpacity className="absolute top-3 right-3 flex-row items-center bg-black bg-opacity-60 px-2 py-1 rounded-xl">
-          <Ionicons name="images-outline" size={16} color="#fff" />
-          <Text className="text-white text-xs font-medium ml-1">View More</Text>
-        </TouchableOpacity>
-      </View>
-
-      <View className="mb-3 px-4">
-        <Text className="text-lg font-semibold text-gray-900">{property.title}</Text>
-      </View>
-      
-      <View className="mb-4 px-4">
-        <Text className="text-sm text-gray-700 mb-1">Owner: {property.owner}</Text>
-        <Text className="text-sm text-gray-600 mb-2">{property.location}</Text>
-        <View className="flex-row justify-between items-center">
-          <Text className="text-lg font-semibold text-green-600">{property.price}</Text>
-          <Text className="text-xs text-gray-500">{property.submittedDate}</Text>
-        </View>
-      </View>
-      
-      <View className="flex-row justify-end gap-3 px-4 pb-4">
-        <TouchableOpacity className="flex-row items-center px-4 py-2 rounded-lg border border-red-600 bg-white" onPress={onDecline}>
-          <Ionicons name="close-circle-outline" size={16} color="#DC2626" className="mr-1.5" />
-          <Text className="text-red-600 text-sm font-medium">Decline</Text>
-        </TouchableOpacity>
-        <TouchableOpacity className="flex-row items-center px-4 py-2 rounded-lg bg-green-600" onPress={onApprove}>
-          <Ionicons name="checkmark-circle-outline" size={16} color="#fff" className="mr-1.5" />
-          <Text className="text-white text-sm font-medium">Approve</Text>
-        </TouchableOpacity>
-      </View>
-    </View>
-  );
-}
 
 /* ------------------- User Card Component ------------------- */
 function UserCard({ 
@@ -551,11 +350,7 @@ function UserCard({
             className="w-12 h-12 rounded-full"
             resizeMode="cover"
           />
-          {user.isActive && (
-            <View className="absolute -top-1 -right-1 bg-green-500 px-1.5 py-0.5 rounded-lg">
-              <Text className="text-white text-xs font-semibold">Active</Text>
-            </View>
-          )}
+          <View className={`absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full ${user.isActive ? 'bg-green-500' : 'bg-gray-400'}`} />
         </View>
         
         <View className="flex-1">
