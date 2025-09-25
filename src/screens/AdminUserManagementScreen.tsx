@@ -8,7 +8,6 @@ import {
   SafeAreaView,
   ScrollView,
   TouchableOpacity,
-  StyleSheet,
   Dimensions,
   Platform,
   TextInput,
@@ -140,15 +139,15 @@ export default function AdminUserManagementScreen() {
   };
 
   return (
-    <SafeAreaView style={[styles.safe, { paddingTop: Platform.OS === 'android' ? insets.top : 0 }]}>
-      <ScrollView contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 16 }]}>
+    <SafeAreaView className="flex-1 bg-white" style={{ paddingTop: Platform.OS === 'android' ? insets.top : 0 }}>
+      <ScrollView className="px-4 pb-4 pt-0" contentContainerStyle={{ paddingBottom: insets.bottom + 16 }}>
         {/* Header */}
-        <View style={styles.header}>
-          <Text style={styles.title}>User Management</Text>
+        <View className="mb-6 pt-0">
+          <Text className="text-3xl font-bold text-gray-900 mb-2">User Management</Text>
         </View>
 
         {/* User Statistics Cards */}
-        <View style={styles.statsGrid}>
+        <View className="flex-row flex-wrap justify-between mb-6">
           <StatCard
             title="Total Users"
             value={userStats.totalUsers.toString()}
@@ -176,11 +175,11 @@ export default function AdminUserManagementScreen() {
         </View>
 
         {/* Search and Filter Section */}
-        <View style={styles.searchSection}>
-          <View style={styles.searchBar}>
-            <Ionicons name="search" size={20} color="#6B7280" style={styles.searchIcon} />
+        <View className="bg-white rounded-2xl p-5 mb-4 shadow-sm">
+          <View className="flex-row items-center bg-gray-50 rounded-xl px-4 py-3 mb-4">
+            <Ionicons name="search" size={20} color="#6B7280" className="mr-3" />
             <TextInput
-              style={styles.searchInput}
+              className="flex-1 text-base text-gray-900"
               placeholder="Search by name or email..."
               value={searchQuery}
               onChangeText={setSearchQuery}
@@ -188,9 +187,9 @@ export default function AdminUserManagementScreen() {
             />
           </View>
           
-          <View style={styles.filterContainer}>
-            <Text style={styles.filterLabel}>Filter by role:</Text>
-            <View style={styles.filterButtons}>
+          <View>
+            <Text className="text-sm font-medium text-gray-700 mb-3">Filter by role:</Text>
+            <View className="flex-row flex-wrap">
               {[
                 { key: 'all', label: 'All' },
                 { key: 'renter', label: 'Renters' },
@@ -199,16 +198,18 @@ export default function AdminUserManagementScreen() {
               ].map((filter) => (
                 <TouchableOpacity
                   key={filter.key}
-                  style={[
-                    styles.filterButton,
-                    selectedRole === filter.key && styles.filterButtonActive
-                  ]}
+                  className={`px-4 py-2 rounded-lg mr-2 mb-2 ${
+                    selectedRole === filter.key 
+                      ? 'bg-blue-500' 
+                      : 'bg-gray-200'
+                  }`}
                   onPress={() => setSelectedRole(filter.key)}
                 >
-                  <Text style={[
-                    styles.filterButtonText,
-                    selectedRole === filter.key && styles.filterButtonTextActive
-                  ]}>
+                  <Text className={`text-sm font-medium ${
+                    selectedRole === filter.key 
+                      ? 'text-white' 
+                      : 'text-gray-700'
+                  }`}>
                     {filter.label}
                   </Text>
                 </TouchableOpacity>
@@ -218,8 +219,8 @@ export default function AdminUserManagementScreen() {
         </View>
 
         {/* Users List Section */}
-        <View style={styles.usersSection}>
-          <Text style={styles.sectionTitle}>Users ({filteredUsers.length})</Text>
+        <View className="px-4 pt-4">
+          <Text className="text-lg font-semibold text-gray-900 mb-4">Users ({filteredUsers.length})</Text>
           {filteredUsers.map((user) => (
             <UserCard
               key={user.id}
@@ -239,12 +240,12 @@ export default function AdminUserManagementScreen() {
 
 function StatCard({ title, value, icon, color }: { title: string; value: string; icon: string; color: string }) {
   return (
-    <View style={styles.statCard}>
-      <View style={styles.statHeader}>
+    <View className="bg-gray-50 rounded-xl p-4 mb-3 border border-gray-200" style={{ width: CARD_WIDTH - 0 }}>
+      <View className="flex-row items-center mb-2">
         <Ionicons name={icon as any} size={20} color={color} />
-        <Text style={styles.statTitle}>{title}</Text>
+        <Text className="text-xs text-gray-600 ml-1.5 mr-1.5 font-medium">{title}</Text>
       </View>
-      <Text style={[styles.statValue, { color }]}>{value}</Text>
+      <Text className="text-lg font-bold" style={{ color }}>{value}</Text>
     </View>
   );
 }
@@ -265,318 +266,68 @@ function UserCard({ user, onView, onMessage, onSuspend }: {
   };
 
   return (
-    <View style={styles.userCard}>
-      <View style={styles.userInfo}>
-        <View style={styles.userAvatarContainer}>
+    <View className="bg-white rounded-2xl p-5 mb-4 shadow-sm border border-gray-200">
+      <View className="flex-row items-start mb-4">
+        <View className="relative mr-4">
           <Image 
             source={{ uri: user.avatarUrl }} 
-            style={styles.userAvatar}
+            className="w-16 h-16 rounded-full"
             resizeMode="cover"
           />
           {user.isVerified && (
-            <View style={styles.verifiedBanner}>
-              <Text style={styles.verifiedBannerText}>Verified</Text>
+            <View className="absolute -top-1 -right-1 bg-green-500 px-2 py-1 rounded-full">
+              <Text className="text-xs text-white font-medium">Verified</Text>
             </View>
           )}
         </View>
-        <View style={styles.userDetails}>
-          <View style={styles.userNameRow}>
-            <Text style={styles.userName}>{user.name}</Text>
+        <View className="flex-1">
+          <View className="flex-row items-center mb-1">
+            <Text className="text-lg font-semibold text-gray-900 mr-2">{user.name}</Text>
             {!user.isVerified && (
-              <View style={styles.pendingBadge}>
-                <Text style={styles.pendingBadgeText}>Pending</Text>
+              <View className="bg-yellow-100 px-2 py-1 rounded-full">
+                <Text className="text-xs text-yellow-800 font-medium">Pending</Text>
               </View>
             )}
           </View>
-          <Text style={styles.userEmail}>{user.email}</Text>
-          <Text style={styles.userRole}>{getRoleDisplay(user.role)}</Text>
+          <Text className="text-sm text-gray-600 mb-1">{user.email}</Text>
+          <Text className="text-sm text-blue-600 font-medium">{getRoleDisplay(user.role)}</Text>
         </View>
       </View>
       
-      <View style={styles.userStats}>
-        <View style={styles.userStat}>
-          <Text style={styles.userStatValue}>{user.propertiesListed}</Text>
-          <Text style={styles.userStatLabel}>Properties</Text>
+      <View className="flex-row justify-between mb-4">
+        <View className="items-center">
+          <Text className="text-lg font-bold text-gray-900">{user.propertiesListed}</Text>
+          <Text className="text-xs text-gray-600">Properties</Text>
         </View>
-        <View style={styles.userStat}>
-          <Text style={styles.userStatValue}>{user.applications}</Text>
-          <Text style={styles.userStatLabel}>Applications</Text>
+        <View className="items-center">
+          <Text className="text-lg font-bold text-gray-900">{user.applications}</Text>
+          <Text className="text-xs text-gray-600">Applications</Text>
         </View>
-        <View style={styles.userStat}>
-          <Text style={styles.userStatValue}>{user.lastActive}</Text>
-          <Text style={styles.userStatLabel}>Last Active</Text>
+        <View className="items-center">
+          <Text className="text-lg font-bold text-gray-900">{user.lastActive}</Text>
+          <Text className="text-xs text-gray-600">Last Active</Text>
         </View>
       </View>
       
-      <View style={styles.userActions}>
-        <TouchableOpacity style={styles.actionButton} onPress={onView}>
+      <View className="flex-col justify-between gap-3">
+        <TouchableOpacity className="flex-row items-center bg-blue-50 px-4 py-2 rounded-lg" onPress={onView}>
           <Ionicons name="eye-outline" size={16} color="#3B82F6" />
-          <Text style={styles.actionButtonText}>View</Text>
+          <Text className="text-sm font-medium text-blue-600 ml-2">View</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.actionButton} onPress={onMessage}>
+        <TouchableOpacity className="flex-row items-center bg-green-50 px-4 py-2 rounded-lg" onPress={onMessage}>
           <Ionicons name="chatbubble-outline" size={16} color="#10B981" />
-          <Text style={styles.actionButtonText}>Message</Text>
+          <Text className="text-sm font-medium text-green-600 ml-2">Message</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.actionButton} onPress={onSuspend}>
+        <TouchableOpacity className="flex-row items-center bg-red-50 px-4 py-2 rounded-lg" onPress={onSuspend}>
           <Ionicons name="ban-outline" size={16} color="#EF4444" />
-          <Text style={styles.actionButtonText}>Suspend</Text>
+          <Text className="text-sm font-medium text-red-600 ml-2">Suspend</Text>
         </TouchableOpacity>
       </View>
     </View>
   );
 }
 
-/* ------------------- Styles ------------------- */
+/* ------------------- Constants ------------------- */
 const { width } = Dimensions.get('window');
 const CARD_WIDTH = (width - 72) / 2; // 2 cards per row with padding
 
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#FFFFFF' },
-  content: { paddingHorizontal: 16, paddingVertical: 0 },
-  
-  header: {
-    marginBottom: 16,
-    marginTop: 0,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: '#111827',
-    marginBottom: 8,
-  },
-
-  // Statistics Cards
-  statsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    marginBottom: 24,
-    gap: 6,
-  },
-  statCard: {
-    width: CARD_WIDTH,
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    borderWidth: 0.075,
-    padding: 20,
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowOffset: { width: 0, height: 1 },
-    shadowRadius: 3,
-    elevation: 1,
-  },
-  statHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
-    marginRight:8
-  },
-  statTitle: {
-    fontSize: 12,
-    color: '#6B7280',
-    marginLeft: 8,
-    fontWeight: '500',
-  },
-  statValue: {
-    fontSize: 24,
-    fontWeight: '700',
-  },
-
-  // Search Section
-  searchSection: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 24,
-    marginBottom: 32,
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowOffset: { width: 0, height: 1 },
-    shadowRadius: 3,
-    elevation: 1,
-  },
-  searchBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F9FAFB',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    marginBottom: 20,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-  },
-  searchIcon: {
-    marginRight: 16,
-  },
-  searchInput: {
-    flex: 1,
-    fontSize: 16,
-    color: '#111827',
-  },
-  filterContainer: {
-    // Filter container
-  },
-  filterLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#111827',
-    marginBottom: 16,
-  },
-  filterButtons: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-  },
-  filterButton: {
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    backgroundColor: '#fff',
-  },
-  filterButtonActive: {
-    backgroundColor: '#3B82F6',
-    borderColor: '#3B82F6',
-  },
-  filterButtonText: {
-    fontSize: 14,
-    color: '#6B7280',
-    fontWeight: '500',
-  },
-  filterButtonTextActive: {
-    color: '#fff',
-  },
-
-  // Users Section
-  usersSection: {
-    // Users container
-  },
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#111827',
-    marginBottom: 20,
-  },
-
-  // User Cards
-  userCard: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 24,
-    marginBottom: 20,
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowOffset: { width: 0, height: 1 },
-    shadowRadius: 3,
-    elevation: 1,
-  },
-  userInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  userAvatarContainer: {
-    position: 'relative',
-    marginRight: 20,
-  },
-  userAvatar: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-  },
-  verifiedBanner: {
-    position: 'absolute',
-    top: -4,
-    right: -4,
-    backgroundColor: '#10B981',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 8,
-  },
-  verifiedBannerText: {
-    color: '#fff',
-    fontSize: 10,
-    fontWeight: '600',
-  },
-  userDetails: {
-    flex: 1,
-  },
-  userNameRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 6,
-  },
-  userName: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#111827',
-    marginRight: 12,
-  },
-  pendingBadge: {
-    backgroundColor: '#FEF3C7',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 6,
-  },
-  pendingBadgeText: {
-    fontSize: 10,
-    color: '#F59E0B',
-    fontWeight: '600',
-  },
-  userEmail: {
-    fontSize: 14,
-    color: '#6B7280',
-    marginBottom: 4,
-  },
-  userRole: {
-    fontSize: 12,
-    color: '#9CA3AF',
-    fontWeight: '500',
-  },
-  userStats: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    marginBottom: 20,
-    paddingVertical: 16,
-    backgroundColor: '#F9FAFB',
-    borderRadius: 12,
-  },
-  userStat: {
-    alignItems: 'center',
-  },
-  userStatValue: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#111827',
-    marginBottom: 4,
-  },
-  userStatLabel: {
-    fontSize: 12,
-    color: '#6B7280',
-  },
-  userActions: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-around',
-    gap: 12,
-  },
-  actionButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 8,
-    borderWidth: 1,
-    width: '100%',
-    borderColor: '#E5E7EB',
-    backgroundColor: '#fff',
-  },
-  actionButtonText: {
-    fontSize: 12,
-    fontWeight: '500',
-    marginLeft: 8,
-    color: '#6B7280',
-  },
-});

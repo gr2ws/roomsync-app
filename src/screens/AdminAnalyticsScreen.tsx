@@ -7,7 +7,6 @@ import {
   Text,
   SafeAreaView,
   ScrollView,
-  StyleSheet,
   Dimensions,
   Platform,
 } from 'react-native';
@@ -46,19 +45,19 @@ export default function AdminAnalyticsScreen() {
   }), []);
 
   return (
-    <SafeAreaView style={[styles.safe, { paddingTop: Platform.OS === 'android' ? insets.top : 0 }]}>
-      <ScrollView contentContainerStyle={[styles.content, { paddingBottom: 0 }]}>
+    <SafeAreaView className="flex-1 bg-white" style={{ paddingTop: Platform.OS === 'android' ? insets.top : 0 }}>
+      <ScrollView className="px-4 pb-4 pt-0" contentContainerStyle={{ paddingBottom: 0 }}>
         {/* Header */}
-        <View style={styles.header}>
-          <Text style={styles.title}>Platform Analytics</Text>
-          <Text style={styles.caption}>
+        <View className="mb-6 pt-0">
+          <Text className="text-3xl font-bold text-gray-900 mb-2">Platform Analytics</Text>
+          <Text className="text-base text-gray-600 leading-6 mb-3">
             Comprehensive analytics including user activity trends, most viewed listings, revenue metrics, and platform performance indicators.
           </Text>
         </View>
 
         {/* User Activity Metrics */}
         <AnalyticsSection title="User Activity" icon="people-outline">
-          <View style={styles.metricsGrid}>
+          <View className="flex-row flex-wrap justify-between">
             <MetricCard
               title="Total Users"
               value={analyticsData.userActivity.totalUsers.toLocaleString()}
@@ -88,7 +87,7 @@ export default function AdminAnalyticsScreen() {
 
         {/* Listing Metrics */}
         <AnalyticsSection title="Listing Performance" icon="home-outline">
-          <View style={styles.metricsGrid}>
+          <View className="flex-row flex-wrap justify-between">
             <MetricCard
               title="Total Listings"
               value={analyticsData.listingMetrics.totalListings.toLocaleString()}
@@ -118,7 +117,7 @@ export default function AdminAnalyticsScreen() {
 
         {/* Revenue Metrics */}
         <AnalyticsSection title="Revenue Analytics" icon="cash-outline">
-          <View style={styles.metricsGrid}>
+          <View className="flex-row flex-wrap justify-between">
             <MetricCard
               title="Monthly Revenue"
               value={`₱${analyticsData.revenueMetrics.monthlyRevenue.toLocaleString()}`}
@@ -148,7 +147,7 @@ export default function AdminAnalyticsScreen() {
 
         {/* Platform Performance */}
         <AnalyticsSection title="Platform Performance" icon="speedometer">
-          <View style={styles.metricsGrid}>
+          <View className="flex-row flex-wrap justify-between">
             <MetricCard
               title="Response Time"
               value={`${analyticsData.platformPerformance.averageResponseTime}ms`}
@@ -184,12 +183,12 @@ export default function AdminAnalyticsScreen() {
 
 function AnalyticsSection({ title, icon, children }: { title: string; icon: string; children: React.ReactNode }) {
   return (
-    <View style={styles.section}>
-      <View style={styles.sectionHeader}>
+    <View className="bg-white rounded-2xl p-5 mb-4 shadow-sm">
+      <View className="flex-row items-center mb-4">
         <Ionicons name={icon as any} size={20} color="#3B82F6" />
-        <Text style={styles.sectionTitle}>{title}</Text>
+        <Text className="text-lg font-semibold text-gray-900 ml-2">{title}</Text>
       </View>
-      <View style={styles.sectionContent}>
+      <View>
         {children}
       </View>
     </View>
@@ -198,94 +197,16 @@ function AnalyticsSection({ title, icon, children }: { title: string; icon: stri
 
 function MetricCard({ title, value, icon, color }: { title: string; value: string; icon: string; color: string }) {
   return (
-    <View style={styles.metricCard}>
-      <View style={styles.metricHeader}>
+    <View className="bg-gray-50 rounded-xl p-4 mb-3 border border-gray-200" style={{ width: CARD_WIDTH - 25 }}>
+      <View className="flex-row items-center mb-2">
         <Ionicons name={icon as any} size={16} color={color} />
-        <Text style={styles.metricTitle}>{title}</Text>
+        <Text className="text-xs text-gray-600 ml-1.5 mr-1.5 font-medium">{title}</Text>
       </View>
-      <Text style={[styles.metricValue, { color }]}>{value}</Text>
+      <Text className="text-lg font-bold" style={{ color }}>{value}</Text>
     </View>
   );
 }
 
-/* ------------------- Styles ------------------- */
-const { width, height } = Dimensions.get('window');
+/* ------------------- Constants ------------------- */
+const { width } = Dimensions.get('window');
 const CARD_WIDTH = (width - 48) / 2; // 2 cards per row with padding
-
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#FFFFFF'},
-  content: { paddingHorizontal: 16, paddingTop: 0, paddingBottom: 16 },
-  
-  header: {
-    marginBottom: 12,
-    paddingTop: 0,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: '#111827',
-    marginBottom: 8,
-  },
-  caption: {
-    fontSize: 16,
-    color: '#6B7280',
-    lineHeight: 24,
-    marginBottom: 12,
-  },
-
-  section: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowOffset: { width: 0, height: 1 },
-    shadowRadius: 3,
-    elevation: 1,
-    width: '100%',
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#111827',
-    marginLeft: 8,
-  },
-  sectionContent: {
-    // Content styles defined in child components
-  },
-
-  metricsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-  },
-  metricCard: {
-    width: CARD_WIDTH - 25,
-    backgroundColor: '#F9FAFB',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-  },
-  metricHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  metricTitle: {
-    fontSize: 12,
-    marginRight:6,
-    marginLeft: 6,
-    fontWeight: '500'},
-  metricValue: {
-    fontSize: 18,
-    fontWeight: '700',
-  },
-});
