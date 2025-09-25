@@ -1,6 +1,18 @@
-export type RootTabParamList = {
+export type RootStackParamList = {
+  Introduction: undefined;
+  RoleSelection: undefined;
+  Auth: undefined;
+  Register: undefined;
   Home: undefined;
-  Search: undefined;
+};
+
+export type RootTabParamList = {
+  Feed: undefined;
+  Applications: undefined;
+  Chat: undefined;
+  AddProperty: undefined;
+  ManageProperties: undefined;
+  ViewReviews: undefined;
   Profile: undefined;
   Notifications: undefined;
   Admin: undefined;

@@ -22,7 +22,7 @@ export default function Button({
     const baseStyles = 'rounded-lg';
 
     const variantStyles = {
-      primary: 'bg-blue-500 px-6 py-3 shadow-lg',
+      primary: 'bg-blue-500 px-6 py-3 shadow-sm',
       secondary: 'border border-gray-300 bg-white px-6 py-3',
       text: '',
     };
