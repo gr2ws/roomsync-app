@@ -114,7 +114,7 @@ export default function FeedScreen() {
               <Ionicons name="search" size={20} color="gray" />
               <TextInput
                 placeholder="Search for rooms..."
-                className="ml-2 flex-1"
+                className="ml-2 flex-1 overflow-visible"
                 value={searchQuery}
                 onChangeText={setSearchQuery}
                 autoCapitalize="none"

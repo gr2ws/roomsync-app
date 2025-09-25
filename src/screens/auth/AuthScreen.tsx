@@ -40,7 +40,7 @@ export default function AuthScreen({ navigation }: Props) {
       <View className="flex w-full max-w-sm justify-center gap-4 space-y-4">
         <TextInput
           placeholder="Email"
-          className="rounded-lg border border-gray-300 bg-white px-4 py-3 text-lg"
+          className="text-md overflow-visible rounded-lg border border-gray-300 bg-white px-4 py-3"
           keyboardType="email-address"
           autoCapitalize="none"
           onChangeText={setEmail}
@@ -48,7 +48,7 @@ export default function AuthScreen({ navigation }: Props) {
 
         <TextInput
           placeholder="Password"
-          className="rounded-lg border border-gray-300 bg-white px-4 py-3 text-lg"
+          className="text-md overflow-visible rounded-lg border border-gray-300 bg-white px-4 py-3"
           secureTextEntry
           autoCapitalize="none"
           onChangeText={setPassword}

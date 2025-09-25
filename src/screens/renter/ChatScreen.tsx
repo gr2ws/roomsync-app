@@ -77,7 +77,7 @@ const ChatScreen: React.FC = () => {
       />
       <View className="flex-row bg-white p-4">
         <TextInput
-          className="border-sm mr-3 flex-1 rounded-full border border-gray-200 px-6 py-3 text-lg"
+          className="border-sm text-md mr-3 flex-1 justify-center overflow-visible rounded-full border border-gray-200 px-6 py-3"
           placeholder="Type your message..."
           value={input}
           onChangeText={setInput}
