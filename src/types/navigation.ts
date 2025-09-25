@@ -16,6 +16,10 @@ export type RootTabParamList = {
   Profile: undefined;
   Notifications: undefined;
   Admin: undefined;
+  AdminDashboard: undefined;
+  AdminAnalytics: undefined;
+  AdminUsers: undefined;
+  AdminProfile: undefined;
 };
 
 // Add new screens here as you create them
