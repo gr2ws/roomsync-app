@@ -19,7 +19,7 @@ export default function NotificationsScreen() {
       message: 'John sent you a message about your property',
       time: '2 mins ago',
       type: 'message',
-      read: false
+      read: false,
     },
     {
       id: '2',
@@ -27,7 +27,7 @@ export default function NotificationsScreen() {
       message: 'Your property listing has been approved',
       time: '1 hour ago',
       type: 'property',
-      read: false
+      read: false,
     },
     {
       id: '3',
@@ -35,7 +35,7 @@ export default function NotificationsScreen() {
       message: 'Sarah wants to schedule a viewing',
       time: '3 hours ago',
       type: 'booking',
-      read: true
+      read: true,
     },
     {
       id: '4',
@@ -43,8 +43,8 @@ export default function NotificationsScreen() {
       message: 'Please complete your profile information',
       time: '1 day ago',
       type: 'profile',
-      read: true
-    }
+      read: true,
+    },
   ]);
 
   const getIcon = (type: Notification['type']) => {
@@ -61,20 +61,17 @@ export default function NotificationsScreen() {
   };
 
   const renderNotification = ({ item }: { item: Notification }) => (
-    <TouchableOpacity 
-      className={`flex-row items-center p-4 border-b border-gray-100 ${
+    <TouchableOpacity
+      className={`flex-row items-center border-b border-gray-100 p-4 ${
         item.read ? 'bg-white' : 'bg-blue-50'
-      }`}
-    >
-      <View className="mr-4">
-        {getIcon(item.type)}
-      </View>
+      }`}>
+      <View className="mr-4">{getIcon(item.type)}</View>
       <View className="flex-1">
-        <View className="flex-row justify-between items-start">
+        <View className="flex-row items-start justify-between">
           <Text className="text-base font-semibold text-gray-900">{item.title}</Text>
           <Text className="text-xs text-gray-500">{item.time}</Text>
         </View>
-        <Text className="text-gray-600 mt-1" numberOfLines={2}>
+        <Text className="mt-1 text-gray-600" numberOfLines={2}>
           {item.message}
         </Text>
       </View>
@@ -83,8 +80,13 @@ export default function NotificationsScreen() {
 
   return (
     <View className="flex-1 bg-white">
-      <View className="p-4 border-b border-gray-200">
-        <Text className="text-2xl font-bold text-gray-900">Notifications</Text>
+      <View className="px-4 pb-2 pt-4">
+        <View className="mb-4">
+          <Text className="text-3xl font-bold text-gray-900">Notifications</Text>
+          <Text className="text-gray-600">
+            Stay updated with important messages and alerts about your rentals.
+          </Text>
+        </View>
       </View>
 
       {notifications.length > 0 ? (
@@ -96,10 +98,8 @@ export default function NotificationsScreen() {
       ) : (
         <View className="flex-1 items-center justify-center p-4">
           <Bell size={48} color="#9CA3AF" />
-          <Text className="text-xl font-semibold text-gray-900 mt-4">
-            No notifications yet
-          </Text>
-          <Text className="text-center text-gray-600 mt-2">
+          <Text className="mt-4 text-xl font-semibold text-gray-900">No notifications yet</Text>
+          <Text className="mt-2 text-center text-gray-600">
             We will notify you when something arrives
           </Text>
         </View>

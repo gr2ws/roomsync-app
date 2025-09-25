@@ -60,8 +60,13 @@ const ChatScreen: React.FC = () => {
       className="flex-1 bg-white"
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       keyboardVerticalOffset={80}>
-      <View className="bg-white px-4 pb-2 pt-10">
-        <Text className="text-center text-2xl font-bold text-gray-900">Chat with LLM</Text>
+      <View className="bg-white px-4 pb-2 pt-4">
+        <View className="mb-4">
+          <Text className="text-3xl font-bold text-gray-900">Chat with LLM</Text>
+          <Text className="text-gray-600">
+            Ask questions or chat with the AI assistant about your rental experience.
+          </Text>
+        </View>
       </View>
       <FlatList
         data={messages}

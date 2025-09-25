@@ -101,7 +101,7 @@ export default function FeedScreen() {
 
       {/* Main Feed Content */}
       <ScrollView className="flex-1 bg-white">
-        <View className="px-4 pt-12">
+        <View className="px-4 pt-4">
           {/* Header Text */}
           <View className="mb-4">
             <Text className="text-3xl font-bold text-gray-900">Find Your Room</Text>
@@ -130,17 +130,15 @@ export default function FeedScreen() {
             </TouchableOpacity>
           </View>
 
-          {/* Categories */}
-          <View className="mb-4 flex-row justify-between">
+          {/* Categories (Tabs style) */}
+          <View className="mb-4 flex-row border-b border-gray-200">
             {['All', 'Rooms', 'Apartments', 'Bedspace'].map((category) => (
               <TouchableOpacity
                 key={category}
-                className={`rounded-lg px-4 py-2 ${
-                  selectedCategory === category ? 'bg-blue-500' : 'bg-gray-100'
-                }`}
+                className={`flex-1 items-center pb-2 ${selectedCategory === category ? 'border-b-2 border-blue-600 bg-transparent' : 'bg-transparent'}`}
                 onPress={() => setSelectedCategory(category)}>
                 <Text
-                  className={`${selectedCategory === category ? 'text-white' : 'text-gray-800'}`}>
+                  className={`text-xs font-semibold ${selectedCategory === category ? 'text-blue-600' : 'text-gray-400'}`}>
                   {category}
                 </Text>
               </TouchableOpacity>
