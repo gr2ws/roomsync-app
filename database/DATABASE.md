@@ -8,7 +8,7 @@
 | property_id    | INT          | NOT NULL, FK to properties         | Property being applied for                  |
 | renter_id      | INT          | NOT NULL, FK to users              | Renter submitting the application           |
 | owner_id       | INT          | NOT NULL, FK to users              | Owner of the property                       |
-| status         | VARCHAR      | NOT NULL DEFAULT 'pending'         | 'pending', 'approved', 'rejected'           |
+| status         | application_status (ENUM) | NOT NULL DEFAULT 'pending'         | 'pending', 'approved', 'rejected'           |
 | message        | TEXT         | NULLABLE                           | Message/notes for the application           |
 | date_applied   | TIMESTAMP    | NOT NULL                           | Date/time application was submitted         |
 | date_updated   | TIMESTAMP    | NULLABLE                           | Date/time application status was updated    |
@@ -23,22 +23,24 @@
 | Column             | Type         | Constraints                | Description                        |
 |--------------------|-------------|----------------------------|------------------------------------|
 | user_id            | SERIAL/INT   | PRIMARY KEY                | Unique user identifier             |
-| first_name         | VARCHAR      | NOT NULL                   | User's first name                  |
-| last_name          | VARCHAR      | NOT NULL                   | User's last name                   |
-| email              | VARCHAR      | NOT NULL, UNIQUE           | User's email address               |
-| password           | VARCHAR      | NOT NULL                   | Hashed password                    |
-| phone_number       | VARCHAR      | NOT NULL, UNIQUE           | User's phone number                |
-| user_type          | ENUM         | NOT NULL                   | 'renter', 'owner', or 'admin'      |
-| profile_picture    | VARCHAR      | NULLABLE                   | URL or path to profile image       |
+| auth_id            | UUID         | UNIQUE, FK to auth.users   | Supabase Auth user UUID            |
+| first_name         | TEXT         | NOT NULL                   | User's first name                  |
+| last_name          | TEXT         | NOT NULL                   | User's last name                   |
+| email              | TEXT         | NOT NULL, UNIQUE           | User's email address               |
+| phone_number       | TEXT         | NOT NULL, UNIQUE           | User's phone number                |
+| user_type          | user_type (ENUM) | NOT NULL                   | 'renter', 'owner', or 'admin'      |
+| profile_picture    | TEXT         | NULLABLE                   | URL or path to profile image       |
 | birth_date         | DATE         | NULLABLE                   | User's birth date                  |
 | rented_property_id | INT          | NULLABLE, FK to properties | Property currently rented (if any) |
-| price_range        | VARCHAR      | NULLABLE                   | Preferred price range for rent     |
-| room_preference    | VARCHAR      | NULLABLE                   | Preferred room type/category       |
-| occupation         | VARCHAR      | NULLABLE                   | User's occupation                  |
-| place_of_work_study| VARCHAR      | NULLABLE                   | Place of work or study             |
+| price_range        | TEXT         | NULLABLE                   | Preferred price range for rent     |
+| room_preference    | TEXT         | NULLABLE                   | Preferred room type/category       |
+| occupation         | TEXT         | NULLABLE                   | User's occupation                  |
+| place_of_work_study| TEXT         | NULLABLE                   | Place of work or study             |
 
 **Primary Key:** `user_id`  
-**Foreign Keys:** `rented_property_id` → `properties.property_id`
+**Foreign Keys:**
+- `auth_id` → `auth.users.id`
+- `rented_property_id` → `properties.property_id`
 
 ---
 
@@ -50,9 +52,9 @@
 | reported_by    | INT          | NOT NULL, FK to users              | User who submitted the report               |
 | reported_user  | INT          | NULLABLE, FK to users              | User being reported (if applicable)         |
 | property_id    | INT          | NULLABLE, FK to properties         | Property being reported (if applicable)     |
-| reason         | VARCHAR      | NOT NULL                           | Reason for the report                       |
+| reason         | TEXT         | NOT NULL                           | Reason for the report                       |
 | description    | TEXT         | NULLABLE                           | Additional details provided by reporter     |
-| status         | VARCHAR      | NOT NULL DEFAULT 'pending'         | 'pending', 'reviewed', 'resolved', etc.     |
+| status         | report_status (ENUM) | NOT NULL DEFAULT 'pending'         | 'pending', 'reviewed', 'resolved', etc.     |
 | reviewed_by    | INT          | NULLABLE, FK to users (admin)      | Admin who reviewed/resolved the report      |
 | date_created   | TIMESTAMP    | NOT NULL                           | Date/time report was created                |
 | date_resolved  | TIMESTAMP    | NULLABLE                           | Date/time report was resolved               |
@@ -68,20 +70,20 @@
 |---------------|-------------|----------------------------|------------------------------------|
 | property_id   | SERIAL/INT   | PRIMARY KEY                | Unique property identifier         |
 | owner_id      | INT          | NOT NULL, FK to users      | Owner of the property              |
-| title         | VARCHAR      | NOT NULL                   | Title/name of the property         |
+| title         | TEXT         | NOT NULL                   | Title/name of the property         |
 | description   | TEXT         | NULLABLE                   | Description of the property        |
-| category      | VARCHAR      | NOT NULL                   | 'Rooms', 'Apartments', 'Bedspace'  |
-| street        | VARCHAR      | NULLABLE                   | Street address                     |
-| barangay      | VARCHAR      | NULLABLE                   | Barangay                           |
-| city          | VARCHAR      | NULLABLE                   | City                               |
-| coordinates   | VARCHAR      | NULLABLE                   | GPS coordinates (lat,long)         |
-| image_url     | TEXT[]/JSON  | NULLABLE                   | Array of image URLs/paths          |
+| category      | property_category (ENUM) | NOT NULL                   | 'rooms', 'apartments', 'bedspace'  |
+| street        | TEXT         | NULLABLE                   | Street address                     |
+| barangay      | TEXT         | NULLABLE                   | Barangay                           |
+| city          | TEXT         | NULLABLE                   | City                               |
+| coordinates   | TEXT         | NULLABLE                   | GPS coordinates (lat,long)         |
+| image_url     | TEXT[]       | NULLABLE                   | Array of image URLs/paths          |
 | rent          | NUMERIC      | NOT NULL                   | Monthly rent price                 |
-| amenities     | TEXT[]/JSON  | NULLABLE                   | List of amenities                  |
+| amenities     | TEXT[]       | NULLABLE                   | List of amenities                  |
 | rating        | FLOAT        | NULLABLE                   | Average rating                     |
 | max_renters   | INT          | NOT NULL                   | Maximum number of renters allowed  |
 | is_available  | BOOLEAN      | NOT NULL                   | Availability status                |
-| landmarks     | TEXT[]/JSON  | NULLABLE                   | List of nearby landmarks           |
+| landmarks     | TEXT[]       | NULLABLE                   | List of nearby landmarks           |
 
 **Primary Key:** `property_id`  
 **Foreign Keys:** `owner_id` → `users.user_id`
