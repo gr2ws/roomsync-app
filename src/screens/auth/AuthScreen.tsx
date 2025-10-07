@@ -4,6 +4,7 @@ import Button from '../../components/Button';
 import { useState } from 'react';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../../utils/navigation';
+import { supabase } from '../../utils/supabase';
 
 type AuthScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Auth'>;
 
@@ -12,17 +13,38 @@ type Props = {
 };
 
 export default function AuthScreen({ navigation }: Props) {
-  const { setIsLoggedIn, setUserRole } = useLoggedIn();
+  const { setIsLoggedIn, setUserRole, setUserProfile } = useLoggedIn();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const { userRole } = useLoggedIn();
-  const handleLogin = () => {
-    if (email === 'admin@gmail.com' && password === 'admin123') {
-      setUserRole('admin');
-    } else if (!userRole) {
-      setUserRole('renter');
+  const handleLogin = async () => {
+    if (!email || !password) {
+      Alert.alert('Error', 'Please enter both email and password.');
+      return;
     }
+    setLoading(true);
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+    setLoading(false);
+    if (error || !data.user) {
+      Alert.alert('Login Error', error?.message || 'Could not log in.');
+      return;
+    }
+    // Fetch full user profile from users table
+    const { data: userData, error: userError } = await supabase
+      .from('users')
+      .select('*')
+      .eq('auth_id', data.user.id)
+      .single();
+    if (userError || !userData) {
+      Alert.alert('Login Error', 'Could not fetch user profile.');
+      return;
+    }
+    setUserRole(userData.user_type);
+    setUserProfile(userData);
     setIsLoggedIn(true);
   };
 
@@ -44,6 +66,7 @@ export default function AuthScreen({ navigation }: Props) {
           keyboardType="email-address"
           autoCapitalize="none"
           onChangeText={setEmail}
+          value={email}
         />
 
         <TextInput
@@ -52,10 +75,11 @@ export default function AuthScreen({ navigation }: Props) {
           secureTextEntry
           autoCapitalize="none"
           onChangeText={setPassword}
+          value={password}
         />
 
-        <Button onPress={handleLogin} variant="primary">
-          Log In
+        <Button onPress={handleLogin} variant="primary" disabled={loading}>
+          {loading ? 'Logging In...' : 'Log In'}
         </Button>
 
         <Button

@@ -22,8 +22,19 @@ CREATE TABLE users (
   place_of_work_study TEXT
 );
 
-
 ALTER TABLE users ENABLE ROW LEVEL SECURITY;
+-- Updated
+GRANT SELECT ON TABLE auth.users TO authenticated;
+GRANT INSERT ON TABLE users TO authenticated;
+
+-- Allow authenticated users to insert their own user row
+CREATE POLICY "users_insert_own"
+ON users
+FOR INSERT
+TO public
+WITH CHECK ((auth.uid())::text = auth_id::text);
+
+-- Below are outdated
 
 -- Renters can view and update their own profile
 CREATE POLICY "Renters can view their own profile"
@@ -56,13 +67,11 @@ USING (
 );
 
 -- Admins can manage all users
+-- Reference admin_ids table for admin access
 CREATE POLICY "Admins can manage all users"
 ON users
 FOR ALL
 USING (
-  EXISTS (
-    SELECT 1 FROM users u
-    WHERE u.auth_id = auth.uid() AND u.user_type = 'admin'
-  )
+  auth.uid() IN (SELECT auth_id FROM admin_ids)
 );
 
