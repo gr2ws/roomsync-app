@@ -2,7 +2,7 @@ import { View, Text, TextInput, Alert } from 'react-native';
 import { useLoggedIn } from '../../store/useLoggedIn';
 import Button from '../../components/Button';
 import { StackNavigationProp } from '@react-navigation/stack';
-import { RootStackParamList } from '../../types/navigation';
+import { RootStackParamList } from '../../utils/navigation';
 
 type RegisterScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Register'>;
 

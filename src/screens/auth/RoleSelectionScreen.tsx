@@ -3,7 +3,7 @@ import { View, Text, SafeAreaView } from 'react-native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import Button from '../../components/Button';
 import { useLoggedIn } from '../../store/useLoggedIn';
-import { RootStackParamList } from '../../types/navigation';
+import { RootStackParamList } from '../../utils/navigation';
 
 type RoleSelectionScreenNavigationProp = StackNavigationProp<RootStackParamList, 'RoleSelection'>;
 

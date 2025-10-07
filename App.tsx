@@ -8,7 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Platform } from 'react-native';
 import ProfileScreen from './src/screens/ProfileScreen';
 import NotificationsScreen from './src/screens/NotificationsScreen';
-import { RootStackParamList, RootTabParamList } from './src/types/navigation';
+import { RootStackParamList, RootTabParamList } from './src/utils/navigation';
 import './src/style/global.css';
 import { MainScaffold } from '~/components/layout/MainScaffold';
 import { useLoggedIn } from './src/store/useLoggedIn';
@@ -198,7 +198,11 @@ function MainApp() {
         options={{
           tabBarLabel: 'Analytics',
           tabBarIcon: ({ focused, color, size }) => (
-            <Ionicons name={focused ? 'bar-chart' : 'bar-chart-outline'} size={size} color={color} />
+            <Ionicons
+              name={focused ? 'bar-chart' : 'bar-chart-outline'}
+              size={size}
+              color={color}
+            />
           ),
         }}
       />,

@@ -3,7 +3,7 @@ import { useLoggedIn } from '../../store/useLoggedIn';
 import Button from '../../components/Button';
 import { useState } from 'react';
 import { StackNavigationProp } from '@react-navigation/stack';
-import { RootStackParamList } from '../../types/navigation';
+import { RootStackParamList } from '../../utils/navigation';
 
 type AuthScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Auth'>;
 
