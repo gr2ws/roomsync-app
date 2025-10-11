@@ -9,5 +9,9 @@ create table public.reports (
   reviewed_by integer null,
   date_created timestamp without time zone not null,
   date_resolved timestamp without time zone null,
-  constraint reports_pkey primary key (report_id)
+  constraint reports_pkey primary key (report_id),
+  constraint fk_reports_property foreign KEY (property_id) references properties (property_id) on update CASCADE on delete set null,
+  constraint fk_reports_reported_by foreign KEY (reported_by) references users (user_id) on update CASCADE on delete set null,
+  constraint fk_reports_reported_user foreign KEY (reported_user) references users (user_id) on update CASCADE on delete set null,
+  constraint fk_reports_reviewed_by foreign KEY (reviewed_by) references users (user_id) on update CASCADE on delete set null
 ) TABLESPACE pg_default;

@@ -7,5 +7,7 @@ create table public.reviews (
   upvotes integer not null default 0,
   downvotes integer not null default 0,
   date_created timestamp without time zone not null,
-  constraint reviews_pkey primary key (review_id)
+  constraint reviews_pkey primary key (review_id),
+  constraint fk_reviews_property foreign KEY (property_id) references properties (property_id) on update CASCADE on delete CASCADE,
+  constraint fk_reviews_user foreign KEY (user_id) references users (user_id) on update CASCADE on delete set null
 ) TABLESPACE pg_default;

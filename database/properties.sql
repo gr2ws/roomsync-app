@@ -16,5 +16,6 @@ create table public.properties (
   is_available boolean not null,
   landmarks text[] null,
   is_verified boolean not null default false,
-  constraint properties_pkey primary key (property_id)
+  constraint properties_pkey primary key (property_id),
+  constraint fk_properties_owner foreign KEY (owner_id) references users (user_id) on update CASCADE on delete set null
 ) TABLESPACE pg_default;

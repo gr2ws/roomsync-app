@@ -19,5 +19,6 @@ create table public.users (
   constraint users_pkey primary key (user_id),
   constraint users_auth_id_key unique (auth_id),
   constraint users_email_key unique (email),
-  constraint users_phone_number_key unique (phone_number)
+  constraint users_phone_number_key unique (phone_number),
+  constraint fk_users_rented_property foreign KEY (rented_property) references properties (property_id) on update CASCADE on delete set null
 ) TABLESPACE pg_default;
