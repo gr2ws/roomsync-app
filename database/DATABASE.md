@@ -23,7 +23,7 @@
 | Column             | Type         | Constraints                | Description                        |
 |--------------------|-------------|----------------------------|------------------------------------|
 | user_id            | SERIAL/INT   | PRIMARY KEY                | Unique user identifier             |
-| auth_id            | UUID         | UNIQUE, FK to auth.users   | Supabase Auth user UUID            |
+| auth_id            | UUID         | UNIQUE, NULLABLE           | Supabase Auth user UUID            |
 | first_name         | TEXT         | NOT NULL                   | User's first name                  |
 | last_name          | TEXT         | NOT NULL                   | User's last name                   |
 | email              | TEXT         | NOT NULL, UNIQUE           | User's email address               |
@@ -31,16 +31,19 @@
 | user_type          | user_type (ENUM) | NOT NULL                   | 'renter', 'owner', or 'admin'      |
 | profile_picture    | TEXT         | NULLABLE                   | URL or path to profile image       |
 | birth_date         | DATE         | NULLABLE                   | User's birth date                  |
-| rented_property_id | INT          | NULLABLE, FK to properties | Property currently rented (if any) |
 | price_range        | TEXT         | NULLABLE                   | Preferred price range for rent     |
 | room_preference    | TEXT         | NULLABLE                   | Preferred room type/category       |
 | occupation         | TEXT         | NULLABLE                   | User's occupation                  |
 | place_of_work_study| TEXT         | NULLABLE                   | Place of work or study             |
+| rented_property    | INT          | NULLABLE, FK to properties | Property currently rented (if any) |
+| is_warned          | BOOLEAN      | NOT NULL DEFAULT FALSE     | User is warned                     |
+| is_banned          | BOOLEAN      | NOT NULL DEFAULT FALSE     | User is banned                     |
+| is_verified        | BOOLEAN      | NOT NULL DEFAULT FALSE     | User is verified                   |
 
 **Primary Key:** `user_id`  
 **Foreign Keys:**
 - `auth_id` → `auth.users.id`
-- `rented_property_id` → `properties.property_id`
+- `rented_property` → `properties.property_id`
 
 ---
 
@@ -80,10 +83,11 @@
 | image_url     | TEXT[]       | NULLABLE                   | Array of image URLs/paths          |
 | rent          | NUMERIC      | NOT NULL                   | Monthly rent price                 |
 | amenities     | TEXT[]       | NULLABLE                   | List of amenities                  |
-| rating        | FLOAT        | NULLABLE                   | Average rating                     |
+| rating        | DOUBLE PRECISION | NULLABLE                | Average rating                     |
 | max_renters   | INT          | NOT NULL                   | Maximum number of renters allowed  |
 | is_available  | BOOLEAN      | NOT NULL                   | Availability status                |
 | landmarks     | TEXT[]       | NULLABLE                   | List of nearby landmarks           |
+| is_verified   | BOOLEAN      | NOT NULL DEFAULT FALSE     | Property is verified               |
 
 **Primary Key:** `property_id`  
 **Foreign Keys:** `owner_id` → `users.user_id`
@@ -105,16 +109,5 @@
 
 **Primary Key:** `review_id`  
 **Foreign Keys:** `user_id` → `users.user_id`, `property_id` → `properties.property_id`
-
----
-
-## Notes
-
-- Only users with `user_type = 'renter'` can write reviews.
-- Amenities are stored as a text array or JSON array.
-- Amenities should include the number of rooms and bathrooms (e.g., "2 rooms", "1 bathroom").
-- Individual rooms must be listed as separate entries in the properties table. Each room for rent should have its own property record, even if located within the same building or address.
-- `rented_property_id` in `users` is nullable and only set for renters currently renting a property.
-- For reviews, linking to the user via `user_id` is preferred for consistency and up-to-date profile info.
 
 ---

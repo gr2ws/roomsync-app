@@ -1,0 +1,20 @@
+create table public.properties (
+  property_id serial not null,
+  owner_id integer not null,
+  title text not null,
+  description text null,
+  category public.property_category not null,
+  street text null,
+  barangay text null,
+  city text null,
+  coordinates text null,
+  image_url text[] null,
+  rent numeric not null,
+  amenities text[] null,
+  rating double precision null,
+  max_renters integer not null,
+  is_available boolean not null,
+  landmarks text[] null,
+  is_verified boolean not null default false,
+  constraint properties_pkey primary key (property_id)
+) TABLESPACE pg_default;

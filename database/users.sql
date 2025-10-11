@@ -1,0 +1,23 @@
+create table public.users (
+  user_id serial not null,
+  auth_id uuid null,
+  first_name text not null,
+  last_name text not null,
+  email text not null,
+  phone_number text not null,
+  user_type public.user_type not null,
+  profile_picture text null,
+  birth_date date null,
+  price_range text null,
+  room_preference text null,
+  occupation text null,
+  place_of_work_study text null,
+  rented_property integer null,
+  is_warned boolean not null default false,
+  is_banned boolean not null default false,
+  is_verified boolean not null default false,
+  constraint users_pkey primary key (user_id),
+  constraint users_auth_id_key unique (auth_id),
+  constraint users_email_key unique (email),
+  constraint users_phone_number_key unique (phone_number)
+) TABLESPACE pg_default;
