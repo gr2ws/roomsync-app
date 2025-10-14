@@ -1,6 +1,7 @@
 import { View, Text, TextInput, Alert } from 'react-native';
 import { useLoggedIn } from '../../store/useLoggedIn';
 import Button from '../../components/Button';
+import BackButton from '../../components/BackButton';
 import { useState } from 'react';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../../utils/navigation';
@@ -49,53 +50,57 @@ export default function AuthScreen({ navigation }: Props) {
   };
 
   const handleSignUp = () => {
-    navigation.navigate('Register');
+    // Go back to previous screen (likely Role Selection)
+    navigation.goBack();
   };
 
   return (
-    <View className="flex-1 items-center justify-center bg-white px-4">
-      <Text className="mb-4 text-4xl font-bold text-gray-900">Welcome to RoomSync</Text>
-      <Text className="mb-8 text-center text-lg text-gray-600">
-        Please log in to access your room management features
-      </Text>
+    <View className="bg-background flex-1">
+      <View className="absolute left-0 top-0 z-10">
+        <BackButton onPress={() => navigation.goBack()} />
+      </View>
+      <View className="flex-1 items-center justify-center px-6">
+        <View className="w-full max-w-sm">
+          <Text className="text-primary mb-4 text-center text-4xl font-bold">Welcome back!</Text>
+          <Text className="text-muted-foreground mb-8 text-center text-base">
+            Sign in to continue your journey
+          </Text>
 
-      <View className="flex w-full max-w-sm justify-center gap-4 space-y-4">
-        <TextInput
-          placeholder="Email"
-          className="text-md overflow-visible rounded-lg border border-gray-300 bg-white px-4 py-3"
-          keyboardType="email-address"
-          autoCapitalize="none"
-          onChangeText={setEmail}
-          value={email}
-        />
+          <View className="flex w-full justify-center gap-4">
+            <View className="mb-4">
+              <TextInput
+                placeholder="Email"
+                className="text-md overflow-visible rounded-lg border border-input bg-card px-4 py-3 text-card-foreground"
+                keyboardType="email-address"
+                autoCapitalize="none"
+                onChangeText={setEmail}
+                value={email}
+              />
+            </View>
 
-        <TextInput
-          placeholder="Password"
-          className="text-md overflow-visible rounded-lg border border-gray-300 bg-white px-4 py-3"
-          secureTextEntry
-          autoCapitalize="none"
-          onChangeText={setPassword}
-          value={password}
-        />
+            <View className="mb-4">
+              <TextInput
+                placeholder="Password"
+                className="text-md overflow-visible rounded-lg border border-input bg-card px-4 py-3 text-card-foreground"
+                secureTextEntry
+                autoCapitalize="none"
+                onChangeText={setPassword}
+                value={password}
+              />
+            </View>
 
-        <Button onPress={handleLogin} variant="primary" disabled={loading}>
-          {loading ? 'Logging In...' : 'Log In'}
-        </Button>
-
-        <Button
-          onPress={() =>
-            Alert.alert('Google Login', 'Google login functionality not yet implemented')
-          }
-          variant="secondary">
-          Continue with Google
-        </Button>
-
-        <View className="mt-6 items-center">
-          <View className="flex-row">
-            <Text className="text-gray-600">Don&apos;t have an account? </Text>
-            <Button onPress={handleSignUp} variant="text">
-              Sign up
+            <Button onPress={handleLogin} variant="primary" disabled={loading}>
+              {loading ? 'Logging In...' : 'Log In'}
             </Button>
+
+            <View className="mt-6 items-center">
+              <View className="flex-row">
+                <Text className="text-muted-foreground text-sm">Don&apos;t have an account? </Text>
+                <Button onPress={handleSignUp} variant="text">
+                  Sign up
+                </Button>
+              </View>
+            </View>
           </View>
         </View>
       </View>

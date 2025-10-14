@@ -18,20 +18,20 @@ const IntroductionScreen: React.FC<Props> = ({ navigation }) => {
     setUserRole('renter');
   }, [setUserRole]);
   return (
-    <SafeAreaView
-      style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'white' }}>
-      <View className="w-full max-w-sm gap-4">
-        <Text style={{ fontSize: 32, textAlign: 'center', color: 'black' }}>
-          Welcome to RoomSync
-        </Text>
-        <Text style={{ fontSize: 16, textAlign: 'center', marginTop: 10, color: 'black' }}>
-          Find your perfect rental with ease.
-        </Text>
-        <Button variant="primary" onPress={() => navigation.navigate('RoleSelection')}>
-          Get Started
-        </Button>
-      </View>
-    </SafeAreaView>
+    <View className="bg-background flex-1">
+      <SafeAreaView className="flex-1 items-center justify-center px-6">
+        <View className="w-full max-w-sm gap-6">
+          <Text className="text-primary text-center text-5xl font-bold">Welcome to RoomSync</Text>
+          <Text className="text-foreground mt-2 text-center text-lg">
+            Find safe, affordable living spaces in Dumaguete City with AI-powered recommendations.
+            Discover your perfect place today.
+          </Text>
+          <Button variant="primary" onPress={() => navigation.navigate('RoleSelection')}>
+            Get Started
+          </Button>
+        </View>
+      </SafeAreaView>
+    </View>
   );
 };
 

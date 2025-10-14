@@ -20,6 +20,7 @@ import AdminUserManagementScreen from './src/screens/AdminUserManagementScreen';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import IntroductionScreen from './src/screens/auth/IntroductionScreen';
 import RoleSelectionScreen from './src/screens/auth/RoleSelectionScreen';
+import PreferencesScreen from './src/screens/auth/PreferencesScreen';
 import FeedScreen from './src/screens/renter/FeedScreen';
 import ApplicationsScreen from './src/screens/renter/ApplicationsScreen';
 import ChatScreen from './src/screens/renter/ChatScreen';
@@ -274,6 +275,7 @@ export default function App() {
               <Stack.Screen name="RoleSelection" component={RoleSelectionScreen} />
               <Stack.Screen name="Auth" component={AuthScreen} />
               <Stack.Screen name="Register" component={RegisterScreen} />
+              <Stack.Screen name="Preferences" component={PreferencesScreen} />
             </>
           )}
         </Stack.Navigator>

@@ -1,6 +1,8 @@
-import { View, Text, TextInput, Alert, ScrollView } from 'react-native';
+import { View, Text, Alert, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import { useLoggedIn } from '../../store/useLoggedIn';
 import Button from '../../components/Button';
+import BackButton from '../../components/BackButton';
+import Input from '../../components/Input';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../../utils/navigation';
 import { useState } from 'react';
@@ -49,13 +51,7 @@ export default function RegisterScreen({ navigation }: Props) {
   // Remove userType state, will be set elsewhere
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  // Optional fields
-  const [profilePicture, setProfilePicture] = useState('');
-  const [birthDate, setBirthDate] = useState('');
-  const [priceRange, setPriceRange] = useState('');
-  const [roomPreference, setRoomPreference] = useState('');
-  const [occupation, setOccupation] = useState('');
-  const [placeOfWorkStudy, setPlaceOfWorkStudy] = useState('');
+  // Profile picture and birth date moved to PreferencesScreen
 
   const [loading, setLoading] = useState(false);
 
@@ -74,12 +70,6 @@ export default function RegisterScreen({ navigation }: Props) {
       userType: userRole ?? 'renter',
       password,
       confirmPassword,
-      profilePicture,
-      birthDate,
-      priceRange,
-      roomPreference,
-      occupation,
-      placeOfWorkStudy,
     });
 
     if (!result.success) {
@@ -94,72 +84,125 @@ export default function RegisterScreen({ navigation }: Props) {
     }
     setFormErrors({});
     setLoading(true);
-    // Sign up with Supabase Auth
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-    });
-    if (error || !data.user) {
-      setLoading(false);
-      Alert.alert('Registration Error', error?.message || 'Could not register user.');
-      return;
-    }
-    if (!data.session) {
-      setLoading(false);
-      Alert.alert('Registration Successful', 'Please log in to complete your registration.');
-      return;
-    }
-    // Ensure the client context is authenticated
-    await supabase.auth.setSession({
-      access_token: data.session.access_token,
-      refresh_token: data.session.refresh_token,
-    });
-    // Insert into users table as authenticated user
-    const { error: userError } = await supabase.from('users').insert([
-      {
-        auth_id: data.user.id,
+
+    try {
+      // Check for unique email in users table
+      const { data: existingEmailUsers, error: emailCheckError } = await supabase
+        .from('users')
+        .select('user_id, email')
+        .eq('email', email);
+
+      if (emailCheckError) {
+        throw new Error('Could not verify email uniqueness.');
+      }
+
+      if (existingEmailUsers && existingEmailUsers.length > 0) {
+        setLoading(false);
+        setFormErrors({ email: 'Email already in use' });
+        return;
+      }
+
+      // Check for unique phone number in users table
+      const { data: existingPhoneUsers, error: phoneCheckError } = await supabase
+        .from('users')
+        .select('user_id, phone_number')
+        .eq('phone_number', phoneNumber);
+
+      if (phoneCheckError) {
+        throw new Error('Could not verify phone number uniqueness.');
+      }
+
+      if (existingPhoneUsers && existingPhoneUsers.length > 0) {
+        setLoading(false);
+        setFormErrors({ phoneNumber: 'Phone number already in use' });
+        return;
+      }
+
+      // All checks passed - now create auth user
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email,
+        password,
+      });
+
+      if (authError || !authData.user) {
+        throw new Error(authError?.message || 'Could not create authentication account.');
+      }
+
+      if (!authData.session) {
+        setLoading(false);
+        Alert.alert(
+          'Email Verification Required',
+          'Please check your email to verify your account before logging in.'
+        );
+        return;
+      }
+
+      // Set session context
+      await supabase.auth.setSession({
+        access_token: authData.session.access_token,
+        refresh_token: authData.session.refresh_token,
+      });
+
+      // Create user profile (this should succeed since we checked uniqueness)
+      const { error: userError } = await supabase.from('users').insert([
+        {
+          auth_id: authData.user.id,
+          first_name: firstName,
+          last_name: lastName,
+          email,
+          phone_number: phoneNumber,
+          user_type: userRole ?? 'renter',
+          // Profile picture, birth date, and preferences handled in PreferencesScreen
+        },
+      ]);
+
+      if (userError) {
+        // This shouldn't happen since we pre-checked, but if it does, clean up
+        await supabase.auth.signOut();
+        throw new Error('Failed to create user profile: ' + userError.message);
+      }
+
+      // Success - update local state
+      setUserRole(userRole ?? 'renter');
+      setUserProfile({
+        auth_id: authData.user.id,
         first_name: firstName,
         last_name: lastName,
         email,
         phone_number: phoneNumber,
         user_type: userRole ?? 'renter',
-        profile_picture: profilePicture || null,
-        birth_date: birthDate || null,
-        price_range: priceRange || null,
-        room_preference: roomPreference || null,
-        occupation: occupation || null,
-        place_of_work_study: placeOfWorkStudy || null,
-      },
-    ]);
-    setLoading(false);
-    if (userError) {
-      Alert.alert('Registration Error', userError.message);
+        // Profile picture, birth date, and preferences handled in PreferencesScreen
+      });
+
+      setLoading(false);
+
+      // Route based on role
+      if ((userRole ?? 'renter') === 'renter') {
+        navigation.navigate('Preferences');
+      } else {
+        setIsLoggedIn(true);
+        navigation.navigate('Home');
+      }
+    } catch (error) {
+      setLoading(false);
+      Alert.alert(
+        'Registration Error',
+        error instanceof Error ? error.message : 'An error occurred'
+      );
       return;
     }
-    setUserRole(userRole ?? 'renter');
-    setUserProfile({
-      auth_id: data.user.id,
-      first_name: firstName,
-      last_name: lastName,
-      email,
-      phone_number: phoneNumber,
-      user_type: userRole ?? 'renter',
-      profile_picture: profilePicture || null,
-      birth_date: birthDate || null,
-      price_range: priceRange || null,
-      room_preference: roomPreference || null,
-      occupation: occupation || null,
-      place_of_work_study: placeOfWorkStudy || null,
-    });
-    setIsLoggedIn(true);
+  };
+
+  const handleGoBack = () => {
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+    } else {
+      navigation.navigate('RoleSelection');
+    }
   };
 
   const handleLogin = () => {
     navigation.navigate('Auth');
-  };
-
-  const handleGoogleSignUp = () => {
-    Alert.alert('Google Registration', 'Google registration functionality not yet implemented');
   };
 
   const handleTermsOfService = () => {
@@ -171,165 +214,100 @@ export default function RegisterScreen({ navigation }: Props) {
   };
 
   return (
-    <ScrollView
-      contentContainerStyle={{ flexGrow: 1, alignItems: 'center', justifyContent: 'center' }}>
-      <Text className="mb-4 text-4xl font-bold text-gray-900">Join us</Text>
-      <Text className="mb-8 text-center text-lg text-gray-600">Find your perfect place</Text>
+    <KeyboardAvoidingView
+      className="bg-background flex-1"
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={0}>
+      <ScrollView
+        contentContainerClassName=" pb-8 pt-2"
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}>
+        <BackButton onPress={handleGoBack} />
+        <Text className="text-primary mb-2 mt-6 text-center text-4xl font-bold">
+          Create your account
+        </Text>
+        <Text className="text-muted-foreground mb-8 text-center text-base">
+          Your perfect place awaits
+        </Text>
 
-      <View className="flex w-full max-w-sm gap-4 space-y-4">
-        <TextInput
-          placeholder="First Name"
-          className="rounded-lg border border-gray-300 bg-white px-4 py-3 text-lg"
-          autoCapitalize="words"
-          value={firstName}
-          onChangeText={setFirstName}
-        />
-        {formErrors.firstName && (
-          <Text className="text-xs text-red-500">{formErrors.firstName}</Text>
-        )}
-        <TextInput
-          placeholder="Last Name"
-          className="rounded-lg border border-gray-300 bg-white px-4 py-3 text-lg"
-          autoCapitalize="words"
-          value={lastName}
-          onChangeText={setLastName}
-        />
-        {formErrors.lastName && <Text className="text-xs text-red-500">{formErrors.lastName}</Text>}
-        <TextInput
-          placeholder="Email"
-          className="rounded-lg border border-gray-300 bg-white px-4 py-3 text-lg"
-          keyboardType="email-address"
-          autoCapitalize="none"
-          value={email}
-          onChangeText={setEmail}
-        />
-        {formErrors.email && <Text className="text-xs text-red-500">{formErrors.email}</Text>}
-        <TextInput
-          placeholder="Phone Number"
-          className="rounded-lg border border-gray-300 bg-white px-4 py-3 text-lg"
-          keyboardType="phone-pad"
-          autoCapitalize="none"
-          value={phoneNumber}
-          onChangeText={setPhoneNumber}
-        />
-        {formErrors.phoneNumber && (
-          <Text className="text-xs text-red-500">{formErrors.phoneNumber}</Text>
-        )}
-        {/* Role selection removed as per request */}
-        <TextInput
-          placeholder="Password"
-          className="rounded-lg border border-gray-300 bg-white px-4 py-3 text-lg"
-          secureTextEntry
-          autoCapitalize="none"
-          value={password}
-          onChangeText={setPassword}
-        />
-        {formErrors.password && <Text className="text-xs text-red-500">{formErrors.password}</Text>}
-        <TextInput
-          placeholder="Confirm Password"
-          className="rounded-lg border border-gray-300 bg-white px-4 py-3 text-lg"
-          secureTextEntry
-          autoCapitalize="none"
-          value={confirmPassword}
-          onChangeText={setConfirmPassword}
-        />
-        {formErrors.confirmPassword && (
-          <Text className="text-xs text-red-500">{formErrors.confirmPassword}</Text>
-        )}
-        {/* Optional fields */}
-        <TextInput
-          placeholder="Profile Picture URL (optional)"
-          className="rounded-lg border border-gray-300 bg-white px-4 py-3 text-lg"
-          autoCapitalize="none"
-          value={profilePicture}
-          onChangeText={setProfilePicture}
-        />
-        {formErrors.profilePicture && (
-          <Text className="text-xs text-red-500">{formErrors.profilePicture}</Text>
-        )}
-        <TextInput
-          placeholder="Birth Date (YYYY-MM-DD, optional)"
-          className="rounded-lg border border-gray-300 bg-white px-4 py-3 text-lg"
-          autoCapitalize="none"
-          value={birthDate}
-          onChangeText={setBirthDate}
-        />
-        {formErrors.birthDate && (
-          <Text className="text-xs text-red-500">{formErrors.birthDate}</Text>
-        )}
-        <TextInput
-          placeholder="Price Range (optional)"
-          className="rounded-lg border border-gray-300 bg-white px-4 py-3 text-lg"
-          autoCapitalize="none"
-          value={priceRange}
-          onChangeText={setPriceRange}
-        />
-        {formErrors.priceRange && (
-          <Text className="text-xs text-red-500">{formErrors.priceRange}</Text>
-        )}
-        <TextInput
-          placeholder="Room Preference (optional)"
-          className="rounded-lg border border-gray-300 bg-white px-4 py-3 text-lg"
-          autoCapitalize="none"
-          value={roomPreference}
-          onChangeText={setRoomPreference}
-        />
-        {formErrors.roomPreference && (
-          <Text className="text-xs text-red-500">{formErrors.roomPreference}</Text>
-        )}
-        <TextInput
-          placeholder="Occupation (optional)"
-          className="rounded-lg border border-gray-300 bg-white px-4 py-3 text-lg"
-          autoCapitalize="none"
-          value={occupation}
-          onChangeText={setOccupation}
-        />
-        {formErrors.occupation && (
-          <Text className="text-xs text-red-500">{formErrors.occupation}</Text>
-        )}
-        <TextInput
-          placeholder="Place of Work/Study (optional)"
-          className="rounded-lg border border-gray-300 bg-white px-4 py-3 text-lg"
-          autoCapitalize="none"
-          value={placeOfWorkStudy}
-          onChangeText={setPlaceOfWorkStudy}
-        />
-        {formErrors.placeOfWorkStudy && (
-          <Text className="text-xs text-red-500">{formErrors.placeOfWorkStudy}</Text>
-        )}
+        <View className="w-full max-w-sm gap-4 self-center">
+          <Input
+            placeholder="First Name"
+            autoCapitalize="words"
+            value={firstName}
+            onChangeText={setFirstName}
+            error={formErrors.firstName}
+          />
+          <Input
+            placeholder="Last Name"
+            autoCapitalize="words"
+            value={lastName}
+            onChangeText={setLastName}
+            error={formErrors.lastName}
+          />
+          <Input
+            placeholder="Email"
+            keyboardType="email-address"
+            autoCapitalize="none"
+            value={email}
+            onChangeText={setEmail}
+            error={formErrors.email}
+          />
+          <Input
+            placeholder="Phone Number"
+            keyboardType="phone-pad"
+            autoCapitalize="none"
+            value={phoneNumber}
+            onChangeText={setPhoneNumber}
+            error={formErrors.phoneNumber}
+          />
+          {/* Role selection removed as per request */}
+          <Input
+            placeholder="Password"
+            secureTextEntry
+            autoCapitalize="none"
+            value={password}
+            onChangeText={setPassword}
+            error={formErrors.password}
+          />
+          <Input
+            placeholder="Confirm Password"
+            secureTextEntry
+            autoCapitalize="none"
+            value={confirmPassword}
+            onChangeText={setConfirmPassword}
+            error={formErrors.confirmPassword}
+          />
 
-        <Button onPress={handleSignUp} variant="primary" disabled={loading}>
-          {loading ? 'Signing Up...' : 'Sign Up'}
-        </Button>
+          <Button onPress={handleSignUp} variant="primary" disabled={loading}>
+            {loading ? 'Signing Up...' : 'Sign Up'}
+          </Button>
 
-        <Button onPress={handleGoogleSignUp} variant="secondary">
-          Continue with Google
-        </Button>
+          <View className="mt-6 items-center">
+            <View className="flex-row">
+              <Text className="text-muted-foreground text-sm">Already have an account? </Text>
+              <Button onPress={handleLogin} variant="text">
+                Log in
+              </Button>
+            </View>
+          </View>
 
-        <View className="mt-6 items-center">
-          <View className="flex-row">
-            <Text className="text-gray-600">Already have an account? </Text>
-            <Button onPress={handleLogin} variant="text">
-              Log in
-            </Button>
+          <View className="mt-4 items-center">
+            <View className="flex-row flex-wrap justify-center">
+              <Text className="text-muted-foreground text-center text-xs">
+                By creating an account, you agree with our{' '}
+              </Text>
+              <Button onPress={handleTermsOfService} variant="text" size="sm">
+                Terms of Service
+              </Button>
+              <Text className="text-muted-foreground text-xs"> and </Text>
+              <Button onPress={handlePrivacyPolicy} variant="text" size="sm">
+                Privacy Policy
+              </Button>
+            </View>
           </View>
         </View>
-
-        <View className="mt-4 items-center">
-          <View className="flex-row flex-wrap justify-center">
-            <Text className="text-center text-sm text-gray-600">
-              By creating an account, you agree with our{' '}
-            </Text>
-            <Button onPress={handleTermsOfService} variant="text" size="sm">
-              Terms of Service
-            </Button>
-            <Text className="text-sm text-gray-600"> and </Text>
-            <Button onPress={handlePrivacyPolicy} variant="text" size="sm">
-              Privacy Policy
-            </Button>
-          </View>
-        </View>
-      </View>
-    </ScrollView>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }

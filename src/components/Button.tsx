@@ -22,8 +22,8 @@ export default function Button({
     const baseStyles = 'rounded-lg';
 
     const variantStyles = {
-      primary: 'bg-blue-500 px-6 py-3 shadow-sm',
-      secondary: 'border border-gray-300 bg-white px-6 py-3',
+      primary: 'bg-primary px-6 py-3 shadow-sm',
+      secondary: 'border border-border bg-secondary px-6 py-3',
       text: '',
     };
 
@@ -40,9 +40,9 @@ export default function Button({
     const baseStyles = 'text-center font-semibold';
 
     const variantStyles = {
-      primary: 'text-white text-lg',
-      secondary: 'text-gray-700 text-lg',
-      text: 'text-blue-500',
+      primary: 'text-primary-foreground text-lg',
+      secondary: 'text-secondary-foreground text-lg',
+      text: 'text-primary',
     };
 
     const sizeStyles = {
