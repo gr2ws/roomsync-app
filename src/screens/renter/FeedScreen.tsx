@@ -100,8 +100,11 @@ export default function FeedScreen() {
       />
 
       {/* Main Feed Content */}
-      <ScrollView className="flex-1 bg-white">
-        <View className="px-4 pt-4">
+      <ScrollView
+        className="flex-1 bg-white"
+        contentInsetAdjustmentBehavior="automatic"
+        contentContainerStyle={{ paddingTop: 16, paddingBottom: 90 }}>
+        <View className="px-4">
           {/* Header Text */}
           <View className="mb-4">
             <Text className="text-3xl font-bold text-gray-900">Find Your Room</Text>

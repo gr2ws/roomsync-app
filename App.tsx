@@ -43,11 +43,12 @@ function MainApp() {
     headerShown: false,
     tabBarShowLabel: true,
     tabBarStyle: {
-      height: 50, // Fixed height to prevent cut-off
-      backgroundColor: '#fff',
+      height: '7.7%', // Increased from 50 for better spacing
+      backgroundColor: 'rgb(250, 244, 235)', // secondary
       borderTopWidth: 1,
-      paddingTop: 2,
-      borderTopColor: '#e5e7eb',
+      paddingTop: 2, // Increased from 2
+      paddingBottom: 10, // Added bottom padding
+      borderTopColor: 'rgb(100, 74, 64)', // primary
       shadowColor: '#000',
       shadowOffset: { width: 0, height: -1 },
       shadowOpacity: 0.05,
@@ -55,10 +56,13 @@ function MainApp() {
       elevation: 1,
     },
     tabBarAllowFontScaling: false,
+    tabBarActiveTintColor: 'rgb(100, 74, 64)', // primary - active icon/text
+    tabBarInactiveTintColor: 'rgba(100, 74, 64, 0.5)', // primary with 50% opacity - inactive
     tabBarLabelStyle: {
       fontSize: 10,
       fontWeight: '400',
       marginTop: 2,
+      marginBottom: 2, // Added for better spacing
     },
   };
 

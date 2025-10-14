@@ -75,8 +75,8 @@ export default function ApplicationsScreen() {
   );
 
   return (
-    <View className="flex-1 bg-white px-4 pt-4">
-      <View className="mb-4">
+    <View className="flex-1 bg-white">
+      <View className="px-4 pb-2 pt-6">
         <Text className="text-3xl font-bold text-gray-900">My Applications</Text>
         <Text className="text-gray-600">Track your property applications and their status.</Text>
       </View>
@@ -91,7 +91,7 @@ export default function ApplicationsScreen() {
           data={applications}
           renderItem={renderItem}
           keyExtractor={(item) => item.id}
-          contentContainerStyle={{ paddingBottom: 32, paddingTop: 4, paddingHorizontal: 2 }}
+          contentContainerStyle={{ paddingBottom: 90, paddingTop: 4, paddingHorizontal: 16 }}
           showsVerticalScrollIndicator={false}
         />
       )}

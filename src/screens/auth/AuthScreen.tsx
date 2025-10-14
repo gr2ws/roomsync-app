@@ -19,6 +19,7 @@ export default function AuthScreen({ navigation }: Props) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [authenticating, setAuthenticating] = useState(false);
   const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState(false);
 
   useEffect(() => {
@@ -35,37 +36,50 @@ export default function AuthScreen({ navigation }: Props) {
       return;
     }
     setLoading(true);
+    setAuthenticating(true);
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
-    setLoading(false);
+
     if (error || !data.user) {
+      setLoading(false);
+      setAuthenticating(false);
       Alert.alert('Login Error', error?.message || 'Could not log in.');
       return;
     }
+
     // Fetch full user profile from users table
     const { data: userData, error: userError } = await supabase
       .from('users')
       .select('*')
       .eq('auth_id', data.user.id)
       .single();
+
     if (userError || !userData) {
+      setLoading(false);
+      setAuthenticating(false);
       Alert.alert('Login Error', 'Could not fetch user profile.');
       return;
     }
+
     setUserRole(userData.user_type);
     setUserProfile(userData);
 
     // Check if user has completed onboarding
     const hasCompletedOnboarding = await AsyncStorage.getItem('hasCompletedOnboarding');
 
+    // Keep loading and authenticating states true until navigation
+    setLoading(false);
+
     if (hasCompletedOnboarding === 'true') {
       // User has already completed onboarding, go directly to Home
       setIsLoggedIn(true);
+      // authenticating state will persist until component unmounts
     } else {
       // First time login, show Welcome screen
       navigation.navigate('Welcome');
+      // authenticating state will persist until component unmounts
     }
   };
 
@@ -117,14 +131,14 @@ export default function AuthScreen({ navigation }: Props) {
               />
             </View>
 
-            <Button onPress={handleLogin} variant="primary" disabled={loading}>
-              {loading ? 'Logging In...' : 'Log In'}
+            <Button onPress={handleLogin} variant="primary" disabled={loading || authenticating}>
+              {loading || authenticating ? 'Logging In...' : 'Log In'}
             </Button>
 
             <View className="mt-2 items-center">
               <View className="flex-row">
                 <Text className="text-sm text-muted-foreground">Don&apos;t have an account? </Text>
-                <Button onPress={handleSignUp} variant="text">
+                <Button onPress={handleSignUp} variant="text" disabled={authenticating}>
                   Sign up
                 </Button>
               </View>

@@ -60,7 +60,7 @@ const ChatScreen: React.FC = () => {
       className="flex-1 bg-white"
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       keyboardVerticalOffset={80}>
-      <View className="bg-white px-4 pb-2 pt-4">
+      <View className="bg-white px-4 pb-2 pt-6">
         <View className="mb-4">
           <Text className="text-3xl font-bold text-gray-900">Chat with LLM</Text>
           <Text className="text-gray-600">
@@ -72,10 +72,15 @@ const ChatScreen: React.FC = () => {
         data={messages}
         renderItem={renderItem}
         keyExtractor={(_, idx) => idx.toString()}
-        contentContainerStyle={{ padding: 16, flexGrow: 1, justifyContent: 'flex-end' }}
+        contentContainerStyle={{
+          padding: 16,
+          paddingBottom: 16,
+          flexGrow: 1,
+          justifyContent: 'flex-end',
+        }}
         inverted
       />
-      <View className="flex-row bg-white p-4">
+      <View className="flex-row bg-white p-4 pb-6">
         <TextInput
           className="border-sm text-md mr-3 flex-1 justify-center overflow-visible rounded-full border border-gray-200 px-6 py-3"
           placeholder="Type your message..."
