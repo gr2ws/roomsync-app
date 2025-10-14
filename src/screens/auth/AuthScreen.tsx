@@ -1,11 +1,12 @@
-import { View, Text, TextInput, Alert } from 'react-native';
+import { View, Text, TextInput, Alert, Platform } from 'react-native';
 import { useLoggedIn } from '../../store/useLoggedIn';
 import Button from '../../components/Button';
 import BackButton from '../../components/BackButton';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../../utils/navigation';
 import { supabase } from '../../utils/supabase';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 type AuthScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Auth'>;
 
@@ -18,6 +19,15 @@ export default function AuthScreen({ navigation }: Props) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState(false);
+
+  useEffect(() => {
+    const checkOnboarding = async () => {
+      const onboardingStatus = await AsyncStorage.getItem('hasCompletedOnboarding');
+      setHasCompletedOnboarding(onboardingStatus === 'true');
+    };
+    checkOnboarding();
+  }, []);
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -46,28 +56,46 @@ export default function AuthScreen({ navigation }: Props) {
     }
     setUserRole(userData.user_type);
     setUserProfile(userData);
-    setIsLoggedIn(true);
+
+    // Check if user has completed onboarding
+    const hasCompletedOnboarding = await AsyncStorage.getItem('hasCompletedOnboarding');
+
+    if (hasCompletedOnboarding === 'true') {
+      // User has already completed onboarding, go directly to Home
+      setIsLoggedIn(true);
+    } else {
+      // First time login, show Welcome screen
+      navigation.navigate('Welcome');
+    }
   };
 
-  const handleSignUp = () => {
-    // Go back to previous screen (likely Role Selection)
-    navigation.goBack();
+  const handleSignUp = async () => {
+    // Reset onboarding flag so user goes through the full onboarding flow
+    try {
+      await AsyncStorage.setItem('hasCompletedOnboarding', 'false');
+    } catch (error) {
+      console.error('Error resetting onboarding flag:', error);
+    }
+    // Navigate to Introduction screen to start onboarding, pass flag to show back button
+    navigation.navigate('Introduction', { fromAuth: true });
   };
 
   return (
-    <View className="bg-background flex-1">
-      <View className="absolute left-0 top-0 z-10">
-        <BackButton onPress={() => navigation.goBack()} />
-      </View>
+    <View className="flex-1 bg-background" style={{ paddingTop: Platform.OS === 'ios' ? 20 : 0 }}>
+      {!hasCompletedOnboarding && (
+        <View className="absolute left-0 top-10 z-10">
+          <BackButton onPress={() => navigation.goBack()} />
+        </View>
+      )}
       <View className="flex-1 items-center justify-center px-6">
         <View className="w-full max-w-sm">
-          <Text className="text-primary mb-4 text-center text-4xl font-bold">Welcome back!</Text>
-          <Text className="text-muted-foreground mb-8 text-center text-base">
-            Sign in to continue your journey
+          <Text className="mb-4 text-center text-4xl font-bold text-primary">Welcome back!</Text>
+          <Text className="mb-8 text-center text-base text-muted-foreground">
+            Sign in to continue...
           </Text>
 
           <View className="flex w-full justify-center gap-4">
-            <View className="mb-4">
+            <View className="">
               <TextInput
                 placeholder="Email"
                 className="text-md overflow-visible rounded-lg border border-input bg-card px-4 py-3 text-card-foreground"
@@ -78,7 +106,7 @@ export default function AuthScreen({ navigation }: Props) {
               />
             </View>
 
-            <View className="mb-4">
+            <View className="">
               <TextInput
                 placeholder="Password"
                 className="text-md overflow-visible rounded-lg border border-input bg-card px-4 py-3 text-card-foreground"
@@ -93,9 +121,9 @@ export default function AuthScreen({ navigation }: Props) {
               {loading ? 'Logging In...' : 'Log In'}
             </Button>
 
-            <View className="mt-6 items-center">
+            <View className="mt-2 items-center">
               <View className="flex-row">
-                <Text className="text-muted-foreground text-sm">Don&apos;t have an account? </Text>
+                <Text className="text-sm text-muted-foreground">Don&apos;t have an account? </Text>
                 <Button onPress={handleSignUp} variant="text">
                   Sign up
                 </Button>

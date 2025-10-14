@@ -1,13 +1,14 @@
-import { TouchableOpacity, Text, TouchableOpacityProps } from 'react-native';
+import { Pressable, Text, PressableProps } from 'react-native';
 import { ReactNode } from 'react';
 
 export type ButtonVariant = 'primary' | 'secondary' | 'text';
 export type ButtonSize = 'sm' | 'md' | 'lg';
 
-interface ButtonProps extends TouchableOpacityProps {
+interface ButtonProps extends PressableProps {
   children: ReactNode;
   variant?: ButtonVariant;
   size?: ButtonSize;
+  className?: string;
 }
 
 export default function Button({
@@ -15,7 +16,6 @@ export default function Button({
   variant = 'primary',
   size = 'md',
   className = '',
-  activeOpacity,
   ...props
 }: ButtonProps) {
   const getButtonStyles = () => {
@@ -23,7 +23,7 @@ export default function Button({
 
     const variantStyles = {
       primary: 'bg-primary px-6 py-3 shadow-sm',
-      secondary: 'border border-border bg-secondary px-6 py-3',
+      secondary: 'border border-primary bg-secondary px-6 py-3',
       text: '',
     };
 
@@ -54,18 +54,16 @@ export default function Button({
     return `${baseStyles} ${variantStyles[variant]} ${sizeStyles[size]}`.trim();
   };
 
-  const getActiveOpacity = () => {
-    if (activeOpacity !== undefined) return activeOpacity;
-    return variant === 'text' ? 0.7 : 0.8;
-  };
-
   return (
-    <TouchableOpacity className={getButtonStyles()} activeOpacity={getActiveOpacity()} {...props}>
+    <Pressable
+      className={getButtonStyles()}
+      style={({ pressed }) => [{ opacity: pressed ? 0.8 : 1 }]}
+      {...props}>
       {typeof children === 'string' ? (
         <Text className={getTextStyles()}>{children}</Text>
       ) : (
         children
       )}
-    </TouchableOpacity>
+    </Pressable>
   );
 }

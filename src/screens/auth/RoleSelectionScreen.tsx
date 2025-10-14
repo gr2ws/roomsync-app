@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, SafeAreaView } from 'react-native';
+import { View, Text, SafeAreaView, Platform } from 'react-native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import Button from '../../components/Button';
 import BackButton from '../../components/BackButton';
@@ -35,18 +35,18 @@ const RoleSelectionScreen: React.FC<Props> = ({ navigation }) => {
   };
 
   return (
-    <View className="bg-background flex-1">
-      <SafeAreaView className="bg-background flex-1">
-        <View className="absolute left-0 top-0 z-10">
+    <View className="flex-1 bg-background" style={{ paddingTop: Platform.OS === 'ios' ? 20 : 0 }}>
+      <SafeAreaView className="flex-1 bg-background">
+        <View className="absolute left-0 top-5 z-10">
           <BackButton onPress={handleGoBack} />
         </View>
 
         <View className="flex-1 items-center justify-center px-6">
           <View className="w-full max-w-sm">
-            <Text className="text-primary mb-4 text-center text-4xl font-bold">
+            <Text className="mb-4 text-center text-4xl font-bold text-primary">
               What brings you here?
             </Text>
-            <Text className="text-muted-foreground mb-10 text-center text-base">
+            <Text className="mb-10 text-center text-base text-muted-foreground">
               Tell us how we can help you...
             </Text>
 
@@ -54,7 +54,7 @@ const RoleSelectionScreen: React.FC<Props> = ({ navigation }) => {
               <Button variant="primary" onPress={() => handleSelectRole('renter')}>
                 I&apos;m looking for somewhere to stay
               </Button>
-              <Text className="text-muted-foreground mt-3 text-center text-sm">
+              <Text className="mt-3 text-center text-sm text-muted-foreground">
                 For individuals searching for a place to rent, such as students or professionals.
               </Text>
             </View>
@@ -63,7 +63,7 @@ const RoleSelectionScreen: React.FC<Props> = ({ navigation }) => {
               <Button variant="primary" onPress={() => handleSelectRole('owner')}>
                 I have property for rent
               </Button>
-              <Text className="text-muted-foreground mt-3 text-center text-sm">
+              <Text className="mt-3 text-center text-sm text-muted-foreground">
                 For property owners or managers who want to list and manage rentals.
               </Text>
             </View>

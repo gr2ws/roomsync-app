@@ -69,28 +69,35 @@
 
 ## Table: properties
 
-| Column        | Type         | Constraints                | Description                        |
-|---------------|-------------|----------------------------|------------------------------------|
-| property_id   | SERIAL/INT   | PRIMARY KEY                | Unique property identifier         |
-| owner_id      | INT          | NOT NULL, FK to users      | Owner of the property              |
-| title         | TEXT         | NOT NULL                   | Title/name of the property         |
-| description   | TEXT         | NULLABLE                   | Description of the property        |
-| category      | property_category (ENUM) | NOT NULL                   | 'rooms', 'apartments', 'bedspace'  |
-| street        | TEXT         | NULLABLE                   | Street address                     |
-| barangay      | TEXT         | NULLABLE                   | Barangay                           |
-| city          | TEXT         | NULLABLE                   | City                               |
-| coordinates   | TEXT         | NULLABLE                   | GPS coordinates (lat,long)         |
-| image_url     | TEXT[]       | NULLABLE                   | Array of image URLs/paths          |
-| rent          | NUMERIC      | NOT NULL                   | Monthly rent price                 |
-| amenities     | TEXT[]       | NULLABLE                   | List of amenities                  |
-| rating        | DOUBLE PRECISION | NULLABLE                | Average rating                     |
-| max_renters   | INT          | NOT NULL                   | Maximum number of renters allowed  |
-| is_available  | BOOLEAN      | NOT NULL                   | Availability status                |
-| landmarks     | TEXT[]       | NULLABLE                   | List of nearby landmarks           |
-| is_verified   | BOOLEAN      | NOT NULL DEFAULT FALSE     | Property is verified               |
+| Column         | Type                | Constraints                                   | Description                                 |
+|--------------- |--------------------|-----------------------------------------------|---------------------------------------------|
+| property_id    | SERIAL/INT         | PRIMARY KEY                                   | Unique property identifier                  |
+| owner_id       | INT                | NOT NULL, FK to users                         | Owner of the property                       |
+| title          | TEXT               | NOT NULL                                      | Title/name of the property                  |
+| description    | TEXT               | NULLABLE                                      | Description of the property                 |
+| category       | property_category (ENUM) | NOT NULL                                 | 'rooms', 'apartments', 'bedspace'          |
+| street         | TEXT               | NULLABLE                                      | Street address                              |
+| barangay       | TEXT               | NULLABLE                                      | Barangay                                    |
+| city           | TEXT               | NULLABLE                                      | City                                        |
+| coordinates    | TEXT               | NULLABLE                                      | GPS coordinates (lat,long)                  |
+| image_url      | TEXT[]             | NULLABLE                                      | Array of image URLs/paths                   |
+| rent           | NUMERIC            | NOT NULL                                      | Monthly rent price                          |
+| amenities      | TEXT[]             | NULLABLE                                      | List of amenities                           |
+| rating         | DOUBLE PRECISION   | NULLABLE                                      | Average rating                              |
+| max_renters    | INT                | NOT NULL                                      | Maximum number of renters allowed           |
+| is_available   | BOOLEAN            | NOT NULL                                      | Availability status                         |
+| landmarks      | TEXT[]             | NULLABLE                                      | List of nearby landmarks                    |
+| is_verified    | BOOLEAN            | NOT NULL DEFAULT FALSE                        | Property is verified                        |
+| has_internet   | BOOLEAN            | NULLABLE                                      | Property provides internet                  |
+| allows_pets    | BOOLEAN            | NULLABLE                                      | Property allows pets                        |
+| is_furnished   | BOOLEAN            | NULLABLE                                      | Property is furnished                       |
+| has_ac         | BOOLEAN            | NULLABLE                                      | Property has air conditioning               |
+| is_secure      | BOOLEAN            | NULLABLE                                      | Property is gated/with cctv                 |
+| has_parking    | BOOLEAN            | NULLABLE                                      | Property has parking                        |
 
 **Primary Key:** `property_id`  
-**Foreign Keys:** `owner_id` → `users.user_id`
+**Foreign Keys:** 
+- `owner_id` → `users.user_id` (ON UPDATE CASCADE, ON DELETE SET NULL)
 
 ---
 

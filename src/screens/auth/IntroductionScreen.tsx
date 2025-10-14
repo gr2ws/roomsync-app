@@ -1,28 +1,51 @@
 import React, { useEffect } from 'react';
-import { View, Text, SafeAreaView } from 'react-native';
+import { View, Text, SafeAreaView, Platform } from 'react-native';
 import { StackNavigationProp } from '@react-navigation/stack';
+import { RouteProp } from '@react-navigation/native';
 import Button from '../../components/Button';
+import BackButton from '../../components/BackButton';
 import { useLoggedIn } from '../../store/useLoggedIn';
 import { RootStackParamList } from '../../utils/navigation';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 type IntroductionScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Introduction'>;
+type IntroductionScreenRouteProp = RouteProp<RootStackParamList, 'Introduction'>;
 
 type Props = {
   navigation: IntroductionScreenNavigationProp;
+  route: IntroductionScreenRouteProp;
 };
 
-const IntroductionScreen: React.FC<Props> = ({ navigation }) => {
+const IntroductionScreen: React.FC<Props> = ({ navigation, route }) => {
   // Set default role to 'renter' on introduction
   const { setUserRole } = useLoggedIn();
+  const fromAuth = route.params?.fromAuth || false;
+
   useEffect(() => {
     setUserRole('renter');
   }, [setUserRole]);
+
+  const handleBackToAuth = async () => {
+    // Set onboarding to true when going back to Auth
+    try {
+      await AsyncStorage.setItem('hasCompletedOnboarding', 'true');
+    } catch (error) {
+      console.error('Error setting onboarding flag:', error);
+    }
+    navigation.replace('Auth');
+  };
+
   return (
-    <View className="bg-background flex-1">
+    <View className="flex-1 bg-background" style={{ paddingTop: Platform.OS === 'ios' ? 20 : 0 }}>
+      {fromAuth && (
+        <View className="absolute left-0 top-10 z-10">
+          <BackButton onPress={handleBackToAuth} />
+        </View>
+      )}
       <SafeAreaView className="flex-1 items-center justify-center px-6">
         <View className="w-full max-w-sm gap-6">
-          <Text className="text-primary text-center text-5xl font-bold">Welcome to RoomSync</Text>
-          <Text className="text-foreground mt-2 text-center text-lg">
+          <Text className="text-center text-5xl font-bold text-primary">Welcome to RoomSync</Text>
+          <Text className="mt-2 text-center text-lg text-foreground">
             Find safe, affordable living spaces in Dumaguete City with AI-powered recommendations.
             Discover your perfect place today.
           </Text>

@@ -20,13 +20,16 @@ import AdminUserManagementScreen from './src/screens/AdminUserManagementScreen';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import IntroductionScreen from './src/screens/auth/IntroductionScreen';
 import RoleSelectionScreen from './src/screens/auth/RoleSelectionScreen';
-import PreferencesScreen from './src/screens/auth/PreferencesScreen';
+import WelcomeScreen from './src/screens/auth/WelcomeScreen';
+import DetailsScreen from './src/screens/auth/DetailsScreen';
 import FeedScreen from './src/screens/renter/FeedScreen';
 import ApplicationsScreen from './src/screens/renter/ApplicationsScreen';
 import ChatScreen from './src/screens/renter/ChatScreen';
 import AddPropertyScreen from './src/screens/owner/AddPropertyScreen';
 import ManagePropertiesScreen from './src/screens/owner/ManagePropertiesScreen';
 import ViewReviewsScreen from './src/screens/owner/ViewReviewsScreen';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useEffect, useState } from 'react';
 
 const Tab = createBottomTabNavigator<RootTabParamList>();
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -262,20 +265,63 @@ function MainApp() {
 
 export default function App() {
   const { isLoggedIn } = useLoggedIn();
+  const [initialRoute, setInitialRoute] = useState<'Introduction' | 'Auth'>('Introduction');
+  const [isCheckingOnboarding, setIsCheckingOnboarding] = useState(true);
+
+  useEffect(() => {
+    const checkOnboarding = async () => {
+      try {
+        const hasCompletedOnboarding = await AsyncStorage.getItem('hasCompletedOnboarding');
+        if (hasCompletedOnboarding === 'true') {
+          setInitialRoute('Auth');
+        } else {
+          setInitialRoute('Introduction');
+        }
+      } catch (error) {
+        console.error('Error checking onboarding status:', error);
+        setInitialRoute('Introduction');
+      } finally {
+        setIsCheckingOnboarding(false);
+      }
+    };
+
+    if (!isLoggedIn) {
+      checkOnboarding();
+    } else {
+      setIsCheckingOnboarding(false);
+    }
+  }, [isLoggedIn]);
+
+  if (isCheckingOnboarding && !isLoggedIn) {
+    return null; // Or a loading screen
+  }
 
   return (
     <MainScaffold>
       <NavigationContainer>
-        <Stack.Navigator initialRouteName="Introduction" screenOptions={{ headerShown: false }}>
+        <Stack.Navigator initialRouteName={initialRoute} screenOptions={{ headerShown: false }}>
           {isLoggedIn ? (
             <Stack.Screen name="Home" component={MainApp} />
           ) : (
             <>
-              <Stack.Screen name="Introduction" component={IntroductionScreen} />
+              <Stack.Screen
+                name="Introduction"
+                component={IntroductionScreen}
+                options={{
+                  animationTypeForReplace: 'pop',
+                }}
+              />
               <Stack.Screen name="RoleSelection" component={RoleSelectionScreen} />
-              <Stack.Screen name="Auth" component={AuthScreen} />
+              <Stack.Screen
+                name="Auth"
+                component={AuthScreen}
+                options={{
+                  animation: 'slide_from_left',
+                }}
+              />
               <Stack.Screen name="Register" component={RegisterScreen} />
-              <Stack.Screen name="Preferences" component={PreferencesScreen} />
+              <Stack.Screen name="Welcome" component={WelcomeScreen} />
+              <Stack.Screen name="Details" component={DetailsScreen} />
             </>
           )}
         </Stack.Navigator>

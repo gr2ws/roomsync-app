@@ -1,9 +1,13 @@
-import { View, Text, Image, TouchableOpacity, ScrollView, Modal, TextInput } from 'react-native';
+import { View, Text, Image, TouchableOpacity, ScrollView, Modal, TextInput, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useState } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useLoggedIn } from '../store/useLoggedIn';
 
 export default function ProfileScreen() {
+  const { setIsLoggedIn, userProfile } = useLoggedIn();
   const [isEditModalVisible, setIsEditModalVisible] = useState(false);
+  const [tapCount, setTapCount] = useState(0);
   const [userInfo, setUserInfo] = useState({
     name: 'Juan Dela Cruz',
     email: 'juandelacruz@example.com',
@@ -32,6 +36,39 @@ export default function ProfileScreen() {
   const handleSaveProfile = () => {
     setUserInfo(editedInfo);
     setIsEditModalVisible(false);
+  };
+
+  const handleNameTap = () => {
+    const newCount = tapCount + 1;
+    setTapCount(newCount);
+
+    if (newCount >= 5) {
+      Alert.alert(
+        'Developer Options',
+        'Reset onboarding and logout?',
+        [
+          {
+            text: 'Cancel',
+            onPress: () => setTapCount(0),
+            style: 'cancel',
+          },
+          {
+            text: 'Reset',
+            onPress: async () => {
+              if (userProfile?.user_id) {
+                await AsyncStorage.removeItem(`user_${userProfile.user_id}_has_completed_onboarding`);
+              }
+              setIsLoggedIn(false);
+              setTapCount(0);
+            },
+            style: 'destructive',
+          },
+        ]
+      );
+    }
+
+    // Reset tap count after 2 seconds
+    setTimeout(() => setTapCount(0), 2000);
   };
 
   const EditProfileModal = () => (
@@ -130,7 +167,9 @@ export default function ProfileScreen() {
           </View>
 
           {/* User Name and Status */}
-          <Text className="mt-4 text-2xl font-bold text-gray-900">{userInfo.name}</Text>
+          <TouchableOpacity onPress={handleNameTap} activeOpacity={0.8}>
+            <Text className="mt-4 text-2xl font-bold text-gray-900">{userInfo.name}</Text>
+          </TouchableOpacity>
           <Text className="text-gray-600">Student</Text>
         </View>
 

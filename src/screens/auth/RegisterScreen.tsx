@@ -176,13 +176,9 @@ export default function RegisterScreen({ navigation }: Props) {
 
       setLoading(false);
 
-      // Route based on role
-      if ((userRole ?? 'renter') === 'renter') {
-        navigation.navigate('Preferences');
-      } else {
-        setIsLoggedIn(true);
-        navigation.navigate('Home');
-      }
+      // Navigate to Welcome screen for all users
+      // Navigate to Welcome screen
+      navigation.navigate('Welcome');
     } catch (error) {
       setLoading(false);
       Alert.alert(
@@ -201,7 +197,9 @@ export default function RegisterScreen({ navigation }: Props) {
     }
   };
 
-  const handleLogin = () => {
+  const handleLogin = async () => {
+    // Set the onboarding flag so next time app opens it goes to Auth screen
+    await AsyncStorage.setItem('app_has_seen_onboarding', 'true');
     navigation.navigate('Auth');
   };
 
@@ -215,18 +213,19 @@ export default function RegisterScreen({ navigation }: Props) {
 
   return (
     <KeyboardAvoidingView
-      className="bg-background flex-1"
+      className="flex-1 bg-background"
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       keyboardVerticalOffset={0}>
       <ScrollView
-        contentContainerClassName=" pb-8 pt-2"
+        contentContainerClassName="px-6 pb-8 pt-2"
+        contentContainerStyle={{ paddingTop: Platform.OS === 'ios' ? 36 : 8 }}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}>
         <BackButton onPress={handleGoBack} />
-        <Text className="text-primary mb-2 mt-6 text-center text-4xl font-bold">
+        <Text className="mb-2 mt-6 text-center text-4xl font-bold text-primary">
           Create your account
         </Text>
-        <Text className="text-muted-foreground mb-8 text-center text-base">
+        <Text className="mb-8 text-center text-base text-muted-foreground">
           Your perfect place awaits
         </Text>
 
@@ -285,7 +284,7 @@ export default function RegisterScreen({ navigation }: Props) {
 
           <View className="mt-6 items-center">
             <View className="flex-row">
-              <Text className="text-muted-foreground text-sm">Already have an account? </Text>
+              <Text className="text-sm text-muted-foreground">Already have an account? </Text>
               <Button onPress={handleLogin} variant="text">
                 Log in
               </Button>
@@ -294,13 +293,13 @@ export default function RegisterScreen({ navigation }: Props) {
 
           <View className="mt-4 items-center">
             <View className="flex-row flex-wrap justify-center">
-              <Text className="text-muted-foreground text-center text-xs">
+              <Text className="text-center text-xs text-muted-foreground">
                 By creating an account, you agree with our{' '}
               </Text>
               <Button onPress={handleTermsOfService} variant="text" size="sm">
                 Terms of Service
               </Button>
-              <Text className="text-muted-foreground text-xs"> and </Text>
+              <Text className="text-xs text-muted-foreground"> and </Text>
               <Button onPress={handlePrivacyPolicy} variant="text" size="sm">
                 Privacy Policy
               </Button>
