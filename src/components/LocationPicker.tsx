@@ -1,5 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, Modal, TextInput, Alert, ActivityIndicator, Platform } from 'react-native';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  Modal,
+  TextInput,
+  Alert,
+  ActivityIndicator,
+  Platform,
+} from 'react-native';
 import { MapPin, X } from 'lucide-react-native';
 import * as Location from 'expo-location';
 import Button from './Button';
@@ -39,7 +48,10 @@ const LocationPicker: React.FC<LocationPickerProps> = ({
   label,
 }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedLocation, setSelectedLocation] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [selectedLocation, setSelectedLocation] = useState<{
+    latitude: number;
+    longitude: number;
+  } | null>(null);
   const [region, setRegion] = useState<Region>({
     latitude: 10.3157, // Dumaguete City default
     longitude: 123.8854,
@@ -98,9 +110,7 @@ const LocationPicker: React.FC<LocationPickerProps> = ({
       const results = await Location.reverseGeocodeAsync({ latitude, longitude });
       if (results && results.length > 0) {
         const address = results[0];
-        const name = [address.street, address.city, address.region]
-          .filter(Boolean)
-          .join(', ');
+        const name = [address.street, address.city, address.region].filter(Boolean).join(', ');
         setLocationName(name || 'Selected Location');
       }
     } catch (error) {
@@ -157,11 +167,10 @@ const LocationPicker: React.FC<LocationPickerProps> = ({
 
       {error && <Text className="mt-1 text-sm text-destructive">{error}</Text>}
 
-      <Modal
-        visible={isModalOpen}
-        animationType="slide"
-        onRequestClose={handleCancel}>
-        <View className="flex-1 bg-background">
+      <Modal visible={isModalOpen} animationType="slide" onRequestClose={handleCancel}>
+        <View
+          className="flex-1 bg-background"
+          style={{ paddingTop: Platform.OS === 'ios' ? 35 : 0 }}>
           {/* Header */}
           <View className="flex-row items-center justify-between border-b border-border bg-card px-4 py-3">
             <Text className="text-lg font-semibold text-card-foreground">Select Location</Text>
@@ -177,9 +186,7 @@ const LocationPicker: React.FC<LocationPickerProps> = ({
               region={region}
               onRegionChangeComplete={setRegion}
               onPress={handleMapPress}>
-              {selectedLocation && Marker && (
-                <Marker coordinate={selectedLocation} />
-              )}
+              {selectedLocation && Marker && <Marker coordinate={selectedLocation} />}
             </MapView>
           ) : (
             <View className="flex-1 items-center justify-center bg-muted p-6">
@@ -188,7 +195,7 @@ const LocationPicker: React.FC<LocationPickerProps> = ({
                 Map Not Available
               </Text>
               <Text className="mt-2 text-center text-sm text-muted-foreground">
-                Maps require a development build. Run "npm run android" or "npm run ios" to use this feature.
+                Maps require a development build.
               </Text>
               <Text className="mt-4 text-center text-xs text-muted-foreground">
                 Selected: {locationName || 'No location selected'}
@@ -197,7 +204,9 @@ const LocationPicker: React.FC<LocationPickerProps> = ({
           )}
 
           {/* Bottom Controls */}
-          <View className="border-t border-border bg-card p-4">
+          <View
+            className="border-t border-border bg-card p-4"
+            style={{ paddingBottom: Platform.OS === 'ios' ? 35 : 10 }}>
             {MapView && (
               <TouchableOpacity
                 onPress={getCurrentLocation}
@@ -208,7 +217,9 @@ const LocationPicker: React.FC<LocationPickerProps> = ({
                 ) : (
                   <>
                     <MapPin size={16} color="#644A40" />
-                    <Text className="ml-2 text-sm font-medium text-primary">Use Current Location</Text>
+                    <Text className="ml-2 text-sm font-medium text-primary">
+                      Use Current Location
+                    </Text>
                   </>
                 )}
               </TouchableOpacity>

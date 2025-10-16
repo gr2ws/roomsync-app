@@ -13,7 +13,7 @@ export default function BackButton({ onPress, label = 'Back' }: BackButtonProps)
       className="flex-row items-center gap-1 self-start px-4 py-2"
       activeOpacity={0.7}>
       <Ionicons name="arrow-back" size={20} color="rgb(100, 74, 64)" />
-      <Text className="text-primary text-base font-medium">{label}</Text>
+      <Text className="text-base font-medium text-primary">{label}</Text>
     </TouchableOpacity>
   );
 }

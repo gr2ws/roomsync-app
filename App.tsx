@@ -1,3 +1,5 @@
+import 'react-native-gesture-handler';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { NavigationContainer } from '@react-navigation/native';
 import {
   createBottomTabNavigator,
@@ -6,6 +8,7 @@ import {
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import { Platform } from 'react-native';
+
 import ProfileScreen from './src/screens/ProfileScreen';
 import NotificationsScreen from './src/screens/NotificationsScreen';
 import { RootStackParamList, RootTabParamList } from './src/utils/navigation';
@@ -22,6 +25,7 @@ import IntroductionScreen from './src/screens/auth/IntroductionScreen';
 import RoleSelectionScreen from './src/screens/auth/RoleSelectionScreen';
 import WelcomeScreen from './src/screens/auth/WelcomeScreen';
 import DetailsScreen from './src/screens/auth/DetailsScreen';
+import PreferencesScreen from './src/screens/auth/PreferencesScreen';
 import FeedScreen from './src/screens/renter/FeedScreen';
 import ApplicationsScreen from './src/screens/renter/ApplicationsScreen';
 import ChatScreen from './src/screens/renter/ChatScreen';
@@ -301,36 +305,42 @@ export default function App() {
   }
 
   return (
-    <MainScaffold>
-      <NavigationContainer>
-        <Stack.Navigator initialRouteName={initialRoute} screenOptions={{ headerShown: false }}>
-          {isLoggedIn ? (
-            <Stack.Screen name="Home" component={MainApp} />
-          ) : (
-            <>
-              <Stack.Screen
-                name="Introduction"
-                component={IntroductionScreen}
-                options={{
-                  animationTypeForReplace: 'pop',
-                }}
-              />
-              <Stack.Screen name="RoleSelection" component={RoleSelectionScreen} />
-              <Stack.Screen
-                name="Auth"
-                component={AuthScreen}
-                options={{
-                  animation: 'slide_from_left',
-                }}
-              />
-              <Stack.Screen name="Register" component={RegisterScreen} />
-              <Stack.Screen name="Welcome" component={WelcomeScreen} />
-              <Stack.Screen name="Details" component={DetailsScreen} />
-            </>
-          )}
-        </Stack.Navigator>
-        <StatusBar style="auto" />
-      </NavigationContainer>
-    </MainScaffold>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <MainScaffold>
+        <NavigationContainer>
+          <Stack.Navigator initialRouteName={initialRoute} screenOptions={{ headerShown: false }}>
+            {isLoggedIn ? (
+              <>
+                <Stack.Screen name="Home" component={MainApp} />
+                <Stack.Screen name="Preferences" component={PreferencesScreen} />
+              </>
+            ) : (
+              <>
+                <Stack.Screen
+                  name="Introduction"
+                  component={IntroductionScreen}
+                  options={{
+                    animationTypeForReplace: 'pop',
+                  }}
+                />
+                <Stack.Screen name="RoleSelection" component={RoleSelectionScreen} />
+                <Stack.Screen
+                  name="Auth"
+                  component={AuthScreen}
+                  options={{
+                    animation: 'slide_from_left',
+                  }}
+                />
+                <Stack.Screen name="Register" component={RegisterScreen} />
+                <Stack.Screen name="Welcome" component={WelcomeScreen} />
+                <Stack.Screen name="Details" component={DetailsScreen} />
+                <Stack.Screen name="Preferences" component={PreferencesScreen} />
+              </>
+            )}
+          </Stack.Navigator>
+          <StatusBar style="auto" />
+        </NavigationContainer>
+      </MainScaffold>
+    </GestureHandlerRootView>
   );
 }

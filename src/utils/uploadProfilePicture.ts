@@ -25,24 +25,23 @@ export async function uploadProfilePicture(
     const fileData = new Uint8Array(arrayBuffer);
 
     // Upload to Supabase Storage
-    const { data, error } = await supabase.storage
-      .from('user-profile')
-      .upload(filePath, fileData, {
-        contentType: `image/${fileExtension === 'jpg' ? 'jpeg' : fileExtension}`,
-        upsert: true, // Overwrite existing file
-      });
+    const { data, error } = await supabase.storage.from('user-profile').upload(filePath, fileData, {
+      contentType: `image/${fileExtension === 'jpg' ? 'jpeg' : fileExtension}`,
+      upsert: true, // Overwrite existing file
+    });
 
     if (error) {
       console.error('Error uploading profile picture:', error);
       return null;
     }
 
-    // Get public URL
-    const { data: publicUrlData } = supabase.storage
-      .from('user-profile')
-      .getPublicUrl(filePath);
+    // Get public URL with cache-busting timestamp
+    const { data: publicUrlData } = supabase.storage.from('user-profile').getPublicUrl(filePath);
 
-    return publicUrlData.publicUrl;
+    // Add timestamp to bust React Native image cache
+    const urlWithCacheBuster = `${publicUrlData.publicUrl}?t=${Date.now()}`;
+
+    return urlWithCacheBuster;
   } catch (error) {
     console.error('Unexpected error uploading profile picture:', error);
     return null;

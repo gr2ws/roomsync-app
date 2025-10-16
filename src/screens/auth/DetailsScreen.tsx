@@ -7,7 +7,9 @@ import ProfilePicturePicker from '../../components/ProfilePicturePicker';
 import RadioGroup from '../../components/RadioGroup';
 import LocationPicker from '../../components/LocationPicker';
 import DatePicker from '../../components/DatePicker';
+import InfoBox from '../../components/InfoBox';
 import { StackNavigationProp } from '@react-navigation/stack';
+import { Sparkles } from 'lucide-react-native';
 import { RootStackParamList } from '../../utils/navigation';
 import { useLoggedIn } from '../../store/useLoggedIn';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -79,9 +81,13 @@ export default function DetailsScreen({ navigation }: Props) {
   });
 
   const handleSkip = async () => {
-    // Set onboarding flag without saving
-    await AsyncStorage.setItem('hasCompletedOnboarding', 'true');
-    setIsLoggedIn(true);
+    // Navigate to Preferences for renters, otherwise set logged in
+    if (userRole === 'renter') {
+      navigation.navigate('Preferences');
+    } else {
+      await AsyncStorage.setItem('hasCompletedOnboarding', 'true');
+      setIsLoggedIn(true);
+    }
   };
 
   const handleSaveDetails = async () => {
@@ -172,7 +178,12 @@ export default function DetailsScreen({ navigation }: Props) {
     // Set onboarding flag
     await AsyncStorage.setItem('hasCompletedOnboarding', 'true');
 
-    setIsLoggedIn(true);
+    // Navigate to Preferences for renters, otherwise set logged in
+    if (userRole === 'renter') {
+      navigation.navigate('Preferences');
+    } else {
+      setIsLoggedIn(true);
+    }
   };
 
   return (
@@ -207,15 +218,11 @@ export default function DetailsScreen({ navigation }: Props) {
         {/* Renter-specific fields */}
         {userRole === 'renter' && (
           <View className="flex-1 gap-4">
-            <View className="rounded-lg border border-primary bg-secondary p-4">
-              <Text className="mb-2 text-lg font-semibold text-primary">
-                Find Your Perfect Place
-              </Text>
-              <Text className="text-base leading-6 text-muted-foreground">
-                These preferences are optional, but they help us recommend rentals that match you
-                the best. The more you share, the more we can personalize your search!
-              </Text>
-            </View>
+            <InfoBox
+              icon={Sparkles}
+              title="Find Your Perfect Place"
+              description="These preferences are optional, but they help us recommend rentals that match you the best. The more you share, the more we can personalize your search!"
+            />
             <View>
               <Text className="mb-2 text-base font-medium text-foreground">
                 Monthly Budget Range

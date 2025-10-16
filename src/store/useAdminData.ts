@@ -59,7 +59,8 @@ const initialUsers: AdminUser[] = [
     propertiesListed: 3,
     applications: 0,
     lastActive: '2 hours ago',
-    avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&h=150&fit=crop&crop=face',
+    avatarUrl:
+      'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&h=150&fit=crop&crop=face',
   },
   {
     id: 2,
@@ -71,7 +72,8 @@ const initialUsers: AdminUser[] = [
     propertiesListed: 0,
     applications: 5,
     lastActive: '1 day ago',
-    avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face',
+    avatarUrl:
+      'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face',
   },
   {
     id: 3,
@@ -83,7 +85,8 @@ const initialUsers: AdminUser[] = [
     propertiesListed: 2,
     applications: 3,
     lastActive: '30 minutes ago',
-    avatarUrl: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150&h=150&fit=crop&crop=face',
+    avatarUrl:
+      'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150&h=150&fit=crop&crop=face',
   },
   {
     id: 4,
@@ -95,7 +98,8 @@ const initialUsers: AdminUser[] = [
     propertiesListed: 1,
     applications: 0,
     lastActive: '3 days ago',
-    avatarUrl: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face',
+    avatarUrl:
+      'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face',
   },
   {
     id: 5,
@@ -107,7 +111,8 @@ const initialUsers: AdminUser[] = [
     propertiesListed: 0,
     applications: 8,
     lastActive: '1 hour ago',
-    avatarUrl: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150&h=150&fit=crop&crop=face',
+    avatarUrl:
+      'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150&h=150&fit=crop&crop=face',
   },
   {
     id: 6,
@@ -119,7 +124,8 @@ const initialUsers: AdminUser[] = [
     propertiesListed: 4,
     applications: 0,
     lastActive: '4 hours ago',
-    avatarUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&h=150&fit=crop&crop=face',
+    avatarUrl:
+      'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&h=150&fit=crop&crop=face',
   },
 ];
 
@@ -159,5 +165,3 @@ export const useAdminData = create<AdminDataState>((set, get) => ({
     }));
   },
 }));
-
-

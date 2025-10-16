@@ -10,6 +10,9 @@ import ProfilePicturePicker from '../components/ProfilePicturePicker';
 import RadioGroup from '../components/RadioGroup';
 import LocationPicker from '../components/LocationPicker';
 import DatePicker from '../components/DatePicker';
+import { useNavigation } from '@react-navigation/native';
+import { StackNavigationProp } from '@react-navigation/stack';
+import { RootStackParamList } from '../utils/navigation';
 
 // Schema for renters
 const renterSchema = z
@@ -52,7 +55,10 @@ const ownerSchema = z.object({
 type RenterFormFields = z.infer<typeof renterSchema>;
 type OwnerFormFields = z.infer<typeof ownerSchema>;
 
+type ProfileScreenNavigationProp = StackNavigationProp<RootStackParamList>;
+
 export default function ProfileScreen() {
+  const navigation = useNavigation<ProfileScreenNavigationProp>();
   const { setIsLoggedIn, userProfile, setUserProfile, userRole } = useLoggedIn();
   const [tapCount, setTapCount] = useState(0);
 
@@ -453,6 +459,12 @@ export default function ProfileScreen() {
           <Button onPress={handleSaveDetails} variant="primary">
             Save Details
           </Button>
+
+          {userRole === 'renter' && (
+            <Button onPress={() => navigation.navigate('Preferences', { fromProfile: true })} variant="secondary">
+              Edit Preferences
+            </Button>
+          )}
 
           <Button onPress={handleLogout} variant="secondary">
             Log Out

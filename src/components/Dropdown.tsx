@@ -45,14 +45,16 @@ const Dropdown: React.FC<DropdownProps> = ({
 
       {error && <Text className="mt-1 text-sm text-destructive">{error}</Text>}
 
-      <Modal visible={isOpen} transparent animationType="fade" onRequestClose={() => setIsOpen(false)}>
+      <Modal
+        visible={isOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setIsOpen(false)}>
         <Pressable
           className="flex-1 items-center justify-center bg-black/50"
           onPress={() => setIsOpen(false)}>
           <View className="mx-6 w-4/5 max-w-sm rounded-lg bg-card p-4">
-            <Text className="mb-4 text-lg font-semibold text-card-foreground">
-              {placeholder}
-            </Text>
+            <Text className="mb-4 text-lg font-semibold text-card-foreground">{placeholder}</Text>
             <FlatList
               data={options}
               keyExtractor={(item) => item}
@@ -61,7 +63,7 @@ const Dropdown: React.FC<DropdownProps> = ({
                   onPress={() => handleSelect(item)}
                   className={`rounded-lg px-4 py-3 ${item === value ? 'bg-primary' : ''}`}>
                   <Text
-                    className={`text-base ${item === value ? 'text-white font-semibold' : 'text-card-foreground'}`}>
+                    className={`text-base ${item === value ? 'font-semibold text-white' : 'text-card-foreground'}`}>
                     {item}
                   </Text>
                 </TouchableOpacity>

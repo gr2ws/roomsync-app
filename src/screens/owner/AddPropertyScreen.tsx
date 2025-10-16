@@ -26,7 +26,7 @@ export default function AddPropertyScreen() {
     price: '',
     rooms: '',
     bathrooms: '',
-    description: ''
+    description: '',
   });
   const [amenities] = useState<Amenity[]>([
     { id: '1', name: 'WiFi', selected: false },
@@ -43,35 +43,31 @@ export default function AddPropertyScreen() {
   };
 
   const renderFormField = (
-    label: string, 
-    placeholder: string, 
+    label: string,
+    placeholder: string,
     icon: React.ReactNode,
     field: keyof FormData,
     multiline?: boolean,
     prefix?: string
   ) => (
     <View className="mb-6">
-      <Text className="text-sm font-medium text-gray-700 mb-2">{label}</Text>
-      <View className="flex-row items-center border border-gray-300 rounded-lg bg-white">
-        {icon && (
-          <View className="p-3.5 border-r border-gray-300">
-            {icon}
-          </View>
-        )}
-        <View className="flex-row items-center flex-1">
-          {prefix && (
-            <Text className="text-gray-700 text-base pl-4">
-              {prefix}
-            </Text>
-          )}
+      <Text className="mb-2 text-sm font-medium text-gray-700">{label}</Text>
+      <View className="flex-row items-center rounded-lg border border-gray-300 bg-white">
+        {icon && <View className="border-r border-gray-300 p-3.5">{icon}</View>}
+        <View className="flex-1 flex-row items-center">
+          {prefix && <Text className="pl-4 text-base text-gray-700">{prefix}</Text>}
           <TextInput
             placeholder={placeholder}
             value={formData[field]}
-            onChangeText={(text) => setFormData(prev => ({ ...prev, [field]: text }))}
+            onChangeText={(text) => setFormData((prev) => ({ ...prev, [field]: text }))}
             className="flex-1 px-4 py-3"
             multiline={multiline}
             numberOfLines={multiline ? 3 : 1}
-            keyboardType={field === 'price' || field === 'rooms' || field === 'bathrooms' ? 'numeric' : 'default'}
+            keyboardType={
+              field === 'price' || field === 'rooms' || field === 'bathrooms'
+                ? 'numeric'
+                : 'default'
+            }
           />
         </View>
       </View>
@@ -80,11 +76,14 @@ export default function AddPropertyScreen() {
 
   const handleSubmit = () => {
     console.log('Form Data:', formData);
-    console.log('Selected Amenities:', amenities.filter(a => a.selected));
+    console.log(
+      'Selected Amenities:',
+      amenities.filter((a) => a.selected)
+    );
   };
 
   const toggleAmenity = (id: string) => {
-    const newAmenities = amenities.map(amenity => 
+    const newAmenities = amenities.map((amenity) =>
       amenity.id === id ? { ...amenity, selected: !amenity.selected } : amenity
     );
     // Update amenities state here
@@ -96,27 +95,22 @@ export default function AddPropertyScreen() {
         {/* Header */}
         <View className="mb-8">
           <Text className="text-2xl font-bold text-gray-900">Add New Property</Text>
-          <Text className="text-gray-600 mt-2">Fill in the details of your property</Text>
+          <Text className="mt-2 text-gray-600">Fill in the details of your property</Text>
         </View>
 
         {/* Image Upload Section */}
         <View className="mb-8">
-          <Text className="text-sm font-medium text-gray-700 mb-3">Property Images</Text>
+          <Text className="mb-3 text-sm font-medium text-gray-700">Property Images</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
             <View className="flex-row space-x-3">
               {images.map((image, index) => (
-                <Image
-                  key={index}
-                  source={{ uri: image }}
-                  className="w-24 h-24 rounded-lg"
-                />
+                <Image key={index} source={{ uri: image }} className="h-24 w-24 rounded-lg" />
               ))}
               <TouchableOpacity
                 onPress={handleAddImage}
-                className="w-24 h-24 bg-white border-2 border-dashed border-gray-300 rounded-lg items-center justify-center"
-              >
+                className="h-24 w-24 items-center justify-center rounded-lg border-2 border-dashed border-gray-300 bg-white">
                 <Camera size={24} color="#6B7280" />
-                <Text className="text-sm text-gray-500 mt-1">Add Photo</Text>
+                <Text className="mt-1 text-sm text-gray-500">Add Photo</Text>
               </TouchableOpacity>
             </View>
           </ScrollView>
@@ -137,7 +131,7 @@ export default function AddPropertyScreen() {
           <MapPin size={20} color="#6B7280" />,
           'address'
         )}
-        
+
         {/* Monthly Rent */}
         {renderFormField(
           'Monthly Rent',
@@ -149,13 +143,8 @@ export default function AddPropertyScreen() {
         )}
 
         {/* Rooms */}
-        {renderFormField(
-          'Rooms',
-          'No. of rooms',
-          <BedDouble size={20} color="#6B7280" />,
-          'rooms'
-        )}
-        
+        {renderFormField('Rooms', 'No. of rooms', <BedDouble size={20} color="#6B7280" />, 'rooms')}
+
         {/* Bathrooms */}
         {renderFormField(
           'Bathrooms',
@@ -175,21 +164,16 @@ export default function AddPropertyScreen() {
 
         {/* Amenities */}
         <View className="mb-8">
-          <Text className="text-sm font-medium text-gray-700 mb-3">Amenities</Text>
+          <Text className="mb-3 text-sm font-medium text-gray-700">Amenities</Text>
           <View className="flex-row flex-wrap gap-3">
             {amenities.map((amenity) => (
               <TouchableOpacity
                 key={amenity.id}
                 onPress={() => toggleAmenity(amenity.id)}
-                className={`px-4 py-2 rounded-full border ${
-                  amenity.selected ? 'bg-blue-50 border-blue-500' : 'border-gray-300 bg-white'
-                }`}
-              >
-                <Text
-                  className={`text-sm ${
-                    amenity.selected ? 'text-blue-500' : 'text-gray-700'
-                  }`}
-                >
+                className={`rounded-full border px-4 py-2 ${
+                  amenity.selected ? 'border-blue-500 bg-blue-50' : 'border-gray-300 bg-white'
+                }`}>
+                <Text className={`text-sm ${amenity.selected ? 'text-blue-500' : 'text-gray-700'}`}>
                   {amenity.name}
                 </Text>
               </TouchableOpacity>
@@ -198,14 +182,9 @@ export default function AddPropertyScreen() {
         </View>
 
         {/* Submit Button */}
-        <Button
-          variant="primary"
-          size="lg"
-          className="mt-6 mb-4"
-          onPress={handleSubmit}
-        >
+        <Button variant="primary" size="lg" className="mb-4 mt-6" onPress={handleSubmit}>
           <View className="flex-row items-center justify-center">
-            <Text className="text-white font-semibold text-base">List Property</Text>
+            <Text className="text-base font-semibold text-white">List Property</Text>
           </View>
         </Button>
       </View>
