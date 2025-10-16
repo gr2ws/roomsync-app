@@ -8,6 +8,7 @@ import { RootStackParamList } from '../../utils/navigation';
 import { useState } from 'react';
 import { supabase } from '../../utils/supabase';
 import { z } from 'zod';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 type RegisterScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Register'>;
 
@@ -198,8 +199,7 @@ export default function RegisterScreen({ navigation }: Props) {
   };
 
   const handleLogin = async () => {
-    // Set the onboarding flag so next time app opens it goes to Auth screen
-    await AsyncStorage.setItem('app_has_seen_onboarding', 'true');
+    // Navigate to Auth screen
     navigation.navigate('Auth');
   };
 

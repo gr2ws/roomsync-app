@@ -20,14 +20,14 @@ export default function AuthScreen({ navigation }: Props) {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [authenticating, setAuthenticating] = useState(false);
-  const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState(false);
+  const [hasSeenIntroduction, setHasSeenIntroduction] = useState(false);
 
   useEffect(() => {
-    const checkOnboarding = async () => {
-      const onboardingStatus = await AsyncStorage.getItem('hasCompletedOnboarding');
-      setHasCompletedOnboarding(onboardingStatus === 'true');
+    const checkIntroduction = async () => {
+      const introStatus = await AsyncStorage.getItem('hasSeenIntroduction');
+      setHasSeenIntroduction(introStatus === 'true');
     };
-    checkOnboarding();
+    checkIntroduction();
   }, []);
 
   const handleLogin = async () => {
@@ -66,8 +66,10 @@ export default function AuthScreen({ navigation }: Props) {
     setUserRole(userData.user_type);
     setUserProfile(userData);
 
-    // Check if user has completed onboarding
-    const hasCompletedOnboarding = await AsyncStorage.getItem('hasCompletedOnboarding');
+    // Check if THIS user has completed onboarding (user-specific)
+    const hasCompletedOnboarding = await AsyncStorage.getItem(
+      `hasCompletedOnboarding_${userData.auth_id}`
+    );
 
     // Keep loading and authenticating states true until navigation
     setLoading(false);
@@ -84,19 +86,14 @@ export default function AuthScreen({ navigation }: Props) {
   };
 
   const handleSignUp = async () => {
-    // Reset onboarding flag so user goes through the full onboarding flow
-    try {
-      await AsyncStorage.setItem('hasCompletedOnboarding', 'false');
-    } catch (error) {
-      console.error('Error resetting onboarding flag:', error);
-    }
     // Navigate to Introduction screen to start onboarding, pass flag to show back button
+    // Note: No need to reset any flags - user-specific onboarding will be tracked after registration
     navigation.navigate('Introduction', { fromAuth: true });
   };
 
   return (
     <View className="flex-1 bg-background" style={{ paddingTop: Platform.OS === 'ios' ? 20 : 0 }}>
-      {!hasCompletedOnboarding && (
+      {!hasSeenIntroduction && (
         <View className="absolute left-0 top-10 z-10">
           <BackButton onPress={() => navigation.goBack()} />
         </View>

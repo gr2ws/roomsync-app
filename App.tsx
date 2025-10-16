@@ -22,6 +22,7 @@ import IntroductionScreen from './src/screens/auth/IntroductionScreen';
 import RoleSelectionScreen from './src/screens/auth/RoleSelectionScreen';
 import WelcomeScreen from './src/screens/auth/WelcomeScreen';
 import DetailsScreen from './src/screens/auth/DetailsScreen';
+import PreferencesScreen from './src/screens/auth/PreferencesScreen';
 import FeedScreen from './src/screens/renter/FeedScreen';
 import ApplicationsScreen from './src/screens/renter/ApplicationsScreen';
 import ChatScreen from './src/screens/renter/ChatScreen';
@@ -275,8 +276,10 @@ export default function App() {
   useEffect(() => {
     const checkOnboarding = async () => {
       try {
-        const hasCompletedOnboarding = await AsyncStorage.getItem('hasCompletedOnboarding');
-        if (hasCompletedOnboarding === 'true') {
+        // Check if ANY user has completed onboarding on this device
+        // This is used to determine if we should show Introduction or go straight to Auth
+        const hasSeenIntro = await AsyncStorage.getItem('hasSeenIntroduction');
+        if (hasSeenIntro === 'true') {
           setInitialRoute('Auth');
         } else {
           setInitialRoute('Introduction');
@@ -326,6 +329,7 @@ export default function App() {
               <Stack.Screen name="Register" component={RegisterScreen} />
               <Stack.Screen name="Welcome" component={WelcomeScreen} />
               <Stack.Screen name="Details" component={DetailsScreen} />
+              <Stack.Screen name="Preferences" component={PreferencesScreen} />
             </>
           )}
         </Stack.Navigator>

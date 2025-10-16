@@ -23,14 +23,23 @@ const IntroductionScreen: React.FC<Props> = ({ navigation, route }) => {
 
   useEffect(() => {
     setUserRole('renter');
+    // Mark that intro has been seen when component mounts
+    const markIntroSeen = async () => {
+      try {
+        await AsyncStorage.setItem('hasSeenIntroduction', 'true');
+      } catch (error) {
+        console.error('Error setting introduction flag:', error);
+      }
+    };
+    markIntroSeen();
   }, [setUserRole]);
 
   const handleBackToAuth = async () => {
-    // Set onboarding to true when going back to Auth
+    // Mark that intro has been seen (device-wide, not user-specific)
     try {
-      await AsyncStorage.setItem('hasCompletedOnboarding', 'true');
+      await AsyncStorage.setItem('hasSeenIntroduction', 'true');
     } catch (error) {
-      console.error('Error setting onboarding flag:', error);
+      console.error('Error setting introduction flag:', error);
     }
     navigation.replace('Auth');
   };
