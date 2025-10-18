@@ -1,21 +1,19 @@
 // AdminAnalyticsScreen.tsx
 // Analytics dashboard for admin panel
-
-import { useMemo } from 'react';
-import { View, Text, ScrollView, Dimensions, Platform } from 'react-native';
-import { useSafeAreaInsets, SafeAreaView } from 'react-native-safe-area-context';
+import { View, Text, ScrollView, Dimensions, Platform, StatusBar } from 'react-native';
+import { /* useSafeAreaInsets, SafeAreaView */ } from 'react-native-safe-area-context';
 import { useAdminData } from '../store/useAdminData';
 import { Ionicons } from '@expo/vector-icons';
 
 export default function AdminAnalyticsScreen() {
-  const insets = useSafeAreaInsets();
+  // const insets = useSafeAreaInsets();
   const { metrics } = useAdminData();
   const analyticsData = metrics;
 
   return (
-    <SafeAreaView
+    <View
       className="flex-1 bg-white"
-      style={{ paddingTop: Platform.OS === 'android' ? insets.top : 0 }}>
+      style={{ paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight ?? 0) : 0 }}>
       <ScrollView className="px-4 pb-4 pt-0" contentContainerStyle={{ paddingBottom: 0 }}>
         {/* Header */}
         <View className="mb-6 pt-0">
@@ -146,7 +144,7 @@ export default function AdminAnalyticsScreen() {
           </View>
         </AnalyticsSection>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -198,6 +196,5 @@ function MetricCard({
   );
 }
 
-/* ------------------- Constants ------------------- */
 const { width } = Dimensions.get('window');
 const CARD_WIDTH = (width - 48) / 2; // 2 cards per row with padding
