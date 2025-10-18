@@ -258,9 +258,7 @@ export default function AddPropertyScreen() {
         />
 
         {/* Pricing & Capacity */}
-        <Text className="mb-3 mt-2 text-lg font-semibold text-foreground">
-          Pricing & Capacity
-        </Text>
+        <Text className="mb-3 mt-2 text-lg font-semibold text-foreground">Pricing & Capacity</Text>
 
         <Input
           label="Monthly Rent (₱) *"
@@ -326,11 +324,7 @@ export default function AddPropertyScreen() {
         />
 
         {/* Submit Button */}
-        <Button
-          variant="primary"
-          className="mb-8 mt-6"
-          onPress={handleSubmit}
-          disabled={loading}>
+        <Button variant="primary" className="mb-8 mt-6" onPress={handleSubmit} disabled={loading}>
           {loading ? 'Submitting...' : 'Submit Property'}
         </Button>
       </ScrollView>

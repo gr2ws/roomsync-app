@@ -1,4 +1,6 @@
-import { View, Text, Alert, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, Alert, Platform } from 'react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLoggedIn } from '../../store/useLoggedIn';
 import Button from '../../components/Button';
 import BackButton from '../../components/BackButton';
@@ -44,6 +46,7 @@ type RegisterFormFields = z.infer<typeof registerSchema>;
 
 export default function RegisterScreen({ navigation }: Props) {
   const { setIsLoggedIn, setUserRole, setUserProfile, userRole } = useLoggedIn();
+  const insets = useSafeAreaInsets();
 
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -177,8 +180,10 @@ export default function RegisterScreen({ navigation }: Props) {
 
       setLoading(false);
 
+      // Set device flag - this device has now been onboarded
+      await AsyncStorage.setItem('DeviceOnboarded', 'true');
+
       // Navigate to Welcome screen for all users
-      // Navigate to Welcome screen
       navigation.navigate('Welcome');
     } catch (error) {
       setLoading(false);
@@ -199,7 +204,8 @@ export default function RegisterScreen({ navigation }: Props) {
   };
 
   const handleLogin = async () => {
-    // Navigate to Auth screen
+    // Set the device flag so next time app opens it goes to Auth screen
+    await AsyncStorage.setItem('DeviceOnboarded', 'true');
     navigation.navigate('Auth');
   };
 
@@ -212,15 +218,17 @@ export default function RegisterScreen({ navigation }: Props) {
   };
 
   return (
-    <KeyboardAvoidingView
+    <View
       className="flex-1 bg-background"
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={0}>
-      <ScrollView
-        contentContainerClassName="px-6 pb-8 pt-2"
-        contentContainerStyle={{ paddingTop: Platform.OS === 'ios' ? 36 : 8 }}
+      style={{ paddingTop: Platform.OS === 'ios' ? 0 : insets.top + 8 }}>
+      <KeyboardAwareScrollView
+        className="flex-1"
+        style={{ paddingTop: Platform.OS === 'ios' ? 40 : 0 }}
+        contentContainerClassName="px-6 pb-8"
         keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}>
+        showsVerticalScrollIndicator={true}
+        enableOnAndroid={true}
+        extraScrollHeight={20}>
         <BackButton onPress={handleGoBack} />
         <Text className="mb-2 mt-6 text-center text-4xl font-bold text-primary">
           Create your account
@@ -306,7 +314,7 @@ export default function RegisterScreen({ navigation }: Props) {
             </View>
           </View>
         </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+      </KeyboardAwareScrollView>
+    </View>
   );
 }

@@ -4,16 +4,17 @@ import { Ionicons } from '@expo/vector-icons';
 interface BackButtonProps {
   onPress: () => void;
   label?: string;
+  className?: string;
 }
 
-export default function BackButton({ onPress, label = 'Back' }: BackButtonProps) {
+export default function BackButton({ onPress, label = 'Back', className }: BackButtonProps) {
   return (
     <TouchableOpacity
       onPress={onPress}
-      className="flex-row items-center gap-1 self-start px-4 py-2"
+      className={`flex-row items-center gap-1 self-start px-4 py-2 ${className || ''}`}
       activeOpacity={0.7}>
       <Ionicons name="arrow-back" size={20} color="rgb(100, 74, 64)" />
-      <Text className="text-primary text-base font-medium">{label}</Text>
+      <Text className="text-base font-medium text-primary">{label}</Text>
     </TouchableOpacity>
   );
 }

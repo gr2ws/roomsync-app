@@ -1,3 +1,5 @@
+import 'react-native-gesture-handler';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { NavigationContainer } from '@react-navigation/native';
 import {
   createBottomTabNavigator,
@@ -6,6 +8,7 @@ import {
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import { Platform } from 'react-native';
+
 import ProfileScreen from './src/screens/ProfileScreen';
 import NotificationsScreen from './src/screens/NotificationsScreen';
 import { RootStackParamList, RootTabParamList } from './src/utils/navigation';
@@ -276,12 +279,20 @@ export default function App() {
   useEffect(() => {
     const checkOnboarding = async () => {
       try {
+<<<<<<< HEAD
         // Check if ANY user has completed onboarding on this device
         // This is used to determine if we should show Introduction or go straight to Auth
         const hasSeenIntro = await AsyncStorage.getItem('hasSeenIntroduction');
         if (hasSeenIntro === 'true') {
+=======
+        // Check device-specific flag first
+        const deviceOnboarded = await AsyncStorage.getItem('DeviceOnboarded');
+        if (deviceOnboarded === 'true') {
+          // Device has seen onboarding before, go to Auth
+>>>>>>> main
           setInitialRoute('Auth');
         } else {
+          // First time on this device, show Introduction
           setInitialRoute('Introduction');
         }
       } catch (error) {
@@ -304,6 +315,7 @@ export default function App() {
   }
 
   return (
+<<<<<<< HEAD
     <MainScaffold>
       <NavigationContainer>
         <Stack.Navigator initialRouteName={initialRoute} screenOptions={{ headerShown: false }}>
@@ -336,5 +348,44 @@ export default function App() {
         <StatusBar style="auto" />
       </NavigationContainer>
     </MainScaffold>
+=======
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <MainScaffold>
+        <NavigationContainer>
+          <Stack.Navigator initialRouteName={initialRoute} screenOptions={{ headerShown: false }}>
+            {isLoggedIn ? (
+              <>
+                <Stack.Screen name="Home" component={MainApp} />
+                <Stack.Screen name="Preferences" component={PreferencesScreen} />
+              </>
+            ) : (
+              <>
+                <Stack.Screen
+                  name="Introduction"
+                  component={IntroductionScreen}
+                  options={{
+                    animationTypeForReplace: 'pop',
+                  }}
+                />
+                <Stack.Screen name="RoleSelection" component={RoleSelectionScreen} />
+                <Stack.Screen
+                  name="Auth"
+                  component={AuthScreen}
+                  options={{
+                    animation: 'slide_from_left',
+                  }}
+                />
+                <Stack.Screen name="Register" component={RegisterScreen} />
+                <Stack.Screen name="Welcome" component={WelcomeScreen} />
+                <Stack.Screen name="Details" component={DetailsScreen} />
+                <Stack.Screen name="Preferences" component={PreferencesScreen} />
+              </>
+            )}
+          </Stack.Navigator>
+          <StatusBar style="auto" />
+        </NavigationContainer>
+      </MainScaffold>
+    </GestureHandlerRootView>
+>>>>>>> main
   );
 }

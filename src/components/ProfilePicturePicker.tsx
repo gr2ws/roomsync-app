@@ -10,17 +10,12 @@ interface ProfilePicturePickerProps {
   authId: string;
 }
 
-const ProfilePicturePicker: React.FC<ProfilePicturePickerProps> = ({
-  value,
-  onChange,
-  authId,
-}) => {
+const ProfilePicturePicker: React.FC<ProfilePicturePickerProps> = ({ value, onChange, authId }) => {
   const [isUploading, setIsUploading] = useState(false);
 
   const requestPermissions = async () => {
     const { status: cameraStatus } = await ImagePicker.requestCameraPermissionsAsync();
-    const { status: mediaLibraryStatus } =
-      await ImagePicker.requestMediaLibraryPermissionsAsync();
+    const { status: mediaLibraryStatus } = await ImagePicker.requestMediaLibraryPermissionsAsync();
 
     if (cameraStatus !== 'granted' || mediaLibraryStatus !== 'granted') {
       Alert.alert(

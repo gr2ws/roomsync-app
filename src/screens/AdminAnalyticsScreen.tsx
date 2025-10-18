@@ -2,13 +2,7 @@
 // Analytics dashboard for admin panel
 
 import { useMemo } from 'react';
-import {
-  View,
-  Text,
-  ScrollView,
-  Dimensions,
-  Platform,
-} from 'react-native';
+import { View, Text, ScrollView, Dimensions, Platform } from 'react-native';
 import { useSafeAreaInsets, SafeAreaView } from 'react-native-safe-area-context';
 import { useAdminData } from '../store/useAdminData';
 import { Ionicons } from '@expo/vector-icons';
@@ -19,13 +13,16 @@ export default function AdminAnalyticsScreen() {
   const analyticsData = metrics;
 
   return (
-    <SafeAreaView className="flex-1 bg-white" style={{ paddingTop: Platform.OS === 'android' ? insets.top : 0 }}>
+    <SafeAreaView
+      className="flex-1 bg-white"
+      style={{ paddingTop: Platform.OS === 'android' ? insets.top : 0 }}>
       <ScrollView className="px-4 pb-4 pt-0" contentContainerStyle={{ paddingBottom: 0 }}>
         {/* Header */}
         <View className="mb-6 pt-0">
-          <Text className="text-3xl font-bold text-gray-900 mb-2">Platform Analytics</Text>
-          <Text className="text-base text-gray-600 leading-6 mb-3">
-            Comprehensive analytics including user activity trends, most viewed listings, revenue metrics, and platform performance indicators.
+          <Text className="mb-2 text-3xl font-bold text-gray-900">Platform Analytics</Text>
+          <Text className="mb-3 text-base leading-6 text-gray-600">
+            Comprehensive analytics including user activity trends, most viewed listings, revenue
+            metrics, and platform performance indicators.
           </Text>
         </View>
 
@@ -38,12 +35,12 @@ export default function AdminAnalyticsScreen() {
               icon="people"
               color="#3B82F6"
             />
-              <MetricCard
-                title="Active Users"
-                value={analyticsData.userActivity.activeUsers.toLocaleString()}
-                icon="checkmark-circle"
-                color="#10B981"
-              />
+            <MetricCard
+              title="Active Users"
+              value={analyticsData.userActivity.activeUsers.toLocaleString()}
+              icon="checkmark-circle"
+              color="#10B981"
+            />
             <MetricCard
               title="New Users (This Month)"
               value={analyticsData.userActivity.newUsersThisMonth.toLocaleString()}
@@ -155,28 +152,48 @@ export default function AdminAnalyticsScreen() {
 
 /* ------------------- Component Definitions ------------------- */
 
-function AnalyticsSection({ title, icon, children }: { title: string; icon: string; children: React.ReactNode }) {
+function AnalyticsSection({
+  title,
+  icon,
+  children,
+}: {
+  title: string;
+  icon: string;
+  children: React.ReactNode;
+}) {
   return (
-    <View className="bg-white rounded-2xl p-5 mb-4 shadow-sm">
-      <View className="flex-row items-center mb-4">
+    <View className="mb-4 rounded-2xl bg-white p-5 shadow-sm">
+      <View className="mb-4 flex-row items-center">
         <Ionicons name={icon as any} size={20} color="#3B82F6" />
-        <Text className="text-lg font-semibold text-gray-900 ml-2">{title}</Text>
+        <Text className="ml-2 text-lg font-semibold text-gray-900">{title}</Text>
       </View>
-      <View>
-        {children}
-      </View>
+      <View>{children}</View>
     </View>
   );
 }
 
-function MetricCard({ title, value, icon, color }: { title: string; value: string; icon: string; color: string }) {
+function MetricCard({
+  title,
+  value,
+  icon,
+  color,
+}: {
+  title: string;
+  value: string;
+  icon: string;
+  color: string;
+}) {
   return (
-    <View className="bg-gray-50 rounded-xl p-4 mb-3 border border-gray-200" style={{ width: CARD_WIDTH - 25 }}>
-      <View className="flex-row items-center mb-2">
+    <View
+      className="mb-3 rounded-xl border border-gray-200 bg-gray-50 p-4"
+      style={{ width: CARD_WIDTH - 25 }}>
+      <View className="mb-2 flex-row items-center">
         <Ionicons name={icon as any} size={16} color={color} />
-        <Text className="text-xs text-gray-600 ml-1.5 mr-1.5 font-medium">{title}</Text>
+        <Text className="ml-1.5 mr-1.5 text-xs font-medium text-gray-600">{title}</Text>
       </View>
-      <Text className="text-lg font-bold" style={{ color }}>{value}</Text>
+      <Text className="text-lg font-bold" style={{ color }}>
+        {value}
+      </Text>
     </View>
   );
 }
