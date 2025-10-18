@@ -27,6 +27,9 @@ export default function AdminUserManagementScreen() {
   const [selectedVerification, setSelectedVerification] = useState<'all' | 'verified' | 'unverified'>('all');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
+  const [banConfirmVisible, setBanConfirmVisible] = useState(false);
+  const [userToBan, setUserToBan] = useState<AdminUser | null>(null);
+
   const { verifyUser } = useAdminData(); // stop using store users; display comes from supabase
 
   // Pagination state
@@ -79,11 +82,10 @@ const fetchUsers = async () => {
   }
 };
 
-
   useEffect(() => {
-    fetchUsers(page);
+    fetchUsers();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page]);
+  }, []);
 
   // Calculate user statistics (based on current page's users)
   const userStats = useMemo(() => {
@@ -100,7 +102,8 @@ const fetchUsers = async () => {
 // Apply all filters first
 const filteredUsers = useMemo(() => {
   return users
-    .filter((user) => user.role === 'renter' || user.role === 'owner')
+    .filter((user) => !user.isBanned) // hide banned users
+    .filter((user) => user.role === 'renter' || user.role === 'owner') // show only renters/owners (hide admins)
     .filter((user) => {
     const first_name = user.first_name?.toLowerCase() ?? '';
     const last_name = user.last_name?.toLowerCase() ?? '';
@@ -227,9 +230,39 @@ Should you find reason for us to consider an appeal from you, please send us an 
       });
     };
 
-  const handleBanUser = (userId: number) => {
-    console.log(`Banning user ${userId}`);
-  };
+
+    const handleBanUser = async (userId: number) => {
+      try {
+        const user = users.find((u) => u.id === userId);
+        if (!user) return;
+    
+        const { error } = await supabase
+          .from('users')
+          .update({ is_banned: true })
+          .eq('auth_id', user.auth_id);
+    
+        if (error) {
+          console.error('Ban update failed:', error);
+          setToastMessage('Failed to ban user');
+          setTimeout(() => setToastMessage(null), 2000);
+          return;
+        }
+    
+        setUsers((prev) =>
+          prev.map((u) =>
+            u.id === userId ? { ...u, isBanned: true } : u
+          )
+        );
+    
+        setToastMessage('User has been banned');
+        setTimeout(() => setToastMessage(null), 2000);
+      } catch (err) {
+        console.error('Unexpected error banning user:', err);
+        setToastMessage('Error banning user');
+        setTimeout(() => setToastMessage(null), 2000);
+      }
+    };
+    
 
   return (
     <View
@@ -386,12 +419,51 @@ Should you find reason for us to consider an appeal from you, please send us an 
             onView={() => handleViewUser(user.id)}
             onMessage={() => handleMessageUser(user.id)}
             onWarn={() => handleWarnUser(user.id)}
-            onBan={() => handleBanUser(user.id)}
-          />
-        ))}
-
+            onBan={() => {
+              setUserToBan(user);
+              setBanConfirmVisible(true);
+            }}
+            />
+          ))}
         </View>
       </ScrollView>
+
+       {banConfirmVisible && userToBan && (
+        <View className="absolute inset-0 z-50 flex items-center justify-center bg-black/50">
+          <View className="w-80 rounded-2xl bg-white p-6 shadow-lg">
+            <Text className="mb-3 text-lg font-semibold text-gray-900">Confirm Ban</Text>
+            <Text className="mb-6 text-sm text-gray-700">
+              Are you sure you want to ban{" "}
+              <Text className="font-bold">
+                {userToBan.first_name} {userToBan.last_name}
+              </Text>
+              ? This will immediately disable their access.
+            </Text>
+
+            <View className="flex-row justify-end gap-3">
+              <TouchableOpacity
+                className="rounded-lg bg-gray-200 px-4 py-2"
+                onPress={() => {
+                  setBanConfirmVisible(false);
+                  setUserToBan(null);
+                }}>
+                <Text className="text-sm font-medium text-gray-700">Cancel</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                className="rounded-lg bg-red-600 px-4 py-2"
+                onPress={async () => {
+                  setBanConfirmVisible(false);
+                  if (userToBan) await handleBanUser(userToBan.id);
+                  setUserToBan(null);
+                }}>
+                <Text className="text-sm font-medium text-white">Ban User</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      )}
+
       {toastMessage && (
         <View className="absolute bottom-6 left-0 right-0 items-center">
           <View className="rounded-full bg-emerald-600 px-4 py-2 shadow">
@@ -594,11 +666,16 @@ function UserCard({
           <Text className="ml-2 text-sm font-medium text-slate-800">Warn</Text>
         </TouchableOpacity>
         <TouchableOpacity
-          className="flex-row items-center rounded-lg bg-red-100 px-4 py-2"
-          onPress={onBan}>
-          <Ionicons name="chatbubble-outline" size={16} color="gray" />
-          <Text className="ml-2 text-sm font-medium text-slate-800">Ban</Text>
-        </TouchableOpacity>
+            className="flex-row items-center rounded-lg bg-red-100 px-4 py-2"
+            onPress={onBan}
+            disabled={user.isBanned}
+            style={{ opacity: user.isBanned ? 0.4 : 1 }}
+          >
+            <Ionicons name="close-circle-outline" size={16} color="#dc2626" />
+            <Text className="ml-2 text-sm font-medium text-red-700">
+              {user.isBanned ? 'Banned' : 'Ban'}
+            </Text>
+          </TouchableOpacity>
       </View>
     </View>
   );
