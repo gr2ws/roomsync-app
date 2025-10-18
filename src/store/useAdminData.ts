@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 
-export type AdminUserRole = 'renter' | 'property_owner';
+export type AdminUserRole = 'renter' | 'owner';
 
 export interface AdminUser {
   id: number;

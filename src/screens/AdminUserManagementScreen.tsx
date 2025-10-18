@@ -35,6 +35,11 @@ export default function AdminUserManagementScreen() {
   const [pageSize] = useState<number>(10);
   const [totalCount, setTotalCount] = useState<number>(0);
 
+  // Reset pagination when filters or search change
+useEffect(() => {
+  setPage(0);
+}, [selectedRole, selectedVerification, searchQuery]);
+
 const fetchUsers = async () => {
   try {
     const { data, error } = await supabase
@@ -94,7 +99,9 @@ const fetchUsers = async () => {
   // Filter users based on search and role (applies to current page)
 // Apply all filters first
 const filteredUsers = useMemo(() => {
-  return users.filter((user) => {
+  return users
+    .filter((user) => user.role === 'renter' || user.role === 'owner')
+    .filter((user) => {
     const first_name = user.first_name?.toLowerCase() ?? '';
     const last_name = user.last_name?.toLowerCase() ?? '';
     const name = `${first_name} ${last_name}`.trim();
@@ -124,13 +131,40 @@ const paginatedUsers = useMemo(() => {
 
 const totalPages = Math.max(1, Math.ceil(filteredUsers.length / pageSize));
 
+const handleVerifyUser = async (userId: number) => {
+  try {
+    // Find the user record
+    const user = users.find((u) => u.id === userId);
+    if (!user) return;
 
+    // Update the Supabase record
+    const { error } = await supabase
+      .from('users')
+      .update({ is_verified: true })
+      .eq('auth_id', user.auth_id);
 
-  const handleVerifyUser = (userId: number) => {
-    verifyUser(userId);
+    if (error) {
+      console.error('Verification update failed:', error);
+      setToastMessage('Failed to verify user');
+      setTimeout(() => setToastMessage(null), 2000);
+      return;
+    }
+
+    // Locally update state for instant UI feedback
+    setUsers((prev) =>
+      prev.map((u) =>
+        u.id === userId ? { ...u, isVerified: true } : u
+      )
+    );
+
     setToastMessage('User verified successfully!');
     setTimeout(() => setToastMessage(null), 2000);
-  };
+  } catch (err) {
+    console.error('Unexpected error verifying user:', err);
+    setToastMessage('Error verifying user');
+    setTimeout(() => setToastMessage(null), 2000);
+  }
+};
 
   const handleViewUser = (userId: number) => {
     console.log(`Viewing user ${userId}`);
@@ -260,8 +294,15 @@ const totalPages = Math.max(1, Math.ceil(filteredUsers.length / pageSize));
 
         {/* Pagination Controls */}
         <View className="mb-4 flex-row items-center justify-between px-2">
-          <Text className="text-sm text-gray-600">
-            Page {page + 1} of {totalPages} — Showing {users.length} of {totalCount}
+        <Text className="text-sm text-gray-600">
+            Page {page + 1} of {totalPages} — Showing{" "}
+            {filteredUsers.length === 0
+              ? 0
+              : `${page * pageSize + 1} to ${Math.min(
+                  (page + 1) * pageSize,
+                  filteredUsers.length
+                )}`}{" "}
+            of {filteredUsers.length}
           </Text>
           <View className="flex-row">
             <TouchableOpacity
@@ -369,32 +410,45 @@ function UserCard({
     }
   };
 
-const lastActiveDate: any = new Date(user.last_login_date);
-const now: any = new Date();
-const diffMs = now - lastActiveDate;
-const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-const isActive = true;
+  const lastActiveDate = new Date(user.last_login_date);
+  const now = new Date();
+  
+  // If invalid date, fallback to "a long time ago"
+  let isActive = false;
+  let lastActiveLabel = 'a long time ago';
+  
+  if (!isNaN(lastActiveDate.getTime())) {
+    const diffMs = now.getTime() - lastActiveDate.getTime();
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  
+    if (diffDays <= 0) {
+      // Same day
+      isActive = true;
+      lastActiveLabel = 'Today';
+    } else if (diffDays < 7) {
+      // Within the same week
+      isActive = false;
+      lastActiveLabel = `${diffDays} day${diffDays === 1 ? '' : 's'} ago`;
+    } else if (diffDays < 30) {
+      // Within the same month
+      const weeks = Math.floor(diffDays / 7);
+      isActive = false;
+      lastActiveLabel = `${weeks} week${weeks === 1 ? '' : 's'} ago`;
+    } else if (diffDays < 365) {
+      // Within the same year
+      const months = Math.floor(diffDays / 30);
+      isActive = false;
+      lastActiveLabel = `${months} month${months === 1 ? '' : 's'} ago`;
+    } else {
+      // More than a year ago
+      isActive = false;
+      lastActiveLabel = 'a long time ago';
+    }
+  } else {
+    // Invalid or missing date
+    lastActiveLabel = 'a long time ago';
+  }
 
-// let isActive;
-// let wasActiveWhen;
-
-// if (diffDays <= 0) {
-//   isActive = true;
-// } else if (diffDays < 7) {
-//   isActive = false;
-//   wasActiveWhen = `${diffDays} day${diffDays === 1 ? '' : 's'} ago`;
-// } else if (diffDays < 28) {
-//   isActive = false;
-//   const weeks = Math.floor(diffDays / 7);
-//   wasActiveWhen = `${weeks} week${weeks === 1 ? '' : 's'} ago`;
-// } else if (diffDays < 365) {
-//   isActive = false;
-//   const months = Math.floor(diffDays / 30);
-//   wasActiveWhen = `${months} month${months === 1 ? '' : 's'} ago`;
-// } else {
-//   isActive = false;
-//   wasActiveWhen = 'a long time ago';
-// }
   return (
     <View className="mb-4 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
       <View className="mb-4 flex-row items-start">
@@ -455,8 +509,8 @@ const isActive = true;
             <View
               className={`mr-1.5 h-2 w-2 rounded-full ${isActive ? 'bg-green-500' : 'bg-gray-400'}`}
             />
-            <Text className="text-lg font-bold text-gray-900">{user.last_login_date}</Text>
-          </View>
+          <Text className="text-lg font-bold text-gray-900">{lastActiveLabel}</Text>
+      </View>
           <Text className="text-center text-xs text-gray-600">Last Active</Text>
         </View>
       </View>
