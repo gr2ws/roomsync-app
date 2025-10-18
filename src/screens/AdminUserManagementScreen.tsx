@@ -18,6 +18,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { createClient } from '@supabase/supabase-js'; 
 import {supabase} from '../utils/supabase';
+import { is } from 'zod/v4/locales';
 
 export default function AdminUserManagementScreen() {
   const insets = useSafeAreaInsets();
@@ -42,7 +43,7 @@ export default function AdminUserManagementScreen() {
       const { data, error, count } = await supabase
         .from('users')
         .select('*', { count: 'exact' })
-        .order('user_id', { ascending: false})
+        .order('user_id', { ascending: true})
         .range(from, to);
 
       if (error) {
@@ -306,8 +307,31 @@ function UserCard({
     }
   };
 
-  const isActive = (user.lastActive || '').toLowerCase().includes('ago');
+const lastActiveDate: any = new Date(user.lastActive);
+const now: any = new Date();
+const diffMs = now - lastActiveDate;
+const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
 
+let isActive;
+let wasActiveWhen;
+
+if (diffDays <= 0) {
+  isActive = true;
+} else if (diffDays < 7) {
+  isActive = false;
+  wasActiveWhen = `${diffDays} day${diffDays === 1 ? '' : 's'} ago`;
+} else if (diffDays < 28) {
+  isActive = false;
+  const weeks = Math.floor(diffDays / 7);
+  wasActiveWhen = `${weeks} week${weeks === 1 ? '' : 's'} ago`;
+} else if (diffDays < 365) {
+  isActive = false;
+  const months = Math.floor(diffDays / 30);
+  wasActiveWhen = `${months} month${months === 1 ? '' : 's'} ago`;
+} else {
+  isActive = false;
+  wasActiveWhen = 'a long time ago';
+}
   return (
     <View className="mb-4 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
       <View className="mb-4 flex-row items-start">

@@ -52,7 +52,8 @@ interface AdminDataState {
 const initialUsers: AdminUser[] = [
   {
     id: 1,
-    name: 'Maria Santos',
+    first_name: 'Maria',
+    last_name: 'Santos',
     email: 'maria.santos@email.com',
     phoneNumber: '+639171234567',
     role: 'property_owner',
@@ -65,7 +66,8 @@ const initialUsers: AdminUser[] = [
   },
   {
     id: 2,
-    name: 'John Dela Cruz',
+    first_name: 'John Dela Cruz',
+    last_name: '',
     email: 'john.delacruz@email.com',
     phoneNumber: '+639181112223',
     role: 'renter',
@@ -78,7 +80,8 @@ const initialUsers: AdminUser[] = [
   },
   {
     id: 3,
-    name: 'Ana Rodriguez',
+    first_name: 'Ana Rodriguez',
+    last_name: '',
     email: 'ana.rodriguez@email.com',
     phoneNumber: '+639221234567',
     role: 'property_owner',
@@ -91,7 +94,8 @@ const initialUsers: AdminUser[] = [
   },
   {
     id: 4,
-    name: 'Carlos Mendoza',
+    first_name: 'Carlos Mendoza',
+    last_name: '',
     email: 'carlos.mendoza@email.com',
     phoneNumber: '+639231234567',
     role: 'property_owner',
@@ -104,7 +108,8 @@ const initialUsers: AdminUser[] = [
   },
   {
     id: 5,
-    name: 'Sarah Johnson',
+    first_name: 'Sarah Johnson',
+    last_name: '',
     email: 'sarah.johnson@email.com',
     phoneNumber: '+639271234567',
     role: 'renter',
@@ -117,7 +122,8 @@ const initialUsers: AdminUser[] = [
   },
   {
     id: 6,
-    name: 'Michael Chen',
+    first_name: 'Michael Chen',
+    last_name: '',
     email: 'michael.chen@email.com',
     phoneNumber: '+639301234567',
     role: 'property_owner',
