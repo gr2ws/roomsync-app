@@ -1,8 +1,6 @@
-// AdminUserManagementScreen.tsx
-// User management dashboard for admin panel
-
+// ...existing code...
 import * as React from 'react';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useAdminData } from '../store/useAdminData';
 import type { AdminUser } from '../store/useAdminData';
 import {
@@ -16,11 +14,10 @@ import {
   Image,
   Linking,
 } from 'react-native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-
-type User = AdminUser;
+import { createClient } from '@supabase/supabase-js'; 
+import {supabase} from '../utils/supabase';
 
 export default function AdminUserManagementScreen() {
   const insets = useSafeAreaInsets();
@@ -28,28 +25,68 @@ export default function AdminUserManagementScreen() {
   const [selectedRole, setSelectedRole] = useState<string>('all');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  const { users, verifyUser } = useAdminData();
+  const { verifyUser } = useAdminData(); // stop using store users; display comes from supabase
 
-  // Calculate user statistics
+  // Pagination state
+  const [users, setUsers] = useState<AdminUser[]>([]);
+  const [page, setPage] = useState<number>(0); // zero-based
+  const [pageSize] = useState<number>(10);
+  const [totalCount, setTotalCount] = useState<number>(0);
+  const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
+
+  // Fetch users from supabase with pagination
+  const fetchUsers = async (pageNum = 0) => {
+    try {
+      const from = pageNum * pageSize;
+      const to = from + pageSize - 1;
+      const { data, error, count } = await supabase
+        .from('users')
+        .select('*', { count: 'exact' })
+        .order('user_id', { ascending: false})
+        .range(from, to);
+
+      if (error) {
+        console.error('Supabase fetch error:', error);
+        return;
+      }
+
+      setUsers(data ?? []);
+      setTotalCount(count ?? 0);
+    } catch (err) {
+      console.error('Unexpected fetch error:', err);
+    }
+  };
+
+  useEffect(() => {
+    fetchUsers(page);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page]);
+
+  // Calculate user statistics (based on current page's users)
   const userStats = useMemo(() => {
-    const totalUsers = users.length;
+    const totalUsers = totalCount;
     const renters = users.filter((user) => user.role === 'renter').length;
     const propertyOwners = users.filter((user) => user.role === 'property_owner').length;
     const verificationPending = users.filter((user) => !user.isVerified).length;
 
     return { totalUsers, renters, propertyOwners, verificationPending };
-  }, [users]);
+  }, [users, totalCount]);
 
-  // Filter users based on search and role
-  const filteredUsers = useMemo(() => {
-    return users.filter((user) => {
-      const matchesSearch =
-        user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        user.email.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesRole = selectedRole === 'all' || user.role === selectedRole;
-      return matchesSearch && matchesRole;
-    });
-  }, [users, searchQuery, selectedRole]);
+  // Filter users based on search and role (applies to current page)
+const filteredUsers = useMemo(() => {
+  return users.filter((user) => {
+    const first_name = user.first_name?.toLowerCase() ?? '';
+    const last_name =  user.last_name?.toLowerCase() ?? '';
+    const name = `${first_name} ${last_name}`.trim();
+    const email = user.email?.toLowerCase() ?? '';
+    const matchesSearch =
+      name.includes(searchQuery.toLowerCase()) ||
+      email.includes(searchQuery.toLowerCase());
+
+    const matchesRole = selectedRole === 'all' || user.role === selectedRole;
+    return matchesSearch && matchesRole;
+  });
+}, [users, searchQuery, selectedRole]);
 
   const handleVerifyUser = (userId: number) => {
     verifyUser(userId);
@@ -78,19 +115,22 @@ export default function AdminUserManagementScreen() {
   };
 
   return (
-    <SafeAreaView
+    <View
       className="flex-1 bg-white"
-      style={{ paddingTop: Platform.OS === 'android' ? insets.top : 0 }}>
+      style={{
+        flex: 1,
+        paddingTop: Platform.OS === 'android' ? insets.top + 8 : insets.top, // use insets.top for both platforms to handle safe area via flexbox
+      }}>
       <ScrollView
         className="px-4 pb-4 pt-0"
         contentContainerStyle={{ paddingBottom: insets.bottom + 16 }}>
         {/* Header */}
-        <View className="mb-6 pt-0">
+        <View className="mb-6 pt-1">
           <Text className="mb-2 text-3xl font-bold text-gray-900">User Management</Text>
         </View>
 
         {/* User Statistics Cards */}
-        <View className="mb-6 flex-row flex-wrap justify-between">
+        <View className="mb-3 flex-row flex-wrap justify-evenly gap-2">
           <StatCard
             title="Total Users"
             value={userStats.totalUsers.toString()}
@@ -156,6 +196,33 @@ export default function AdminUserManagementScreen() {
           </View>
         </View>
 
+        {/* Pagination Controls */}
+        <View className="mb-4 flex-row items-center justify-between px-2">
+          <Text className="text-sm text-gray-600">
+            Page {page + 1} of {totalPages} — Showing {users.length} of {totalCount}
+          </Text>
+          <View className="flex-row">
+            <TouchableOpacity
+              className={`mr-2 rounded-lg px-3 py-2 ${page === 0 ? 'bg-gray-200' : 'bg-blue-50'}`}
+              onPress={() => setPage((p) => Math.max(0, p - 1))}
+              disabled={page === 0}>
+              <Text className={`text-sm ${page === 0 ? 'text-gray-400' : 'text-blue-600'}`}>
+                Prev
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              className={`rounded-lg px-3 py-2 ${
+                page + 1 >= totalPages ? 'bg-gray-200' : 'bg-blue-50'
+              }`}
+              onPress={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+              disabled={page + 1 >= totalPages}>
+              <Text className={`text-sm ${page + 1 >= totalPages ? 'text-gray-400' : 'text-blue-600'}`}>
+                Next
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
         {/* Users List Section */}
         <View className="px-4 pt-4">
           <Text className="mb-4 text-lg font-semibold text-gray-900">
@@ -180,9 +247,10 @@ export default function AdminUserManagementScreen() {
           </View>
         </View>
       )}
-    </SafeAreaView>
+    </View>
   );
 }
+// ...existing code...
 
 /* ------------------- Component Definitions ------------------- */
 
@@ -219,7 +287,7 @@ function UserCard({
   onSuspend,
   onVerify,
 }: {
-  user: User;
+  user: AdminUser;
   onView: () => void;
   onMessage: () => void;
   onSuspend: () => void;
@@ -256,7 +324,14 @@ function UserCard({
               className="mr-2 h-2 w-2 rounded-full"
               style={{ backgroundColor: isActive ? '#22c55e' : '#9CA3AF' }}
             />
-            <Text className="mr-2 text-lg font-semibold text-gray-900">{user.name}</Text>
+            {/* truncated name so the Verified/Pending pill remains visible */}
+            <Text
+              numberOfLines={1}
+              ellipsizeMode="tail"
+              className="mr-2 text-lg font-semibold text-gray-900"
+              style={{ flexShrink: 1 }}>
+              {`${user.first_name ?? ''} ${user.last_name ?? ''}`}
+            </Text>
             {user.isVerified ? (
               <View className="rounded-full bg-green-100 px-2 py-1">
                 <Text className="text-xs font-medium text-green-700">Verified</Text>
@@ -322,7 +397,6 @@ function UserCard({
           <Ionicons name="chatbubble-outline" size={16} color="gray" />
           <Text className="ml-2 text-sm font-medium text-slate-800">Message</Text>
         </TouchableOpacity>
-        {/* Removed Suspend button per requirements */}
       </View>
     </View>
   );
@@ -331,3 +405,4 @@ function UserCard({
 /* ------------------- Constants ------------------- */
 const { width } = Dimensions.get('window');
 const CARD_WIDTH = (width - 72) / 2; // 2 cards per row with padding
+// ...existing code...
