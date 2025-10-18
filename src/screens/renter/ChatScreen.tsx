@@ -1,14 +1,7 @@
 import React, { useState } from 'react';
 import { Ionicons } from '@expo/vector-icons';
-import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  FlatList,
-  KeyboardAvoidingView,
-  Platform,
-} from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, FlatList, Platform } from 'react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 
 const MOCK_LLM_RESPONSE = (input: string) => {
   // Simple mock: echo only the user's message
@@ -56,10 +49,7 @@ const ChatScreen: React.FC = () => {
   );
 
   return (
-    <KeyboardAvoidingView
-      className="flex-1 bg-white"
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={80}>
+    <View className="flex-1 bg-white">
       <View className="bg-white px-4 pb-2 pt-6">
         <View className="mb-4">
           <Text className="text-3xl font-bold text-gray-900">Chat with LLM</Text>
@@ -80,24 +70,30 @@ const ChatScreen: React.FC = () => {
         }}
         inverted
       />
-      <View className="flex-row bg-white p-4 pb-6">
-        <TextInput
-          className="border-sm text-md mr-3 flex-1 justify-center overflow-visible rounded-full border border-gray-200 px-6 py-3"
-          placeholder="Type your message..."
-          value={input}
-          onChangeText={setInput}
-          editable={!isSending}
-          onSubmitEditing={handleSend}
-          returnKeyType="send"
-        />
-        <TouchableOpacity
-          onPress={handleSend}
-          disabled={!input.trim() || isSending}
-          className={`rounded-full bg-indigo-500 px-6 py-3 ${!input.trim() || isSending ? 'opacity-50' : ''}`}>
-          <Text className="text-lg font-bold text-white">Send</Text>
-        </TouchableOpacity>
-      </View>
-    </KeyboardAvoidingView>
+      <KeyboardAwareScrollView
+        className="bg-white"
+        enableOnAndroid={true}
+        extraScrollHeight={20}
+        keyboardShouldPersistTaps="handled">
+        <View className="flex-row bg-white p-4 pb-6">
+          <TextInput
+            className="border-sm text-md mr-3 flex-1 justify-center overflow-visible rounded-full border border-gray-200 px-6 py-3"
+            placeholder="Type your message..."
+            value={input}
+            onChangeText={setInput}
+            editable={!isSending}
+            onSubmitEditing={handleSend}
+            returnKeyType="send"
+          />
+          <TouchableOpacity
+            onPress={handleSend}
+            disabled={!input.trim() || isSending}
+            className={`rounded-full bg-indigo-500 px-6 py-3 ${!input.trim() || isSending ? 'opacity-50' : ''}`}>
+            <Text className="text-lg font-bold text-white">Send</Text>
+          </TouchableOpacity>
+        </View>
+      </KeyboardAwareScrollView>
+    </View>
   );
 };
 

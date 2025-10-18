@@ -1,4 +1,5 @@
 import { View, Text, TextInput, Alert, Platform } from 'react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import { useLoggedIn } from '../../store/useLoggedIn';
 import Button from '../../components/Button';
 import BackButton from '../../components/BackButton';
@@ -101,51 +102,63 @@ export default function AuthScreen({ navigation }: Props) {
           <BackButton onPress={() => navigation.goBack()} />
         </View>
       )}
-      <View className="flex-1 items-center justify-center px-6">
-        <View className="w-full max-w-sm">
-          <Text className="mb-4 text-center text-4xl font-bold text-primary">Welcome back!</Text>
-          <Text className="mb-8 text-center text-base text-muted-foreground">
-            Sign in to continue...
-          </Text>
+      <KeyboardAwareScrollView
+        className="flex-1"
+        contentContainerStyle={{
+          paddingHorizontal: 24,
+          paddingVertical: 40,
+          minHeight: '100%',
+        }}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+        enableOnAndroid={true}
+        extraScrollHeight={30}>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <View className="w-full max-w-sm">
+            <Text className="mb-4 text-center text-4xl font-bold text-primary">Welcome back!</Text>
+            <Text className="mb-8 text-center text-base text-muted-foreground">
+              Sign in to continue...
+            </Text>
 
-          <View className="flex w-full justify-center gap-4">
-            <View className="">
-              <TextInput
-                placeholder="Email"
-                className="text-md overflow-visible rounded-lg border border-input bg-card px-4 py-3 text-card-foreground"
-                keyboardType="email-address"
-                autoCapitalize="none"
-                onChangeText={setEmail}
-                value={email}
-              />
-            </View>
+            <View className="flex w-full justify-center gap-4">
+              <View className="">
+                <TextInput
+                  placeholder="Email"
+                  className="text-md overflow-visible rounded-lg border border-input bg-card px-4 py-3 text-card-foreground"
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  onChangeText={setEmail}
+                  value={email}
+                />
+              </View>
 
-            <View className="">
-              <TextInput
-                placeholder="Password"
-                className="text-md overflow-visible rounded-lg border border-input bg-card px-4 py-3 text-card-foreground"
-                secureTextEntry
-                autoCapitalize="none"
-                onChangeText={setPassword}
-                value={password}
-              />
-            </View>
+              <View className="">
+                <TextInput
+                  placeholder="Password"
+                  className="text-md overflow-visible rounded-lg border border-input bg-card px-4 py-3 text-card-foreground"
+                  secureTextEntry
+                  autoCapitalize="none"
+                  onChangeText={setPassword}
+                  value={password}
+                />
+              </View>
 
-            <Button onPress={handleLogin} variant="primary" disabled={loading || authenticating}>
-              {loading || authenticating ? 'Logging In...' : 'Log In'}
-            </Button>
+              <Button onPress={handleLogin} variant="primary" disabled={loading || authenticating}>
+                {loading || authenticating ? 'Logging In...' : 'Log In'}
+              </Button>
 
-            <View className="mt-2 items-center">
-              <View className="flex-row">
-                <Text className="text-sm text-muted-foreground">Don&apos;t have an account? </Text>
-                <Button onPress={handleSignUp} variant="text" disabled={authenticating}>
-                  Sign up
-                </Button>
+              <View className="mt-2 items-center">
+                <View className="flex-row">
+                  <Text className="text-sm text-muted-foreground">Don&apos;t have an account? </Text>
+                  <Button onPress={handleSignUp} variant="text" disabled={authenticating}>
+                    Sign up
+                  </Button>
+                </View>
               </View>
             </View>
           </View>
         </View>
-      </View>
+      </KeyboardAwareScrollView>
     </View>
   );
 }

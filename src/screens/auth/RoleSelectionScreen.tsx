@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Text, SafeAreaView, Platform } from 'react-native';
+import { View, Text, SafeAreaView } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StackNavigationProp } from '@react-navigation/stack';
 import Button from '../../components/Button';
 import BackButton from '../../components/BackButton';
@@ -14,6 +15,7 @@ type Props = {
 
 const RoleSelectionScreen: React.FC<Props> = ({ navigation }) => {
   const { setUserRole } = useLoggedIn();
+  const insets = useSafeAreaInsets();
 
   const handleSelectRole = (role: 'renter' | 'owner') => {
     setUserRole(role);
@@ -35,9 +37,9 @@ const RoleSelectionScreen: React.FC<Props> = ({ navigation }) => {
   };
 
   return (
-    <View className="flex-1 bg-background" style={{ paddingTop: Platform.OS === 'ios' ? 20 : 0 }}>
+    <View className="flex-1 bg-background" style={{ paddingTop: insets.top + 8 }}>
       <SafeAreaView className="flex-1 bg-background">
-        <View className="absolute left-0 top-5 z-10">
+        <View className="absolute left-6 z-10">
           <BackButton onPress={handleGoBack} />
         </View>
 

@@ -1,4 +1,6 @@
-import { View, Text, Alert, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, Alert } from 'react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLoggedIn } from '../../store/useLoggedIn';
 import Button from '../../components/Button';
 import BackButton from '../../components/BackButton';
@@ -8,6 +10,7 @@ import { RootStackParamList } from '../../utils/navigation';
 import { useState } from 'react';
 import { supabase } from '../../utils/supabase';
 import { z } from 'zod';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 type RegisterScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Register'>;
 
@@ -43,6 +46,7 @@ type RegisterFormFields = z.infer<typeof registerSchema>;
 
 export default function RegisterScreen({ navigation }: Props) {
   const { setIsLoggedIn, setUserRole, setUserProfile, userRole } = useLoggedIn();
+  const insets = useSafeAreaInsets();
 
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -212,101 +216,99 @@ export default function RegisterScreen({ navigation }: Props) {
   };
 
   return (
-    <KeyboardAvoidingView
+    <KeyboardAwareScrollView
       className="flex-1 bg-background"
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={0}>
-      <ScrollView
-        contentContainerClassName="px-6 pb-8 pt-2"
-        contentContainerStyle={{ paddingTop: Platform.OS === 'ios' ? 36 : 8 }}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}>
-        <BackButton onPress={handleGoBack} />
-        <Text className="mb-2 mt-6 text-center text-4xl font-bold text-primary">
-          Create your account
-        </Text>
-        <Text className="mb-8 text-center text-base text-muted-foreground">
-          Your perfect place awaits
-        </Text>
+      contentContainerClassName="pb-8"
+      contentContainerStyle={{ paddingTop: insets.top + 8, paddingHorizontal: 24 }}
+      keyboardShouldPersistTaps="handled"
+      showsVerticalScrollIndicator={true}
+      enableOnAndroid={true}
+      extraScrollHeight={20}>
+      <BackButton onPress={handleGoBack} />
+      <Text className="mb-2 mt-6 text-center text-4xl font-bold text-primary">
+        Create your account
+      </Text>
+      <Text className="mb-8 text-center text-base text-muted-foreground">
+        Your perfect place awaits
+      </Text>
 
-        <View className="w-full max-w-sm gap-4 self-center">
-          <Input
-            placeholder="First Name"
-            autoCapitalize="words"
-            value={firstName}
-            onChangeText={setFirstName}
-            error={formErrors.firstName}
-          />
-          <Input
-            placeholder="Last Name"
-            autoCapitalize="words"
-            value={lastName}
-            onChangeText={setLastName}
-            error={formErrors.lastName}
-          />
-          <Input
-            placeholder="Email"
-            keyboardType="email-address"
-            autoCapitalize="none"
-            value={email}
-            onChangeText={setEmail}
-            error={formErrors.email}
-          />
-          <Input
-            placeholder="Phone Number"
-            keyboardType="phone-pad"
-            autoCapitalize="none"
-            value={phoneNumber}
-            onChangeText={setPhoneNumber}
-            error={formErrors.phoneNumber}
-          />
-          {/* Role selection removed as per request */}
-          <Input
-            placeholder="Password"
-            secureTextEntry
-            autoCapitalize="none"
-            value={password}
-            onChangeText={setPassword}
-            error={formErrors.password}
-          />
-          <Input
-            placeholder="Confirm Password"
-            secureTextEntry
-            autoCapitalize="none"
-            value={confirmPassword}
-            onChangeText={setConfirmPassword}
-            error={formErrors.confirmPassword}
-          />
+      <View className="w-full max-w-sm gap-4 self-center">
+        <Input
+          placeholder="First Name"
+          autoCapitalize="words"
+          value={firstName}
+          onChangeText={setFirstName}
+          error={formErrors.firstName}
+        />
+        <Input
+          placeholder="Last Name"
+          autoCapitalize="words"
+          value={lastName}
+          onChangeText={setLastName}
+          error={formErrors.lastName}
+        />
+        <Input
+          placeholder="Email"
+          keyboardType="email-address"
+          autoCapitalize="none"
+          value={email}
+          onChangeText={setEmail}
+          error={formErrors.email}
+        />
+        <Input
+          placeholder="Phone Number"
+          keyboardType="phone-pad"
+          autoCapitalize="none"
+          value={phoneNumber}
+          onChangeText={setPhoneNumber}
+          error={formErrors.phoneNumber}
+        />
+        {/* Role selection removed as per request */}
+        <Input
+          placeholder="Password"
+          secureTextEntry
+          autoCapitalize="none"
+          value={password}
+          onChangeText={setPassword}
+          error={formErrors.password}
+        />
+        <Input
+          placeholder="Confirm Password"
+          secureTextEntry
+          autoCapitalize="none"
+          value={confirmPassword}
+          onChangeText={setConfirmPassword}
+          error={formErrors.confirmPassword}
+        />
 
-          <Button onPress={handleSignUp} variant="primary" disabled={loading}>
-            {loading ? 'Signing Up...' : 'Sign Up'}
-          </Button>
+        <Button onPress={handleSignUp} variant="primary" disabled={loading}>
+          {loading ? 'Signing Up...' : 'Sign Up'}
+        </Button>
 
-          <View className="mt-6 items-center">
-            <View className="flex-row">
-              <Text className="text-sm text-muted-foreground">Already have an account? </Text>
-              <Button onPress={handleLogin} variant="text">
-                Log in
-              </Button>
-            </View>
-          </View>
-
-          <View className="mt-4 items-center">
-            <View className="flex-row flex-wrap justify-center">
-              <Text className="text-center text-xs text-muted-foreground">
-                By creating an account, you agree with our{' '}
-              </Text>
-              <Button onPress={handleTermsOfService} variant="text" size="sm">
-                Terms of Service
-              </Button>
-              <Text className="text-xs text-muted-foreground"> and </Text>
-              <Button onPress={handlePrivacyPolicy} variant="text" size="sm">
-                Privacy Policy
-              </Button>
-            </View>
+        <View className="mt-6 items-center">
+          <View className="flex-row">
+            <Text className="text-sm text-muted-foreground">Already have an account? </Text>
+            <Button onPress={handleLogin} variant="text">
+              Log in
+            </Button>
           </View>
         </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+
+        <View className="mt-4 items-center">
+          <View className="flex-row flex-wrap justify-center">
+            <Text className="text-center text-xs text-muted-foreground">
+              By creating an account, you agree with our{' '}
+            </Text>
+            <Button onPress={handleTermsOfService} variant="text" size="sm">
+              Terms of Service
+            </Button>
+            <Text className="text-xs text-muted-foreground"> and </Text>
+            <Button onPress={handlePrivacyPolicy} variant="text" size="sm">
+              Privacy Policy
+            </Button>
+          </View>
+        </View>
+      </View>
+    </KeyboardAwareScrollView>
   );
 }

@@ -134,9 +134,7 @@ export default function PreferencesScreen({ navigation, route }: PreferencesScre
 
   return (
     <View className="flex-1 bg-background" style={{ paddingTop: Platform.OS === 'ios' ? 20 : 0 }}>
-      {isFromProfile && (
-        <BackButton onPress={() => navigation.goBack()} />
-      )}
+      {isFromProfile && <BackButton onPress={() => navigation.goBack()} />}
       <View className="px-6 pt-12">
         <View className="mb-8">
           <Text className="mb-2 text-3xl font-bold text-foreground">What Matters Most to You?</Text>
