@@ -181,9 +181,54 @@ const handleVerifyUser = async (userId: number) => {
     });
   };
 
-  const handleSuspendUser = (userId: number) => {
-    console.log(`Suspending user ${userId}`);
-    // Add suspend user logic here
+// helper to build an encoded mailto URL
+const buildMailTo = (to: string, subject = '', body = '') => {
+  const params = new URLSearchParams();
+  if (subject) params.append('subject', subject);
+  if (body) params.append('body', body);
+
+  return `mailto:${encodeURIComponent(to)}?${params.toString().replace(/\+/g, '%20')}`;
+};
+
+const handleWarnUser = (userId: number) => {
+  const user = users.find(u => u.id === userId);
+  if (!user || !user.email) {
+    setToastMessage('User has no email address');
+    setTimeout(() => setToastMessage(null), 2000);
+    return;
+  }
+
+  const subject = `[WARNING] From Roomsync`;
+  const body = `Hi ${user.first_name ?? ''},
+
+We have been made aware of activity on your account that violates our community guidelines.
+
+Please consider this as a formal warning. We are continuing to monitor your account for suspicious behavior; should this persist, you may lose access to your account entirely.
+
+At Roomsync, we are committed to keeping the community safe, and our clients happy. We take complaints like these seriously to ensure we meet that goal.
+
+Should you find reason for us to consider an appeal from you, please send us an email at roomsync@gmail.com.
+    
+-Roomsync Team`;
+
+      const mailto = buildMailTo(user.email, subject, body);
+
+      Linking.canOpenURL(mailto).then((supported) => {
+        if (!supported) {
+          setToastMessage('No mail app available on this device.');
+          setTimeout(() => setToastMessage(null), 2000);
+        } else {
+          Linking.openURL(mailto).catch((err) => {
+            console.error('Failed to open mail app', err);
+            setToastMessage('Unable to open mail app');
+            setTimeout(() => setToastMessage(null), 2000);
+          });
+        }
+      });
+    };
+
+  const handleBanUser = (userId: number) => {
+    console.log(`Banning user ${userId}`);
   };
 
   return (
@@ -337,10 +382,11 @@ const handleVerifyUser = async (userId: number) => {
           <UserCard
             key={user.auth_id}
             user={user}
+            onVerify={() => handleVerifyUser(user.id)}
             onView={() => handleViewUser(user.id)}
             onMessage={() => handleMessageUser(user.id)}
-            onSuspend={() => handleSuspendUser(user.id)}
-            onVerify={() => handleVerifyUser(user.id)}
+            onWarn={() => handleWarnUser(user.id)}
+            onBan={() => handleBanUser(user.id)}
           />
         ))}
 
@@ -386,16 +432,18 @@ function StatCard({
 
 function UserCard({
   user,
+  onVerify,
   onView,
   onMessage,
-  onSuspend,
-  onVerify,
+  onWarn,
+  onBan,
 }: {
   user: AdminUser;
+  onVerify: () => void;
   onView: () => void;
   onMessage: () => void;
-  onSuspend: () => void;
-  onVerify: () => void;
+  onWarn: () => void;
+  onBan: () => void;
 }) {
   const getRoleDisplay = (role: string) => {
     switch (role) {
@@ -538,6 +586,18 @@ function UserCard({
           onPress={onMessage}>
           <Ionicons name="chatbubble-outline" size={16} color="gray" />
           <Text className="ml-2 text-sm font-medium text-slate-800">Message</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          className="flex-row items-center rounded-lg bg-yellow-100 px-4 py-2"
+          onPress={onWarn}>
+          <Ionicons name="warning-outline" size={16} color="gray" />
+          <Text className="ml-2 text-sm font-medium text-slate-800">Warn</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          className="flex-row items-center rounded-lg bg-red-100 px-4 py-2"
+          onPress={onBan}>
+          <Ionicons name="chatbubble-outline" size={16} color="gray" />
+          <Text className="ml-2 text-sm font-medium text-slate-800">Ban</Text>
         </TouchableOpacity>
       </View>
     </View>
