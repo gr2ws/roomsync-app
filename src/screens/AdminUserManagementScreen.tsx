@@ -24,6 +24,7 @@ export default function AdminUserManagementScreen() {
   const insets = useSafeAreaInsets();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedRole, setSelectedRole] = useState<string>('all');
+  const [selectedVerification, setSelectedVerification] = useState<'all' | 'verified' | 'unverified'>('all');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   const { verifyUser } = useAdminData(); // stop using store users; display comes from supabase
@@ -33,55 +34,46 @@ export default function AdminUserManagementScreen() {
   const [page, setPage] = useState<number>(0); // zero-based
   const [pageSize] = useState<number>(10);
   const [totalCount, setTotalCount] = useState<number>(0);
-  const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
 
-  // Fetch users from supabase with pagination
-  const fetchUsers = async (pageNum = 0) => {
-    try {
-      const from = pageNum * pageSize;
-      const to = from + pageSize - 1;
-      const { data, error, count } = await supabase
-        .from('users')
-        .select('*', { count: 'exact' })
-        .order('user_id', { ascending: true })
-        .range(from, to);
+const fetchUsers = async () => {
+  try {
+    const { data, error } = await supabase
+      .from('users')
+      .select('*')
+      .order('user_id', { ascending: true });
 
-      if (error) {
-        console.error('Supabase fetch error:', error);
-        return;
-      }
-
-      // Normalize each row into the shape your UI expects
-      const normalized = (data ?? []).map((u: any, index: number) => ({
-        // primary identifiers
-        id: index,
-        user_id: u.user_id ?? '',
-        auth_id: u.auth_id ?? '',
-        // name fields
-        first_name: u.first_name ?? '',
-        last_name: u.last_name ?? '',
-        // contact / profile
-        email: u.email ?? '',
-        phoneNumber: u.phone_number ?? '',
-        // avatar/profile URL 
-        profile_picture: u.profile_picture ?? 'https://thumbs.dreamstime.com/b/default-avatar-profile-icon-vector-social-media-user-portrait-176256935.jpg',
-        // flags / role
-        isWarned: !!u.is_warned,
-        isBanned: !!u.is_banned,
-        isVerified: !!(u.is_verified ?? u.isVerified),
-        role: u.user_type || '',
-        // counts / meta
-        propertiesListed: u.properties_listed ?? u.propertiesListed ?? 0,
-        applications: u.applications ?? 0,
-        last_login_date: u.last_login_date ?? '',
-      }));
-
-      setUsers(normalized);
-      setTotalCount(count ?? normalized.length);
-    } catch (err) {
-      console.error('Unexpected fetch error:', err);
+    if (error) {
+      console.error('Supabase fetch error:', error);
+      return;
     }
-  };
+
+    const normalized = (data ?? []).map((u: any, index: number) => ({
+      id: index,
+      user_id: u.user_id ?? '',
+      auth_id: u.auth_id ?? '',
+      first_name: u.first_name ?? '',
+      last_name: u.last_name ?? '',
+      email: u.email ?? '',
+      phoneNumber: u.phone_number ?? '',
+      profile_picture:
+        u.profile_picture ??
+        'https://thumbs.dreamstime.com/b/default-avatar-profile-icon-vector-social-media-user-portrait-176256935.jpg',
+      isWarned: !!u.is_warned,
+      isBanned: !!u.is_banned,
+      isVerified: !!(u.is_verified ?? u.isVerified),
+      role: u.user_type || '',
+      propertiesListed: u.properties_listed ?? u.propertiesListed ?? 0,
+      applications: u.applications ?? 0,
+      last_login_date: u.last_login_date ?? '',
+    }));
+
+    setUsers(normalized);
+    setTotalCount(normalized.length);
+  } catch (err) {
+    console.error('Unexpected fetch error:', err);
+  }
+};
+
 
   useEffect(() => {
     fetchUsers(page);
@@ -92,27 +84,47 @@ export default function AdminUserManagementScreen() {
   const userStats = useMemo(() => {
     const totalUsers = totalCount;
     const renters = users.filter((user) => user.role === 'renter').length;
-    const propertyOwners = users.filter((user) => user.role === 'property_owner').length;
+    const propertyOwners = users.filter((user) => user.role === 'owner').length;
     const verificationPending = users.filter((user) => !user.isVerified).length;
-
-    return { totalUsers, renters, propertyOwners, verificationPending };
+    const verifiedUsers = users.filter((user) => user.isVerified).length;
+    const unverifiedUsers = users.filter((user) => !user.isVerified).length;
+    return { totalUsers, renters, propertyOwners, verificationPending, verifiedUsers, unverifiedUsers };
   }, [users, totalCount]);
 
   // Filter users based on search and role (applies to current page)
+// Apply all filters first
 const filteredUsers = useMemo(() => {
   return users.filter((user) => {
     const first_name = user.first_name?.toLowerCase() ?? '';
-    const last_name =  user.last_name?.toLowerCase() ?? '';
+    const last_name = user.last_name?.toLowerCase() ?? '';
     const name = `${first_name} ${last_name}`.trim();
     const email = user.email?.toLowerCase() ?? '';
     const matchesSearch =
       name.includes(searchQuery.toLowerCase()) ||
       email.includes(searchQuery.toLowerCase());
 
-    const matchesRole = selectedRole === 'all' || user.role === selectedRole;
-    return matchesSearch && matchesRole;
+    const matchesRole =
+      selectedRole === 'all' || user.role === selectedRole;
+
+    const matchesVerification =
+      selectedVerification === 'all' ||
+      (selectedVerification === 'verified' && user.isVerified) ||
+      (selectedVerification === 'unverified' && !user.isVerified);
+
+    return matchesSearch && matchesRole && matchesVerification;
   });
-}, [users, searchQuery, selectedRole]);
+}, [users, searchQuery, selectedRole, selectedVerification]);
+
+// Apply pagination *after filtering*
+const paginatedUsers = useMemo(() => {
+  const from = page * pageSize;
+  const to = from + pageSize;
+  return filteredUsers.slice(from, to);
+}, [filteredUsers, page, pageSize]);
+
+const totalPages = Math.max(1, Math.ceil(filteredUsers.length / pageSize));
+
+
 
   const handleVerifyUser = (userId: number) => {
     verifyUser(userId);
@@ -198,11 +210,12 @@ const filteredUsers = useMemo(() => {
 
           <View>
             <Text className="mb-3 text-sm font-medium text-gray-700">Filter by role:</Text>
+            {/* filter btns */}
             <View className="flex-row flex-wrap">
               {[
                 { key: 'all', label: 'All' },
                 { key: 'renter', label: 'Renters' },
-                { key: 'property_owner', label: 'Owners' },
+                { key: 'owner', label: 'Owners' },
               ].map((filter) => (
                 <TouchableOpacity
                   key={filter.key}
@@ -219,6 +232,29 @@ const filteredUsers = useMemo(() => {
                 </TouchableOpacity>
               ))}
             </View>
+          </View>
+
+          <Text className="mb-3 mt-3 text-sm font-medium text-gray-700">Verification Status:</Text>
+          <View className="flex-row flex-wrap">
+            {[
+              { key: 'all', label: 'All' },
+              { key: 'verified', label: 'Verified' },
+              { key: 'unverified', label: 'Unverified' },
+            ].map((filter) => (
+              <TouchableOpacity
+                key={filter.key}
+                className={`mb-2 mr-2 rounded-lg px-4 py-2 ${
+                  selectedVerification === filter.key ? 'bg-emerald-500' : 'bg-gray-200'
+                }`}
+                onPress={() => setSelectedVerification(filter.key as any)}>
+                <Text
+                  className={`text-sm font-medium ${
+                    selectedVerification === filter.key ? 'text-white' : 'text-gray-700'
+                  }`}>
+                  {filter.label}
+                </Text>
+              </TouchableOpacity>
+            ))}
           </View>
         </View>
 
@@ -251,19 +287,22 @@ const filteredUsers = useMemo(() => {
 
         {/* Users List Section */}
         <View className="px-4 pt-4">
-          <Text className="mb-4 text-lg font-semibold text-gray-900">
-            Users ({filteredUsers.length})
-          </Text>
-          {filteredUsers.map((user) => (
-            <UserCard
-              key={user.auth_id}
-              user={user}
-              onView={() => handleViewUser(user.id)}
-              onMessage={() => handleMessageUser(user.id)}
-              onSuspend={() => handleSuspendUser(user.id)}
-              onVerify={() => handleVerifyUser(user.id)}
-            />
-          ))}
+        <Text className="mb-4 text-lg font-semibold text-gray-900">
+          {selectedVerification === 'all' ? 'All ' : selectedVerification === 'verified' ? 'Verified ' : 'Unverified '}
+          {selectedRole === 'all' ? 'Users' : selectedRole === 'renter' ? 'Renters' : 'Owners'}
+
+        </Text>
+        {paginatedUsers.map((user) => (
+          <UserCard
+            key={user.auth_id}
+            user={user}
+            onView={() => handleViewUser(user.id)}
+            onMessage={() => handleMessageUser(user.id)}
+            onSuspend={() => handleSuspendUser(user.id)}
+            onVerify={() => handleVerifyUser(user.id)}
+          />
+        ))}
+
         </View>
       </ScrollView>
       {toastMessage && (
@@ -397,7 +436,7 @@ const isActive = true;
       </View>
 
       <View className="mb-4 flex-row items-center justify-center">
-        {user.role === 'property_owner' && (
+        {user.role === 'owner' && (
           <View className="mx-6 items-center">
             <Text className="text-center text-lg font-bold text-gray-900">
               {user.propertiesListed}
