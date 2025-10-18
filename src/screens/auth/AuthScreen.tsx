@@ -67,6 +67,12 @@ export default function AuthScreen({ navigation }: Props) {
       return;
     }
 
+    // Update last login date
+    await supabase
+      .from('users')
+      .update({ last_login_date: new Date().toISOString() })
+      .eq('auth_id', data.user.id);
+
     setUserRole(userData.user_type);
     setUserProfile(userData);
 

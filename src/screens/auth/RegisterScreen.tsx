@@ -44,6 +44,22 @@ const registerSchema = z
 
 type RegisterFormFields = z.infer<typeof registerSchema>;
 
+// Helper function to convert string to title case
+// Handles multiple words, hyphens, apostrophes, and other separators
+const toTitleCase = (str: string): string => {
+  return str
+    .toLowerCase()
+    .split(/(\s|-|')/) // Split on spaces, hyphens, and apostrophes while keeping delimiters
+    .map((part) => {
+      // Only capitalize if it's not a delimiter and has content
+      if (part && part.length > 0 && ![' ', '-', "'"].includes(part)) {
+        return part.charAt(0).toUpperCase() + part.slice(1);
+      }
+      return part;
+    })
+    .join('');
+};
+
 export default function RegisterScreen({ navigation }: Props) {
   const { setIsLoggedIn, setUserRole, setUserProfile, userRole } = useLoggedIn();
   const insets = useSafeAreaInsets();
@@ -151,11 +167,12 @@ export default function RegisterScreen({ navigation }: Props) {
       const { error: userError } = await supabase.from('users').insert([
         {
           auth_id: authData.user.id,
-          first_name: firstName,
-          last_name: lastName,
+          first_name: toTitleCase(firstName),
+          last_name: toTitleCase(lastName),
           email,
           phone_number: phoneNumber,
           user_type: userRole ?? 'renter',
+          account_created_date: new Date().toISOString().split('T')[0],
           // Profile picture, birth date, and preferences handled in PreferencesScreen
         },
       ]);
@@ -170,8 +187,8 @@ export default function RegisterScreen({ navigation }: Props) {
       setUserRole(userRole ?? 'renter');
       setUserProfile({
         auth_id: authData.user.id,
-        first_name: firstName,
-        last_name: lastName,
+        first_name: toTitleCase(firstName),
+        last_name: toTitleCase(lastName),
         email,
         phone_number: phoneNumber,
         user_type: userRole ?? 'renter',
