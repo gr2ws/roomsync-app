@@ -31,7 +31,7 @@ export default function AuthScreen({ navigation }: Props) {
       const onboardingStatus = await AsyncStorage.getItem('DeviceOnboarded');
       setDeviceOnboarded(onboardingStatus === 'true');
     };
-    checkIntroduction();
+    checkOnboarding();
   }, []);
 
   const handleLogin = async () => {
@@ -97,7 +97,6 @@ export default function AuthScreen({ navigation }: Props) {
       console.error('Error resetting onboarding flag:', error);
     }
     // Navigate to Introduction screen to start onboarding, pass flag to show back button
-    // Note: No need to reset any flags - user-specific onboarding will be tracked after registration
     navigation.navigate('Introduction', { fromAuth: true });
   };
 

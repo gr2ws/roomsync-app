@@ -15,7 +15,6 @@ import { RootStackParamList } from '../../utils/navigation';
 import { useLoggedIn } from '../../store/useLoggedIn';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { z } from 'zod';
-import { Sparkles } from 'lucide-react-native';
 
 type DetailsScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Details'>;
 

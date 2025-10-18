@@ -1,34 +1,17 @@
 import React, { useState, useEffect } from 'react';
-<<<<<<< HEAD
-import { View, Text, Platform, Pressable } from 'react-native';
-=======
 import { View, Text, TouchableOpacity, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
->>>>>>> main
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../../utils/navigation';
 import { useLoggedIn } from '../../store/useLoggedIn';
 import Button from '../../components/Button';
 import InfoBox from '../../components/InfoBox';
-<<<<<<< HEAD
-=======
 import BackButton from '../../components/BackButton';
->>>>>>> main
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import DraggableFlatList, {
   ScaleDecorator,
   RenderItemParams,
 } from 'react-native-draggable-flatlist';
-<<<<<<< HEAD
-import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { Wifi, PawPrint, Armchair, Wind, ShieldCheck, Car, Sparkles } from 'lucide-react-native';
-
-type PreferencesScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Preferences'>;
-
-type Props = {
-  navigation: PreferencesScreenNavigationProp;
-};
-=======
 import {
   Wifi,
   Dog,
@@ -51,7 +34,6 @@ interface PreferencesScreenProps {
     };
   };
 }
->>>>>>> main
 
 interface PreferenceItem {
   key: string;

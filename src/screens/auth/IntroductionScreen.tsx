@@ -25,15 +25,6 @@ const IntroductionScreen: React.FC<Props> = ({ navigation, route }) => {
 
   useEffect(() => {
     setUserRole('renter');
-    // Mark that intro has been seen when component mounts
-    const markIntroSeen = async () => {
-      try {
-        await AsyncStorage.setItem('hasSeenIntroduction', 'true');
-      } catch (error) {
-        console.error('Error setting introduction flag:', error);
-      }
-    };
-    markIntroSeen();
   }, [setUserRole]);
 
   const handleBackToAuth = async () => {
@@ -41,7 +32,7 @@ const IntroductionScreen: React.FC<Props> = ({ navigation, route }) => {
     try {
       await AsyncStorage.setItem('DeviceOnboarded', 'true');
     } catch (error) {
-      console.error('Error setting introduction flag:', error);
+      console.error('Error setting onboarding flag:', error);
     }
     navigation.replace('Auth');
   };
