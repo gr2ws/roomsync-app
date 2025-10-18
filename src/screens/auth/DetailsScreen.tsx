@@ -1,4 +1,5 @@
 import { View, Text, ScrollView, Alert, Platform } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useState } from 'react';
 import { supabase } from '../../utils/supabase';
 import Button from '../../components/Button';
@@ -58,6 +59,7 @@ type OwnerFormFields = z.infer<typeof ownerSchema>;
 
 export default function DetailsScreen({ navigation }: Props) {
   const { userRole, setUserProfile, userProfile, setIsLoggedIn } = useLoggedIn();
+  const insets = useSafeAreaInsets();
 
   const [profilePicture, setProfilePicture] = useState(userProfile?.profile_picture || '');
   const [birthDate, setBirthDate] = useState(userProfile?.birth_date || '');
@@ -85,7 +87,10 @@ export default function DetailsScreen({ navigation }: Props) {
     if (userRole === 'renter') {
       navigation.navigate('Preferences');
     } else {
-      await AsyncStorage.setItem('hasCompletedOnboarding', 'true');
+      // Set user-specific onboarding flag for owners
+      if (userProfile?.user_id) {
+        await AsyncStorage.setItem(`user_${userProfile.user_id}_hasCompletedOnboarding`, 'true');
+      }
       setIsLoggedIn(true);
     }
   };
@@ -175,122 +180,127 @@ export default function DetailsScreen({ navigation }: Props) {
       }),
     });
 
-    // Set onboarding flag
-    await AsyncStorage.setItem('hasCompletedOnboarding', 'true');
-
-    // Navigate to Preferences for renters, otherwise set logged in
+    // Navigate to Preferences for renters (they'll set flag there), otherwise set logged in
     if (userRole === 'renter') {
       navigation.navigate('Preferences');
     } else {
+      // Set user-specific onboarding flag for owners
+      if (userProfile?.user_id) {
+        await AsyncStorage.setItem(`user_${userProfile.user_id}_hasCompletedOnboarding`, 'true');
+      }
       setIsLoggedIn(true);
     }
   };
 
   return (
-    <ScrollView
+    <View
       className="flex-1 bg-background"
-      contentContainerClassName="px-6 py-8"
-      style={{ paddingTop: Platform.OS === 'ios' ? 20 : 0 }}>
-      <Text className="mb-2 text-center text-3xl font-bold text-primary">
-        Complete Your Profile
-      </Text>
-      <Text className="mb-8 text-center text-base text-muted-foreground">
-        Help us personalize your experience
-      </Text>
+      style={{ paddingTop: Platform.OS === 'ios' ? 0 : insets.top + 8 }}>
+      <ScrollView
+        className="flex-1"
+        contentContainerClassName="px-6 pb-8"
+        style={{ paddingTop: Platform.OS === 'ios' ? 40 : 0 }}>
+        <Text className="mb-2 text-center text-3xl font-bold text-primary">
+          Complete Your Profile
+        </Text>
+        <Text className="mb-8 text-center text-base text-muted-foreground">
+          Help us personalize your experience
+        </Text>
 
-      <View className="w-full max-w-sm self-center">
-        {/* Profile Picture Picker - All roles */}
-        <ProfilePicturePicker
-          value={profilePicture}
-          onChange={setProfilePicture}
-          authId={userProfile?.auth_id || ''}
-        />
+        <View className="w-full max-w-sm self-center">
+          {/* Profile Picture Picker - All roles */}
+          <ProfilePicturePicker
+            value={profilePicture}
+            onChange={setProfilePicture}
+            authId={userProfile?.auth_id || ''}
+          />
 
-        {/* Birth Date - All roles */}
-        <DatePicker
-          label="Birth Date"
-          placeholder="Select your birth date"
-          value={birthDate}
-          onChange={setBirthDate}
-          error={formErrors.birthDate}
-        />
+          {/* Birth Date - All roles */}
+          <DatePicker
+            label="Birth Date"
+            placeholder="Select your birth date"
+            value={birthDate}
+            onChange={setBirthDate}
+            error={formErrors.birthDate}
+          />
 
-        {/* Renter-specific fields */}
-        {userRole === 'renter' && (
-          <View className="flex-1 gap-4">
-            <InfoBox
-              icon={Sparkles}
-              title="Find Your Perfect Place"
-              description="These preferences are optional, but they help us recommend rentals that match you the best. The more you share, the more we can personalize your search!"
-            />
-            <View>
-              <Text className="mb-2 text-base font-medium text-foreground">
-                Monthly Budget Range
-              </Text>
-              <View className="flex-row gap-2">
-                <View className="flex-1">
-                  <Input
-                    placeholder="Min. Budget"
-                    keyboardType="numeric"
-                    autoCapitalize="none"
-                    value={minBudget}
-                    onChangeText={setMinBudget}
-                    error={formErrors.minBudget}
-                  />
-                </View>
-                <View className="flex-1">
-                  <Input
-                    placeholder="Max. Budget"
-                    keyboardType="numeric"
-                    autoCapitalize="none"
-                    value={maxBudget}
-                    onChangeText={setMaxBudget}
-                    error={formErrors.maxBudget}
-                  />
+          {/* Renter-specific fields */}
+          {userRole === 'renter' && (
+            <View className="flex-1 gap-4">
+              <InfoBox
+                icon={Sparkles}
+                title="Find Your Perfect Place"
+                description="These preferences are optional, but they help us recommend rentals that match you the best. The more you share, the more we can personalize your search!"
+              />
+              <View>
+                <Text className="mb-2 text-base font-medium text-foreground">
+                  Monthly Budget Range
+                </Text>
+                <View className="flex-row gap-2">
+                  <View className="flex-1">
+                    <Input
+                      placeholder="Min. Budget"
+                      keyboardType="numeric"
+                      autoCapitalize="none"
+                      value={minBudget}
+                      onChangeText={setMinBudget}
+                      error={formErrors.minBudget}
+                    />
+                  </View>
+                  <View className="flex-1">
+                    <Input
+                      placeholder="Max. Budget"
+                      keyboardType="numeric"
+                      autoCapitalize="none"
+                      value={maxBudget}
+                      onChangeText={setMaxBudget}
+                      error={formErrors.maxBudget}
+                    />
+                  </View>
                 </View>
               </View>
+
+              {/* Room Preference Radio Group */}
+              <RadioGroup
+                label="Room Preference"
+                options={['Bedspace', 'Room', 'Apartment']}
+                value={roomPreference}
+                onChange={setRoomPreference}
+                error={formErrors.roomPreference}
+              />
+
+              {/* Occupation Radio Group */}
+              <RadioGroup
+                label="Occupation"
+                options={['Student', 'Employee']}
+                value={occupation}
+                onChange={setOccupation}
+                error={formErrors.occupation}
+              />
+
+              {/* Place of Work/Study - Map Picker */}
+              <LocationPicker
+                label="Place of Work/Study"
+                value={placeOfWorkStudy}
+                onChange={setPlaceOfWorkStudy}
+                placeholder="Select location on map"
+                error={formErrors.placeOfWorkStudy}
+              />
             </View>
+          )}
 
-            {/* Room Preference Radio Group */}
-            <RadioGroup
-              label="Room Preference"
-              options={['Bedspace', 'Room', 'Apartment']}
-              value={roomPreference}
-              onChange={setRoomPreference}
-              error={formErrors.roomPreference}
-            />
+          {/* Action Buttons */}
+          <View className="mt-2 gap-2">
+            <Button onPress={handleSaveDetails} variant="primary">
+              Save Details
+            </Button>
 
-            {/* Occupation Radio Group */}
-            <RadioGroup
-              label="Occupation"
-              options={['Student', 'Employee']}
-              value={occupation}
-              onChange={setOccupation}
-              error={formErrors.occupation}
-            />
-
-            {/* Place of Work/Study - Map Picker */}
-            <LocationPicker
-              label="Place of Work/Study"
-              value={placeOfWorkStudy}
-              onChange={setPlaceOfWorkStudy}
-              placeholder="Select location on map"
-              error={formErrors.placeOfWorkStudy}
-            />
+            <Button onPress={handleSkip} variant="secondary">
+              Skip for Now
+            </Button>
           </View>
-        )}
-
-        {/* Action Buttons */}
-        <View className="mt-2 gap-2">
-          <Button onPress={handleSaveDetails} variant="primary">
-            Save Details
-          </Button>
-
-          <Button onPress={handleSkip} variant="secondary">
-            Skip for Now
-          </Button>
         </View>
-      </View>
-    </ScrollView>
+      </ScrollView>
+    </View>
   );
 }

@@ -1,4 +1,4 @@
-import { View, Text, Alert } from 'react-native';
+import { View, Text, Alert, Platform } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLoggedIn } from '../../store/useLoggedIn';
@@ -180,8 +180,10 @@ export default function RegisterScreen({ navigation }: Props) {
 
       setLoading(false);
 
+      // Set device flag - this device has now been onboarded
+      await AsyncStorage.setItem('DeviceOnboarded', 'true');
+
       // Navigate to Welcome screen for all users
-      // Navigate to Welcome screen
       navigation.navigate('Welcome');
     } catch (error) {
       setLoading(false);
@@ -202,8 +204,8 @@ export default function RegisterScreen({ navigation }: Props) {
   };
 
   const handleLogin = async () => {
-    // Set the onboarding flag so next time app opens it goes to Auth screen
-    await AsyncStorage.setItem('app_has_seen_onboarding', 'true');
+    // Set the device flag so next time app opens it goes to Auth screen
+    await AsyncStorage.setItem('DeviceOnboarded', 'true');
     navigation.navigate('Auth');
   };
 
@@ -216,99 +218,103 @@ export default function RegisterScreen({ navigation }: Props) {
   };
 
   return (
-    <KeyboardAwareScrollView
+    <View
       className="flex-1 bg-background"
-      contentContainerClassName="pb-8"
-      contentContainerStyle={{ paddingTop: insets.top + 8, paddingHorizontal: 24 }}
-      keyboardShouldPersistTaps="handled"
-      showsVerticalScrollIndicator={true}
-      enableOnAndroid={true}
-      extraScrollHeight={20}>
-      <BackButton onPress={handleGoBack} />
-      <Text className="mb-2 mt-6 text-center text-4xl font-bold text-primary">
-        Create your account
-      </Text>
-      <Text className="mb-8 text-center text-base text-muted-foreground">
-        Your perfect place awaits
-      </Text>
+      style={{ paddingTop: Platform.OS === 'ios' ? 0 : insets.top + 8 }}>
+      <KeyboardAwareScrollView
+        className="flex-1"
+        style={{ paddingTop: Platform.OS === 'ios' ? 40 : 0 }}
+        contentContainerClassName="px-6 pb-8"
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={true}
+        enableOnAndroid={true}
+        extraScrollHeight={20}>
+        <BackButton onPress={handleGoBack} />
+        <Text className="mb-2 mt-6 text-center text-4xl font-bold text-primary">
+          Create your account
+        </Text>
+        <Text className="mb-8 text-center text-base text-muted-foreground">
+          Your perfect place awaits
+        </Text>
 
-      <View className="w-full max-w-sm gap-4 self-center">
-        <Input
-          placeholder="First Name"
-          autoCapitalize="words"
-          value={firstName}
-          onChangeText={setFirstName}
-          error={formErrors.firstName}
-        />
-        <Input
-          placeholder="Last Name"
-          autoCapitalize="words"
-          value={lastName}
-          onChangeText={setLastName}
-          error={formErrors.lastName}
-        />
-        <Input
-          placeholder="Email"
-          keyboardType="email-address"
-          autoCapitalize="none"
-          value={email}
-          onChangeText={setEmail}
-          error={formErrors.email}
-        />
-        <Input
-          placeholder="Phone Number"
-          keyboardType="phone-pad"
-          autoCapitalize="none"
-          value={phoneNumber}
-          onChangeText={setPhoneNumber}
-          error={formErrors.phoneNumber}
-        />
-        {/* Role selection removed as per request */}
-        <Input
-          placeholder="Password"
-          secureTextEntry
-          autoCapitalize="none"
-          value={password}
-          onChangeText={setPassword}
-          error={formErrors.password}
-        />
-        <Input
-          placeholder="Confirm Password"
-          secureTextEntry
-          autoCapitalize="none"
-          value={confirmPassword}
-          onChangeText={setConfirmPassword}
-          error={formErrors.confirmPassword}
-        />
+        <View className="w-full max-w-sm gap-4 self-center">
+          <Input
+            placeholder="First Name"
+            autoCapitalize="words"
+            value={firstName}
+            onChangeText={setFirstName}
+            error={formErrors.firstName}
+          />
+          <Input
+            placeholder="Last Name"
+            autoCapitalize="words"
+            value={lastName}
+            onChangeText={setLastName}
+            error={formErrors.lastName}
+          />
+          <Input
+            placeholder="Email"
+            keyboardType="email-address"
+            autoCapitalize="none"
+            value={email}
+            onChangeText={setEmail}
+            error={formErrors.email}
+          />
+          <Input
+            placeholder="Phone Number"
+            keyboardType="phone-pad"
+            autoCapitalize="none"
+            value={phoneNumber}
+            onChangeText={setPhoneNumber}
+            error={formErrors.phoneNumber}
+          />
+          {/* Role selection removed as per request */}
+          <Input
+            placeholder="Password"
+            secureTextEntry
+            autoCapitalize="none"
+            value={password}
+            onChangeText={setPassword}
+            error={formErrors.password}
+          />
+          <Input
+            placeholder="Confirm Password"
+            secureTextEntry
+            autoCapitalize="none"
+            value={confirmPassword}
+            onChangeText={setConfirmPassword}
+            error={formErrors.confirmPassword}
+          />
 
-        <Button onPress={handleSignUp} variant="primary" disabled={loading}>
-          {loading ? 'Signing Up...' : 'Sign Up'}
-        </Button>
+          <Button onPress={handleSignUp} variant="primary" disabled={loading}>
+            {loading ? 'Signing Up...' : 'Sign Up'}
+          </Button>
 
-        <View className="mt-6 items-center">
-          <View className="flex-row">
-            <Text className="text-sm text-muted-foreground">Already have an account? </Text>
-            <Button onPress={handleLogin} variant="text">
-              Log in
-            </Button>
+          <View className="mt-6 items-center">
+            <View className="flex-row">
+              <Text className="text-sm text-muted-foreground">Already have an account? </Text>
+              <Button onPress={handleLogin} variant="text">
+                Log in
+              </Button>
+            </View>
+          </View>
+
+          <View className="mt-4 items-center">
+            <View className="flex-row flex-wrap justify-center">
+              <Text className="text-center text-xs text-muted-foreground">
+                By creating an account, you agree with our{' '}
+              </Text>
+              <Button onPress={handleTermsOfService} variant="text" size="sm">
+                Terms of Service
+              </Button>
+              <Text className="text-xs text-muted-foreground"> and </Text>
+              <Button onPress={handlePrivacyPolicy} variant="text" size="sm">
+                Privacy Policy
+              </Button>
+            </View>
           </View>
         </View>
-
-        <View className="mt-4 items-center">
-          <View className="flex-row flex-wrap justify-center">
-            <Text className="text-center text-xs text-muted-foreground">
-              By creating an account, you agree with our{' '}
-            </Text>
-            <Button onPress={handleTermsOfService} variant="text" size="sm">
-              Terms of Service
-            </Button>
-            <Text className="text-xs text-muted-foreground"> and </Text>
-            <Button onPress={handlePrivacyPolicy} variant="text" size="sm">
-              Privacy Policy
-            </Button>
-          </View>
-        </View>
-      </View>
-    </KeyboardAwareScrollView>
+      </KeyboardAwareScrollView>
+    </View>
   );
 }

@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { View, Text, SafeAreaView } from 'react-native';
+import { View, Text, SafeAreaView, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RouteProp } from '@react-navigation/native';
@@ -28,9 +28,9 @@ const IntroductionScreen: React.FC<Props> = ({ navigation, route }) => {
   }, [setUserRole]);
 
   const handleBackToAuth = async () => {
-    // Set onboarding to true when going back to Auth
+    // Set device flag to true when going back to Auth
     try {
-      await AsyncStorage.setItem('hasCompletedOnboarding', 'true');
+      await AsyncStorage.setItem('DeviceOnboarded', 'true');
     } catch (error) {
       console.error('Error setting onboarding flag:', error);
     }
@@ -38,14 +38,12 @@ const IntroductionScreen: React.FC<Props> = ({ navigation, route }) => {
   };
 
   return (
-    <View className="flex-1 bg-background" style={{ paddingTop: insets.top }}>
-      {fromAuth && (
-        <View className="absolute left-6 z-10" style={{ top: insets.top + 8 }}>
-          <BackButton onPress={handleBackToAuth} />
-        </View>
-      )}
-      <SafeAreaView className="flex-1 items-center justify-center px-6">
-        <View className="w-full max-w-sm gap-6">
+    <View
+      className="flex-1 bg-background"
+      style={{ paddingTop: Platform.OS === 'ios' ? 45 : insets.top + 8 }}>
+      <View className="flex-1 items-center justify-center px-6">
+        {fromAuth && <BackButton className="z-10 mt-8" onPress={handleBackToAuth} />}
+        <View className="h-full w-full max-w-sm justify-center gap-6">
           <Text className="text-center text-5xl font-bold text-primary">Welcome to RoomSync</Text>
           <Text className="mt-2 text-center text-lg text-foreground">
             Find safe, affordable living spaces in Dumaguete City with AI-powered recommendations.
@@ -55,7 +53,7 @@ const IntroductionScreen: React.FC<Props> = ({ navigation, route }) => {
             Get Started
           </Button>
         </View>
-      </SafeAreaView>
+      </View>
     </View>
   );
 };

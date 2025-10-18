@@ -279,10 +279,13 @@ export default function App() {
   useEffect(() => {
     const checkOnboarding = async () => {
       try {
-        const hasCompletedOnboarding = await AsyncStorage.getItem('hasCompletedOnboarding');
-        if (hasCompletedOnboarding === 'true') {
+        // Check device-specific flag first
+        const deviceOnboarded = await AsyncStorage.getItem('DeviceOnboarded');
+        if (deviceOnboarded === 'true') {
+          // Device has seen onboarding before, go to Auth
           setInitialRoute('Auth');
         } else {
+          // First time on this device, show Introduction
           setInitialRoute('Introduction');
         }
       } catch (error) {
