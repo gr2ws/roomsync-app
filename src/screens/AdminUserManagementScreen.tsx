@@ -43,7 +43,7 @@ export default function AdminUserManagementScreen() {
       const { data, error, count } = await supabase
         .from('users')
         .select('*', { count: 'exact' })
-        .order('user_id', { ascending: true})
+        .order('user_id', { ascending: true })
         .range(from, to);
 
       if (error) {
@@ -51,8 +51,33 @@ export default function AdminUserManagementScreen() {
         return;
       }
 
-      setUsers(data ?? []);
-      setTotalCount(count ?? 0);
+      // Normalize each row into the shape your UI expects
+      const normalized = (data ?? []).map((u: any, index: number) => ({
+        // primary identifiers
+        id: index,
+        user_id: u.user_id ?? '',
+        auth_id: u.auth_id ?? '',
+        // name fields
+        first_name: u.first_name ?? '',
+        last_name: u.last_name ?? '',
+        // contact / profile
+        email: u.email ?? '',
+        phoneNumber: u.phone_number ?? '',
+        // avatar/profile URL 
+        profile_picture: u.profile_picture ?? 'https://thumbs.dreamstime.com/b/default-avatar-profile-icon-vector-social-media-user-portrait-176256935.jpg',
+        // flags / role
+        isWarned: !!u.is_warned,
+        isBanned: !!u.is_banned,
+        isVerified: !!(u.is_verified ?? u.isVerified),
+        role: u.user_type || '',
+        // counts / meta
+        propertiesListed: u.properties_listed ?? u.propertiesListed ?? 0,
+        applications: u.applications ?? 0,
+        last_login_date: u.last_login_date ?? '',
+      }));
+
+      setUsers(normalized);
+      setTotalCount(count ?? normalized.length);
     } catch (err) {
       console.error('Unexpected fetch error:', err);
     }
@@ -131,7 +156,7 @@ const filteredUsers = useMemo(() => {
         </View>
 
         {/* User Statistics Cards */}
-        <View className="mb-3 flex-row flex-wrap justify-evenly gap-2">
+        <View className="mb-1 flex-row flex-wrap justify-evenly gap-2">
           <StatCard
             title="Total Users"
             value={userStats.totalUsers.toString()}
@@ -231,7 +256,7 @@ const filteredUsers = useMemo(() => {
           </Text>
           {filteredUsers.map((user) => (
             <UserCard
-              key={user.id}
+              key={user.auth_id}
               user={user}
               onView={() => handleViewUser(user.id)}
               onMessage={() => handleMessageUser(user.id)}
@@ -251,7 +276,6 @@ const filteredUsers = useMemo(() => {
     </View>
   );
 }
-// ...existing code...
 
 /* ------------------- Component Definitions ------------------- */
 
@@ -268,8 +292,7 @@ function StatCard({
 }) {
   return (
     <View
-      className="mb-3 rounded-xl border border-gray-200 bg-gray-50 p-4"
-      style={{ width: CARD_WIDTH - 0 }}>
+      className="mb-3 rounded-xl border border-gray-200 bg-gray-50 p-4 w-44">
       <View className="mb-2 flex-row items-center">
         <Ionicons name={icon as any} size={20} color={color} />
         <Text className="ml-1.5 mr-1.5 text-xs font-medium text-gray-600">{title}</Text>
@@ -298,46 +321,47 @@ function UserCard({
     switch (role) {
       case 'renter':
         return 'Renter';
-      case 'property_owner':
+      case 'owner':
         return 'Property Owner';
       case 'both':
         return 'Both';
       default:
-        return role;
+        return '<role_err>';
     }
   };
 
-const lastActiveDate: any = new Date(user.lastActive);
+const lastActiveDate: any = new Date(user.last_login_date);
 const now: any = new Date();
 const diffMs = now - lastActiveDate;
 const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+const isActive = true;
 
-let isActive;
-let wasActiveWhen;
+// let isActive;
+// let wasActiveWhen;
 
-if (diffDays <= 0) {
-  isActive = true;
-} else if (diffDays < 7) {
-  isActive = false;
-  wasActiveWhen = `${diffDays} day${diffDays === 1 ? '' : 's'} ago`;
-} else if (diffDays < 28) {
-  isActive = false;
-  const weeks = Math.floor(diffDays / 7);
-  wasActiveWhen = `${weeks} week${weeks === 1 ? '' : 's'} ago`;
-} else if (diffDays < 365) {
-  isActive = false;
-  const months = Math.floor(diffDays / 30);
-  wasActiveWhen = `${months} month${months === 1 ? '' : 's'} ago`;
-} else {
-  isActive = false;
-  wasActiveWhen = 'a long time ago';
-}
+// if (diffDays <= 0) {
+//   isActive = true;
+// } else if (diffDays < 7) {
+//   isActive = false;
+//   wasActiveWhen = `${diffDays} day${diffDays === 1 ? '' : 's'} ago`;
+// } else if (diffDays < 28) {
+//   isActive = false;
+//   const weeks = Math.floor(diffDays / 7);
+//   wasActiveWhen = `${weeks} week${weeks === 1 ? '' : 's'} ago`;
+// } else if (diffDays < 365) {
+//   isActive = false;
+//   const months = Math.floor(diffDays / 30);
+//   wasActiveWhen = `${months} month${months === 1 ? '' : 's'} ago`;
+// } else {
+//   isActive = false;
+//   wasActiveWhen = 'a long time ago';
+// }
   return (
     <View className="mb-4 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
       <View className="mb-4 flex-row items-start">
         <View className="relative mr-4">
           <Image
-            source={{ uri: user.avatarUrl }}
+            source={{ uri: user.profile_picture }}
             className="h-16 w-16 rounded-full"
             resizeMode="cover"
           />
@@ -356,7 +380,8 @@ if (diffDays <= 0) {
               style={{ flexShrink: 1 }}>
               {`${user.first_name ?? ''} ${user.last_name ?? ''}`}
             </Text>
-            {user.isVerified ? (
+            {user.isVerified ? 
+            (
               <View className="rounded-full bg-green-100 px-2 py-1">
                 <Text className="text-xs font-medium text-green-700">Verified</Text>
               </View>
@@ -391,7 +416,7 @@ if (diffDays <= 0) {
             <View
               className={`mr-1.5 h-2 w-2 rounded-full ${isActive ? 'bg-green-500' : 'bg-gray-400'}`}
             />
-            <Text className="text-lg font-bold text-gray-900">{user.lastActive}</Text>
+            <Text className="text-lg font-bold text-gray-900">{user.last_login_date}</Text>
           </View>
           <Text className="text-center text-xs text-gray-600">Last Active</Text>
         </View>
@@ -425,8 +450,3 @@ if (diffDays <= 0) {
     </View>
   );
 }
-
-/* ------------------- Constants ------------------- */
-const { width } = Dimensions.get('window');
-const CARD_WIDTH = (width - 72) / 2; // 2 cards per row with padding
-// ...existing code...
