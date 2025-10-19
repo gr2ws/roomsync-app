@@ -14,7 +14,6 @@ create table public.properties (
   rating double precision null,
   max_renters integer not null,
   is_available boolean not null,
-  landmarks text[] null,
   is_verified boolean not null default false,
   has_internet boolean null,
   allows_pets boolean null,

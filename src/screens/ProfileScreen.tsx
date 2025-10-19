@@ -13,6 +13,7 @@ import DatePicker from '../components/DatePicker';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../utils/navigation';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // Schema for renters
 const renterSchema = z
@@ -167,12 +168,28 @@ export default function ProfileScreen() {
   };
 
   const handleLogout = async () => {
-    const { error } = await supabase.auth.signOut();
-    if (error) {
-      Alert.alert('Error', 'Failed to log out: ' + error.message);
-      return;
-    }
-    setIsLoggedIn(false);
+    Alert.alert(
+      'Log Out',
+      'Are you sure you want to log out?',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Log Out',
+          style: 'destructive',
+          onPress: async () => {
+            const { error } = await supabase.auth.signOut();
+            if (error) {
+              Alert.alert('Error', 'Failed to log out: ' + error.message);
+              return;
+            }
+            setIsLoggedIn(false);
+          },
+        },
+      ]
+    );
   };
 
   const handleNameTap = () => {
@@ -189,10 +206,11 @@ export default function ProfileScreen() {
         {
           text: 'Reset',
           onPress: async () => {
+            // Only remove user-specific flag, NOT the device flag
             if (userProfile?.user_id) {
-              await AsyncStorage.removeItem(`user_${userProfile.user_id}_has_completed_onboarding`);
+              await AsyncStorage.removeItem(`user_${userProfile.user_id}_hasCompletedOnboarding`);
             }
-            await AsyncStorage.removeItem('hasCompletedOnboarding');
+            // Do NOT remove 'DeviceOnboarded' - that's device-specific
             setIsLoggedIn(false);
             setTapCount(0);
           },
@@ -330,145 +348,155 @@ export default function ProfileScreen() {
     Alert.alert('Success', 'Profile updated successfully');
   };
 
+  const insets = useSafeAreaInsets();
+
   return (
     <ScrollView
       className="flex-1 bg-background"
-      contentContainerClassName="px-6 py-8"
-      style={{ paddingTop: Platform.OS === 'ios' ? 40 : 20 }}>
-      <Text className="mb-2 text-center text-3xl font-bold text-primary" onPress={handleNameTap}>
-        {userProfile?.full_name || 'Your Profile'}
-      </Text>
-      <Text className="mb-8 text-center text-base text-muted-foreground">
-        {userRole === 'renter' ? 'Renter' : 'Property Owner'}
-      </Text>
+      contentContainerClassName="px-6 pb-2"
+      style={{ paddingTop: Platform.OS === 'ios' ? 0 : insets.top + 8 }}>
+      <View
+        style={{
+          paddingTop: Platform.OS === 'ios' ? 40 : 0,
+          paddingBottom: Platform.OS === 'ios' ? 0 : 32,
+        }}>
+        <Text className="mb-2 text-center text-3xl font-bold text-primary" onPress={handleNameTap}>
+          {userProfile?.full_name || 'Your Profile'}
+        </Text>
+        <Text className="mb-8 text-center text-base text-muted-foreground">
+          {userRole === 'renter' ? 'Renter' : 'Property Owner'}
+        </Text>
 
-      <View className="w-full max-w-sm self-center">
-        {/* Profile Picture Picker - All roles */}
-        <ProfilePicturePicker
-          value={profilePicture}
-          onChange={handleProfilePictureChange}
-          authId={userProfile?.auth_id || ''}
-        />
+        <View className="w-full max-w-sm self-center">
+          {/* Profile Picture Picker - All roles */}
+          <ProfilePicturePicker
+            value={profilePicture}
+            onChange={handleProfilePictureChange}
+            authId={userProfile?.auth_id || ''}
+          />
 
-        {/* Basic Information - All roles */}
-        <View className="gap-4">
-          <View>
-            <Text className="mb-2 text-base font-medium text-foreground">First Name</Text>
-            <Input
-              placeholder="Enter your first name"
-              autoCapitalize="words"
-              value={firstName}
-              onChangeText={setFirstName}
-              error={formErrors.firstName}
-            />
-          </View>
-          <View>
-            <Text className="mb-2 text-base font-medium text-foreground">Last Name</Text>
-            <Input
-              placeholder="Enter your last name"
-              autoCapitalize="words"
-              value={lastName}
-              onChangeText={setLastName}
-              error={formErrors.lastName}
-            />
-          </View>
-          <View>
-            <Text className="mb-2 text-base font-medium text-foreground">Phone Number</Text>
-            <Input
-              placeholder="Enter your phone number"
-              keyboardType="phone-pad"
-              autoCapitalize="none"
-              value={phoneNumber}
-              onChangeText={setPhoneNumber}
-              error={formErrors.phoneNumber}
-            />
-          </View>
-        </View>
-
-        {/* Birth Date - All roles */}
-        <DatePicker
-          label="Birth Date"
-          placeholder="Select your birth date"
-          value={birthDate}
-          onChange={setBirthDate}
-          error={formErrors.birthDate}
-        />
-
-        {/* Renter-specific fields */}
-        {userRole === 'renter' && (
-          <View className="flex-1 gap-4">
+          {/* Basic Information - All roles */}
+          <View className="gap-4">
             <View>
-              <Text className="mb-2 text-base font-medium text-foreground">
-                Monthly Budget Range
-              </Text>
-              <View className="flex-row gap-2">
-                <View className="flex-1">
-                  <Input
-                    placeholder="Min. Budget"
-                    keyboardType="numeric"
-                    autoCapitalize="none"
-                    value={minBudget}
-                    onChangeText={setMinBudget}
-                    error={formErrors.minBudget}
-                  />
-                </View>
-                <View className="flex-1">
-                  <Input
-                    placeholder="Max. Budget"
-                    keyboardType="numeric"
-                    autoCapitalize="none"
-                    value={maxBudget}
-                    onChangeText={setMaxBudget}
-                    error={formErrors.maxBudget}
-                  />
+              <Text className="mb-2 text-base font-medium text-foreground">First Name</Text>
+              <Input
+                placeholder="Enter your first name"
+                autoCapitalize="words"
+                value={firstName}
+                onChangeText={setFirstName}
+                error={formErrors.firstName}
+              />
+            </View>
+            <View>
+              <Text className="mb-2 text-base font-medium text-foreground">Last Name</Text>
+              <Input
+                placeholder="Enter your last name"
+                autoCapitalize="words"
+                value={lastName}
+                onChangeText={setLastName}
+                error={formErrors.lastName}
+              />
+            </View>
+            <View>
+              <Text className="mb-2 text-base font-medium text-foreground">Phone Number</Text>
+              <Input
+                placeholder="Enter your phone number"
+                keyboardType="phone-pad"
+                autoCapitalize="none"
+                value={phoneNumber}
+                onChangeText={setPhoneNumber}
+                error={formErrors.phoneNumber}
+              />
+            </View>
+          </View>
+
+          {/* Birth Date - All roles */}
+          <DatePicker
+            label="Birth Date"
+            placeholder="Select your birth date"
+            value={birthDate}
+            onChange={setBirthDate}
+            error={formErrors.birthDate}
+          />
+
+          {/* Renter-specific fields */}
+          {userRole === 'renter' && (
+            <View className="flex-1 gap-4">
+              <View>
+                <Text className="mb-2 text-base font-medium text-foreground">
+                  Monthly Budget Range
+                </Text>
+                <View className="flex-row gap-2">
+                  <View className="flex-1">
+                    <Input
+                      placeholder="Min. Budget"
+                      keyboardType="numeric"
+                      autoCapitalize="none"
+                      value={minBudget}
+                      onChangeText={setMinBudget}
+                      error={formErrors.minBudget}
+                    />
+                  </View>
+                  <View className="flex-1">
+                    <Input
+                      placeholder="Max. Budget"
+                      keyboardType="numeric"
+                      autoCapitalize="none"
+                      value={maxBudget}
+                      onChangeText={setMaxBudget}
+                      error={formErrors.maxBudget}
+                    />
+                  </View>
                 </View>
               </View>
+
+              {/* Room Preference Radio Group */}
+              <RadioGroup
+                label="Room Preference"
+                options={['Bedspace', 'Room', 'Apartment']}
+                value={roomPreference}
+                onChange={setRoomPreference}
+                error={formErrors.roomPreference}
+              />
+
+              {/* Occupation Radio Group */}
+              <RadioGroup
+                label="Occupation"
+                options={['Student', 'Employee']}
+                value={occupation}
+                onChange={setOccupation}
+                error={formErrors.occupation}
+              />
+
+              {/* Place of Work/Study - Map Picker */}
+              <LocationPicker
+                label="Place of Work/Study"
+                value={placeOfWorkStudy}
+                onChange={setPlaceOfWorkStudy}
+                placeholder="Select location on map"
+                error={formErrors.placeOfWorkStudy}
+              />
             </View>
-
-            {/* Room Preference Radio Group */}
-            <RadioGroup
-              label="Room Preference"
-              options={['Bedspace', 'Room', 'Apartment']}
-              value={roomPreference}
-              onChange={setRoomPreference}
-              error={formErrors.roomPreference}
-            />
-
-            {/* Occupation Radio Group */}
-            <RadioGroup
-              label="Occupation"
-              options={['Student', 'Employee']}
-              value={occupation}
-              onChange={setOccupation}
-              error={formErrors.occupation}
-            />
-
-            {/* Place of Work/Study - Map Picker */}
-            <LocationPicker
-              label="Place of Work/Study"
-              value={placeOfWorkStudy}
-              onChange={setPlaceOfWorkStudy}
-              placeholder="Select location on map"
-              error={formErrors.placeOfWorkStudy}
-            />
-          </View>
-        )}
-
-        {/* Action Buttons */}
-        <View className="mt-2 gap-2">
-          <Button onPress={handleSaveDetails} variant="primary">
-            Save Details
-          </Button>
-
-          {userRole === 'renter' && (
-            <Button onPress={() => navigation.navigate('Preferences', { fromProfile: true })} variant="secondary">
-              Edit Preferences
-            </Button>
           )}
 
-          <Button onPress={handleLogout} variant="secondary">
-            Log Out
-          </Button>
+          {/* Action Buttons */}
+          <View className="mt-2 gap-2">
+            <Button onPress={handleSaveDetails} variant="primary">
+              Save Details
+            </Button>
+
+            {userRole === 'renter' && (
+              <Button
+                onPress={() => navigation.navigate('Preferences', { fromProfile: true })}
+                variant="secondary">
+                Edit Preferences
+              </Button>
+            )}
+
+            <Button onPress={handleLogout} variant="destructive">
+              Log Out
+            </Button>
+          </View>
         </View>
       </View>
     </ScrollView>

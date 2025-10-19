@@ -14,6 +14,7 @@ export type RootTabParamList = {
   Applications: undefined;
   Chat: undefined;
   AddProperty: undefined;
+  EditProperty: { propertyId: number };
   ManageProperties: undefined;
   ViewReviews: undefined;
   Profile: undefined;

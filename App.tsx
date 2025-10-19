@@ -1,5 +1,5 @@
-import 'react-native-gesture-handler';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+
 import { NavigationContainer } from '@react-navigation/native';
 import {
   createBottomTabNavigator,
@@ -7,7 +7,7 @@ import {
 } from '@react-navigation/bottom-tabs';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
-import { Platform } from 'react-native';
+import { Platform, Alert, ActivityIndicator } from 'react-native';
 
 import ProfileScreen from './src/screens/ProfileScreen';
 import NotificationsScreen from './src/screens/NotificationsScreen';
@@ -15,6 +15,8 @@ import { RootStackParamList, RootTabParamList } from './src/utils/navigation';
 import './src/style/global.css';
 import { MainScaffold } from '~/components/layout/MainScaffold';
 import { useLoggedIn } from './src/store/useLoggedIn';
+import { usePropertyUpload } from './src/store/usePropertyUpload';
+import { usePropertyEdit } from './src/store/usePropertyEdit';
 import AuthScreen from './src/screens/auth/AuthScreen';
 import RegisterScreen from './src/screens/auth/RegisterScreen';
 import AdminDashboardScreen from './src/screens/AdminDashboardScreen';
@@ -42,6 +44,8 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 
 function MainApp() {
   const { userRole } = useLoggedIn();
+  const { isUploading } = usePropertyUpload();
+  const { isEditing, cancelEdit } = usePropertyEdit();
 
   const commonScreenOptions: BottomTabNavigationOptions = {
     headerShown: false,
@@ -151,14 +155,36 @@ function MainApp() {
         name="AddProperty"
         component={AddPropertyScreen}
         options={{
-          tabBarLabel: 'Add',
-          tabBarIcon: ({ focused, color, size }) => (
-            <Ionicons
-              name={focused ? 'add-circle' : 'add-circle-outline'}
-              size={size}
-              color={color}
-            />
-          ),
+          tabBarLabel: isEditing ? 'Edit' : 'Add',
+          tabBarIcon: ({ focused, color, size }) =>
+            isUploading ? (
+              <ActivityIndicator size={size} color={color} />
+            ) : isEditing ? (
+              <Ionicons name={focused ? 'create' : 'create-outline'} size={size} color={color} />
+            ) : (
+              <Ionicons
+                name={focused ? 'add-circle' : 'add-circle-outline'}
+                size={size}
+                color={color}
+              />
+            ),
+        }}
+        listeners={{
+          tabPress: (e) => {
+            if (isUploading) {
+              e.preventDefault();
+              Alert.alert(
+                'Upload in Progress',
+                'Please wait for the current property to finish uploading.'
+              );
+            }
+          },
+          blur: () => {
+            // Reset edit state when navigating away from AddProperty tab
+            if (isEditing) {
+              cancelEdit();
+            }
+          },
         }}
       />,
       <Tab.Screen
@@ -279,10 +305,13 @@ export default function App() {
   useEffect(() => {
     const checkOnboarding = async () => {
       try {
-        const hasCompletedOnboarding = await AsyncStorage.getItem('hasCompletedOnboarding');
-        if (hasCompletedOnboarding === 'true') {
+        // Check device-specific flag first
+        const deviceOnboarded = await AsyncStorage.getItem('DeviceOnboarded');
+        if (deviceOnboarded === 'true') {
+          // Device has seen onboarding before, go to Auth
           setInitialRoute('Auth');
         } else {
+          // First time on this device, show Introduction
           setInitialRoute('Introduction');
         }
       } catch (error) {
