@@ -73,7 +73,6 @@ const ChatScreen: React.FC = () => {
       <KeyboardAwareScrollView
         className="bg-white"
         enableOnAndroid={true}
-        extraScrollHeight={20}
         keyboardShouldPersistTaps="handled">
         <View className="flex-row bg-white p-4 pb-6">
           <TextInput

@@ -1,225 +1,263 @@
 import {
   View,
   Text,
-  FlatList,
-  Image,
   Alert,
   ActivityIndicator,
+  FlatList,
+  Platform,
   RefreshControl,
+  TouchableOpacity,
 } from 'react-native';
-import { useState, useCallback } from 'react';
-import { Home, Star, Users, MapPin, Plus, Edit, Trash2 } from 'lucide-react-native';
-import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import Button from '../../components/Button';
-
-type RootStackParamList = {
-  ManageProperties: undefined;
-  AddProperty: undefined;
-  EditProperty: { propertyId: string };
-};
-
-type Props = NativeStackScreenProps<RootStackParamList, 'ManageProperties'>;
+import { useState, useCallback, useEffect } from 'react';
+import { Home, RefreshCw } from 'lucide-react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
+import { supabase } from '../../utils/supabase';
+import { useLoggedIn } from '../../store/useLoggedIn';
+import { usePropertyEdit } from '../../store/usePropertyEdit';
+import { usePropertyUpload } from '../../store/usePropertyUpload';
+import PropertyListItem from '../../components/PropertyListItem';
 
 interface Property {
-  id: string;
-  name: string;
-  address: string;
-  price: number;
-  rating: number;
-  totalReviews: number;
-  image: number;
-  occupancy: number;
-  totalRooms: number;
+  property_id: number;
+  title: string;
+  description: string | null;
+  category: 'apartment' | 'room' | 'bedspace';
+  street: string | null;
+  barangay: string | null;
+  city: string;
+  coordinates: string;
+  image_url: string[];
+  rent: number;
+  max_renters: number;
+  has_internet: boolean;
+  allows_pets: boolean;
+  is_furnished: boolean;
+  has_ac: boolean;
+  is_secure: boolean;
+  has_parking: boolean;
+  is_available: boolean;
+  is_verified: boolean;
+  amenities: string[];
 }
 
-export default function ManagePropertiesScreen({ navigation }: Props) {
-  const [isLoading, setIsLoading] = useState(false);
+interface PropertyWithRenters extends Property {
+  currentRenters: number;
+}
+
+export default function ManagePropertiesScreen() {
+  const insets = useSafeAreaInsets();
+  const navigation = useNavigation();
+  const { userProfile } = useLoggedIn();
+  const { startEdit } = usePropertyEdit();
+  const { isUploading } = usePropertyUpload();
+  const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [properties, setProperties] = useState<Property[]>([
-    {
-      id: '1',
-      name: 'Silliman Residences',
-      address: 'Hibbard Avenue, Dumaguete City',
-      price: 15000,
-      rating: 4.5,
-      totalReviews: 12,
-      image: require('../../assets/room1.jpg'),
-      occupancy: 3,
-      totalRooms: 4,
-    },
-    {
-      id: '2',
-      name: 'Portal West Apartments',
-      address: 'Portal West, Bantayan, Dumaguete City',
-      price: 12000,
-      rating: 4.8,
-      totalReviews: 8,
-      image: require('../../assets/room2.jpg'),
-      occupancy: 2,
-      totalRooms: 3,
-    },
-    {
-      id: '3',
-      name: 'Rizal Boulevard Suites',
-      address: 'Rizal Boulevard, Dumaguete City',
-      price: 18000,
-      rating: 4.2,
-      totalReviews: 15,
-      image: require('../../assets/room3.jpg'),
-      occupancy: 4,
-      totalRooms: 4,
-    },
-  ]);
+  const [properties, setProperties] = useState<PropertyWithRenters[]>([]);
+
+  const fetchProperties = async () => {
+    if (!userProfile?.user_id) {
+      Alert.alert('Error', 'User profile not found. Please log in again.');
+      return;
+    }
+
+    try {
+      // Fetch properties for current owner
+      const { data: propertiesData, error: propertiesError } = await supabase
+        .from('properties')
+        .select('*')
+        .eq('owner_id', userProfile.user_id)
+        .order('property_id', { ascending: false });
+
+      if (propertiesError) throw propertiesError;
+
+      if (!propertiesData || propertiesData.length === 0) {
+        setProperties([]);
+        return;
+      }
+
+      // Fetch current renters count for each property
+      const propertiesWithRenters = await Promise.all(
+        propertiesData.map(async (property) => {
+          const { count, error: countError } = await supabase
+            .from('users')
+            .select('*', { count: 'exact', head: true })
+            .eq('rented_property', property.property_id);
+
+          if (countError) {
+            console.error('Error counting renters:', countError);
+            return { ...property, currentRenters: 0 };
+          }
+
+          return { ...property, currentRenters: count || 0 };
+        })
+      );
+
+      setProperties(propertiesWithRenters as PropertyWithRenters[]);
+    } catch (error) {
+      console.error('Error fetching properties:', error);
+      Alert.alert('Error', 'Failed to load properties. Please try again.');
+    } finally {
+      setIsLoading(false);
+      setIsRefreshing(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchProperties();
+  }, [userProfile?.user_id]);
 
   const handleRefresh = useCallback(async () => {
     setIsRefreshing(true);
-    try {
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-    } catch (error) {
-      Alert.alert('Error', 'Failed to refresh properties');
-    } finally {
-      setIsRefreshing(false);
-    }
-  }, []);
+    await fetchProperties();
+  }, [userProfile?.user_id]);
 
-  const handleDeleteProperty = useCallback((propertyId: string, propertyName: string) => {
-    Alert.alert(
-      'Delete Property',
-      `Are you sure you want to delete "${propertyName}"? This action cannot be undone.`,
-      [
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: () => {
-            setIsLoading(true);
-            setTimeout(() => {
-              setProperties((prev) => prev.filter((p) => p.id !== propertyId));
-              setIsLoading(false);
-            }, 1000);
+  const handleEdit = useCallback(
+    (property: PropertyWithRenters) => {
+      if (isUploading) {
+        Alert.alert(
+          'Upload in Progress',
+          'Please wait for the current property upload/update to finish before editing another property.'
+        );
+        return;
+      }
+      startEdit(property.property_id, property);
+      navigation.navigate('AddProperty' as never);
+    },
+    [navigation, startEdit, isUploading]
+  );
+
+  const handleDelete = useCallback(
+    (propertyId: number, propertyTitle: string) => {
+      Alert.alert(
+        'Delete Property',
+        `Are you sure you want to delete "${propertyTitle}"? This action cannot be undone.`,
+        [
+          {
+            text: 'Cancel',
+            style: 'cancel',
           },
-        },
-      ]
+          {
+            text: 'Delete',
+            style: 'destructive',
+            onPress: async () => {
+              try {
+                setIsLoading(true);
+                const { error } = await supabase
+                  .from('properties')
+                  .delete()
+                  .eq('property_id', propertyId);
+
+                if (error) throw error;
+
+                Alert.alert('Success', 'Property deleted successfully.');
+                await fetchProperties();
+              } catch (error) {
+                console.error('Error deleting property:', error);
+                Alert.alert('Error', 'Failed to delete property. Please try again.');
+                setIsLoading(false);
+              }
+            },
+          },
+        ]
+      );
+    },
+    [fetchProperties]
+  );
+
+  const handleViewReviews = useCallback((propertyId: number) => {
+    Alert.alert(
+      'Reviews',
+      'To be implemented: Navigate to Reviews screen with automatic filtering by property_id ' +
+        propertyId
     );
   }, []);
 
-  const renderProperty = useCallback(
-    ({ item }: { item: Property }) => (
-      <View className="mb-4 overflow-hidden rounded-xl bg-white shadow-sm">
-        <View className="relative">
-          <Image source={item.image} className="h-48 w-full" resizeMode="cover" />
-          <View className="absolute bottom-0 left-0 right-0 h-20 bg-gradient-to-t from-black/40 to-transparent" />
-        </View>
-
-        <View className="p-4">
-          <View className="mb-2 flex-row items-start justify-between">
-            <Text className="mr-2 flex-1 text-xl font-semibold text-gray-900">{item.name}</Text>
-            <View className="flex-row items-center rounded-full bg-yellow-50 px-2 py-1">
-              <Star size={16} color="#FBC02D" fill="#FBC02D" />
-              <Text className="ml-1 font-medium text-gray-700">{item.rating}</Text>
-              <Text className="ml-1 text-xs text-gray-500">({item.totalReviews})</Text>
-            </View>
-          </View>
-
-          <View className="mb-3 flex-row items-center">
-            <MapPin size={16} color="#6B7280" />
-            <Text className="ml-1 flex-1 text-gray-600">{item.address}</Text>
-          </View>
-
-          <View className="mb-4 flex-row items-center justify-between">
-            <Text className="text-lg font-semibold text-gray-900">
-              ₱{item.price.toLocaleString()}
-              <Text className="text-base font-normal text-gray-600">/mo</Text>
-            </Text>
-            <View className="flex-row items-center rounded-full bg-blue-50 px-2 py-1">
-              <Users size={16} color="#3B82F6" />
-              <Text className="ml-1 font-medium text-blue-600">
-                {item.occupancy}/{item.totalRooms} rooms
-              </Text>
-            </View>
-          </View>
-
-          <View className="mt-2 flex-row gap-2">
-            <Button
-              variant="secondary"
-              size="sm"
-              onPress={() => navigation.navigate('EditProperty', { propertyId: item.id })}
-              className="py-2.55 px-6">
-              <View className="flex-row items-center justify-center">
-                <Edit size={16} color="#4B5563" />
-                <Text className="ml-2 text-gray-700">Edit</Text>
-              </View>
-            </Button>
-            <Button
-              variant="secondary"
-              size="sm"
-              onPress={() => handleDeleteProperty(item.id, item.name)}
-              className="border-red-200 bg-red-50 px-4 py-2">
-              <View className="flex-row items-center justify-center">
-                <Trash2 size={16} color="#EF4444" />
-                <Text className="ml-2 font-medium text-red-500">Delete</Text>
-              </View>
-            </Button>
-          </View>
-        </View>
-      </View>
-    ),
-    [navigation, handleDeleteProperty]
+  const renderProperty = ({ item }: { item: PropertyWithRenters }) => (
+    <PropertyListItem
+      property={item}
+      currentRenters={item.currentRenters}
+      isUploading={isUploading}
+      onEdit={() => handleEdit(item)}
+      onDelete={() => handleDelete(item.property_id, item.title)}
+      onViewReviews={() => handleViewReviews(item.property_id)}
+    />
   );
 
   if (isLoading) {
     return (
-      <View className="flex-1 items-center justify-center bg-gray-50">
-        <ActivityIndicator size="large" color="#3B82F6" />
-        <Text className="mt-4 text-gray-600">Loading properties...</Text>
+      <View className="flex-1 items-center justify-center bg-background">
+        <ActivityIndicator size="large" color="#644A40" />
+        <Text className="mt-4 text-base text-muted-foreground">Loading properties...</Text>
+      </View>
+    );
+  }
+
+  if (properties.length === 0) {
+    return (
+      <View
+        className="flex-1 bg-background"
+        style={{ paddingTop: Platform.OS === 'ios' ? 0 : insets.top + 8 }}>
+        <View className="flex-1 items-center justify-center px-6">
+          <Home size={64} color="#9CA3AF" />
+          <Text className="mt-4 text-xl font-semibold text-muted-foreground">
+            No Properties Listed
+          </Text>
+          <Text className="mt-2 text-center text-base text-muted-foreground">
+            You haven&apos;t added any properties yet. Tap the &quot;Add&quot; tab to list your
+            first property.
+          </Text>
+        </View>
       </View>
     );
   }
 
   return (
-    <View className="flex-1 bg-gray-50">
-      <View className="border-b border-gray-200 bg-white p-4">
-        <View className="flex-row items-center justify-between">
-          <View>
-            <Text className="text-2xl font-bold text-gray-900">My Properties</Text>
-            <Text className="text-gray-600">
-              {properties.length} {properties.length === 1 ? 'property' : 'properties'} listed
-            </Text>
-          </View>
-          <Button variant="primary" size="sm" onPress={() => navigation.navigate('AddProperty')}>
-            <View className="flex-row items-center">
-              <Plus size={16} color="white" />
-              <Text className="ml-2 text-white">Add New</Text>
-            </View>
-          </Button>
-        </View>
-      </View>
-
+    <View
+      className="flex-1 bg-background"
+      style={{ paddingTop: Platform.OS === 'ios' ? 0 : insets.top + 8 }}>
       <FlatList
         data={properties}
         renderItem={renderProperty}
-        keyExtractor={(item) => item.id}
-        contentContainerClassName="p-4"
+        keyExtractor={(item) => item.property_id.toString()}
+        ListHeaderComponent={
+          <View className="mb-6 px-6">
+            <View className="flex-row items-center justify-between">
+              <View className="flex-1">
+                <Text className="text-3xl font-bold text-primary">Manage Properties</Text>
+                <Text className="mt-2 text-base text-muted-foreground">
+                  View and manage all your property listings.
+                </Text>
+              </View>
+              <TouchableOpacity
+                onPress={handleRefresh}
+                disabled={isRefreshing}
+                className="ml-4">
+                {isRefreshing ? (
+                  <ActivityIndicator size="small" color="#644A40" />
+                ) : (
+                  <RefreshCw size={24} color="#644A40" />
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        }
+        contentContainerStyle={{
+          paddingTop: Platform.OS === 'ios' ? 50 : 8,
+          paddingBottom: 16,
+          flexGrow: 1,
+        }}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
-            refreshing={isRefreshing}
+            refreshing={false}
             onRefresh={handleRefresh}
-            colors={['#3B82F6']}
-            tintColor="#3B82F6"
+            tintColor="transparent"
+            colors={['transparent']}
+            progressViewOffset={-1000}
+            progressBackgroundColor="transparent"
+            style={{ backgroundColor: 'transparent' }}
           />
-        }
-        ListEmptyComponent={
-          <View className="flex-1 items-center justify-center py-8">
-            <Home size={48} color="#9CA3AF" />
-            <Text className="mt-4 text-lg font-medium text-gray-500">No properties listed yet</Text>
-            <Text className="mt-2 text-center text-gray-400">
-              Add your first property to get started
-            </Text>
-          </View>
         }
       />
     </View>

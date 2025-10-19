@@ -1,7 +1,7 @@
 import { Pressable, Text, PressableProps } from 'react-native';
 import { ReactNode } from 'react';
 
-export type ButtonVariant = 'primary' | 'secondary' | 'text';
+export type ButtonVariant = 'primary' | 'secondary' | 'text' | 'destructive';
 export type ButtonSize = 'sm' | 'md' | 'lg';
 
 interface ButtonProps extends PressableProps {
@@ -25,6 +25,7 @@ export default function Button({
       primary: 'bg-primary px-6 py-3 shadow-sm',
       secondary: 'border border-primary bg-secondary px-6 py-3',
       text: '',
+      destructive: 'border border-destructive bg-secondary px-6 py-3',
     };
 
     const sizeStyles = {
@@ -43,6 +44,7 @@ export default function Button({
       primary: 'text-primary-foreground text-lg',
       secondary: 'text-secondary-foreground text-lg',
       text: 'text-primary',
+      destructive: 'text-destructive text-lg',
     };
 
     const sizeStyles = {
@@ -57,7 +59,7 @@ export default function Button({
   return (
     <Pressable
       className={getButtonStyles()}
-      style={({ pressed }) => [{ opacity: pressed ? 0.8 : 1 }]}
+      style={({ pressed }) => [{ opacity: pressed || props.disabled ? 0.5 : 1 }]}
       {...props}>
       {typeof children === 'string' ? (
         <Text className={getTextStyles()}>{children}</Text>

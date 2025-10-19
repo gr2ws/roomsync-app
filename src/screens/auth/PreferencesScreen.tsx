@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, Platform } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../../utils/navigation';
 import { useLoggedIn } from '../../store/useLoggedIn';
@@ -50,7 +51,8 @@ const DEFAULT_PREFERENCES: PreferenceItem[] = [
 ];
 
 export default function PreferencesScreen({ navigation, route }: PreferencesScreenProps) {
-  const { setIsLoggedIn } = useLoggedIn();
+  const { setIsLoggedIn, userProfile } = useLoggedIn();
+  const insets = useSafeAreaInsets();
   const [preferences, setPreferences] = useState<PreferenceItem[]>(DEFAULT_PREFERENCES);
   const [loading, setLoading] = useState(false);
 
@@ -79,8 +81,22 @@ export default function PreferencesScreen({ navigation, route }: PreferencesScre
   };
 
   const handleSkip = async () => {
-    await AsyncStorage.setItem('hasCompletedOnboarding', 'true');
-    setIsLoggedIn(true);
+    try {
+      // Set user-specific onboarding flag
+      if (userProfile?.user_id) {
+        await AsyncStorage.setItem(`user_${userProfile.user_id}_hasCompletedOnboarding`, 'true');
+      }
+      setIsLoggedIn(true);
+      // Force navigation to Home after state update
+      setTimeout(() => {
+        navigation.reset({
+          index: 0,
+          routes: [{ name: 'Home' }],
+        });
+      }, 30);
+    } catch (error) {
+      console.error('Error in handleSkip:', error);
+    }
   };
 
   const handleSave = async () => {
@@ -92,21 +108,32 @@ export default function PreferencesScreen({ navigation, route }: PreferencesScre
 
       if (isFromProfile) {
         // Just go back to profile
+        setLoading(false);
         navigation.goBack();
       } else {
-        // Complete onboarding
-        await AsyncStorage.setItem('hasCompletedOnboarding', 'true');
+        // Complete onboarding - set user-specific flag
+        if (userProfile?.user_id) {
+          await AsyncStorage.setItem(`user_${userProfile.user_id}_hasCompletedOnboarding`, 'true');
+        }
         setIsLoggedIn(true);
+        // Force navigation to Home after state update
+        setTimeout(() => {
+          navigation.reset({
+            index: 0,
+            routes: [{ name: 'Home' }],
+          });
+          setLoading(false);
+        }, 100);
       }
     } catch (error) {
       console.error('Error saving preferences:', error);
-    } finally {
       setLoading(false);
     }
   };
 
   const renderItem = ({ item, drag, isActive }: RenderItemParams<PreferenceItem>) => {
     const Icon = item.icon;
+
     return (
       <ScaleDecorator>
         <TouchableOpacity
@@ -133,38 +160,68 @@ export default function PreferencesScreen({ navigation, route }: PreferencesScre
   };
 
   return (
-    <View className="flex-1 bg-background" style={{ paddingTop: Platform.OS === 'ios' ? 20 : 0 }}>
-      {isFromProfile && <BackButton onPress={() => navigation.goBack()} />}
-      <View className="px-6 pt-12">
-        <View className="mb-8">
-          <Text className="mb-2 text-3xl font-bold text-foreground">What Matters Most to You?</Text>
-          <Text className="text-base text-muted-foreground">
-            Drag items to prioritize your room preferences. This helps us find your perfect match!
-          </Text>
-        </View>
+    <View
+      className="flex-1 overflow-visible bg-background"
+      style={{ paddingTop: Platform.OS === 'ios' ? 0 : insets.top + 8 }}>
+      <View
+        className="overflow-visible px-6 pt-4"
+        style={{ paddingTop: Platform.OS === 'ios' ? 45 : 0 }}>
+        {isFromProfile && (
+          <View>
+            <BackButton className="px-0 pb-4" onPress={() => navigation.goBack()} />
+            <View className="mb-6">
+              <Text className="mb-2 text-3xl font-bold text-primary">Edit your Preferences</Text>
+              <Text className="text-base text-muted-foreground">
+                Drag items to prioritize your room preferences.The top 3 items are your must-haves,
+                while the bottom 3 will help is fine-tune our recommendations.
+              </Text>
+            </View>
+          </View>
+        )}
 
-        {/* Info Box */}
-        <InfoBox
-          icon={Sparkles}
-          title="How to Prioritize"
-          description="Hold and drag each item to reorder. Your top 3 choices become must-haves, while the rest help us fine-tune your recommendations."
-          className="mb-6"
-        />
+        {!isFromProfile && (
+          <View>
+            <View className="mb-8">
+              <Text className="mb-2 text-3xl font-bold text-primary">Prioritize your Needs</Text>
+              <Text className="text-base text-muted-foreground">
+                Drag items to prioritize your room preferences. This helps us find your perfect
+                match!
+              </Text>
+            </View>
+            <InfoBox
+              icon={Sparkles}
+              title="How to Prioritize"
+              description="Hold and drag each item to reorder. Your top 3 choices become must-haves, while the rest help us fine-tune your recommendations. You can always edit these later."
+              className="mb-6"
+            />
+          </View>
+        )}
       </View>
 
       {/* Draggable List */}
-      <DraggableFlatList
-        data={preferences}
-        onDragEnd={({ data }) => setPreferences(data)}
-        keyExtractor={(item) => item.key}
-        renderItem={renderItem}
-        showsVerticalScrollIndicator={false}
-        containerStyle={{ flex: 1, paddingHorizontal: 24 }}
-        activationDistance={10}
-      />
+      <View className="relative flex-1 overflow-visible px-6">
+        {/* Fixed Divider - positioned after 3rd item */}
+        <View
+          className="absolute left-6 right-6 z-0 border-b border-dashed border-border/60"
+          style={{
+            top: 3 * (56 + 12), // 3 items * (item height + margin bottom) - half margin
+          }}
+        />
+        <DraggableFlatList
+          data={preferences}
+          style={{ overflow: 'visible' }}
+          onDragEnd={({ data }) => setPreferences(data)}
+          keyExtractor={(item) => item.key}
+          renderItem={renderItem}
+          showsVerticalScrollIndicator={false}
+          scrollEnabled={false}
+          containerStyle={{ flex: 1 }}
+          activationDistance={10}
+        />
+      </View>
 
       {/* Buttons */}
-      <View className="mb-8 gap-3 px-6">
+      <View className="z-20 mb-8 gap-3 px-6">
         <Button onPress={handleSave} disabled={loading}>
           {loading ? 'Saving...' : 'Save Preferences'}
         </Button>

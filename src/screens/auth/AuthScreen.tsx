@@ -8,6 +8,7 @@ import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../../utils/navigation';
 import { supabase } from '../../utils/supabase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 type AuthScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Auth'>;
 
@@ -21,12 +22,14 @@ export default function AuthScreen({ navigation }: Props) {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [authenticating, setAuthenticating] = useState(false);
-  const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState(false);
+  const [deviceOnboarded, setDeviceOnboarded] = useState(false);
+
+  const insets = useSafeAreaInsets();
 
   useEffect(() => {
     const checkOnboarding = async () => {
-      const onboardingStatus = await AsyncStorage.getItem('hasCompletedOnboarding');
-      setHasCompletedOnboarding(onboardingStatus === 'true');
+      const onboardingStatus = await AsyncStorage.getItem('DeviceOnboarded');
+      setDeviceOnboarded(onboardingStatus === 'true');
     };
     checkOnboarding();
   }, []);
@@ -64,11 +67,17 @@ export default function AuthScreen({ navigation }: Props) {
       return;
     }
 
+    // Update last login date
+    const timestamp = new Date().toISOString().replace('Z', ''); // Remove 'Z' for timestamp without time zone
+    await supabase.from('users').update({ last_login_date: timestamp }).eq('auth_id', data.user.id);
+
     setUserRole(userData.user_type);
     setUserProfile(userData);
 
-    // Check if user has completed onboarding
-    const hasCompletedOnboarding = await AsyncStorage.getItem('hasCompletedOnboarding');
+    // Check if THIS USER has completed onboarding (user-specific flag)
+    const hasCompletedOnboarding = await AsyncStorage.getItem(
+      `user_${userData.user_id}_hasCompletedOnboarding`
+    );
 
     // Keep loading and authenticating states true until navigation
     setLoading(false);
@@ -85,9 +94,9 @@ export default function AuthScreen({ navigation }: Props) {
   };
 
   const handleSignUp = async () => {
-    // Reset onboarding flag so user goes through the full onboarding flow
+    // Reset DEVICE flag so new user goes through the full onboarding flow
     try {
-      await AsyncStorage.setItem('hasCompletedOnboarding', 'false');
+      await AsyncStorage.setItem('DeviceOnboarded', 'false');
     } catch (error) {
       console.error('Error resetting onboarding flag:', error);
     }
@@ -96,24 +105,22 @@ export default function AuthScreen({ navigation }: Props) {
   };
 
   return (
-    <View className="flex-1 bg-background" style={{ paddingTop: Platform.OS === 'ios' ? 20 : 0 }}>
-      {!hasCompletedOnboarding && (
-        <View className="absolute left-0 top-10 z-10">
-          <BackButton onPress={() => navigation.goBack()} />
-        </View>
-      )}
+    <View
+      className="flex-1 bg-background"
+      style={{ paddingTop: Platform.OS === 'ios' ? 0 : insets.top + 8 }}>
       <KeyboardAwareScrollView
         className="flex-1"
-        contentContainerStyle={{
-          paddingHorizontal: 24,
-          paddingVertical: 40,
-          minHeight: '100%',
-        }}
+        style={{ paddingTop: Platform.OS === 'ios' ? 40 : 0 }}
+        contentContainerClassName="px-6 min-h-full"
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
-        enableOnAndroid={true}
-        extraScrollHeight={30}>
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        enableOnAndroid={true}>
+        {!deviceOnboarded && (
+          <View className="top-0 z-10">
+            <BackButton onPress={() => navigation.goBack()} />
+          </View>
+        )}
+        <View className="flex-1 items-center justify-center">
           <View className="w-full max-w-sm">
             <Text className="mb-4 text-center text-4xl font-bold text-primary">Welcome back!</Text>
             <Text className="mb-8 text-center text-base text-muted-foreground">
@@ -149,7 +156,9 @@ export default function AuthScreen({ navigation }: Props) {
 
               <View className="mt-2 items-center">
                 <View className="flex-row">
-                  <Text className="text-sm text-muted-foreground">Don&apos;t have an account? </Text>
+                  <Text className="text-sm text-muted-foreground">
+                    Don&apos;t have an account?{' '}
+                  </Text>
                   <Button onPress={handleSignUp} variant="text" disabled={authenticating}>
                     Sign up
                   </Button>

@@ -17,7 +17,7 @@ const RadioGroup: React.FC<RadioGroupProps> = ({ options, value, onChange, label
       <View className="gap-2">
         {options.map((option) => {
           const lowercaseValue = option.toLowerCase();
-          const isSelected = value === lowercaseValue;
+          const isSelected = value.toLowerCase() === lowercaseValue;
           return (
             <Pressable
               key={option}

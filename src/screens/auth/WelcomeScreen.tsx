@@ -5,6 +5,7 @@ import { RootStackParamList } from '../../utils/navigation';
 import { useLoggedIn } from '../../store/useLoggedIn';
 import Button from '../../components/Button';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 type WelcomeScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Welcome'>;
 
@@ -49,8 +50,10 @@ const WelcomeScreen: React.FC<Props> = ({ navigation }) => {
   const handleContinue = async () => {
     if (userRole === 'admin') {
       // Admins skip Details screen and go directly to Home
-      // Set onboarding flag
-      await AsyncStorage.setItem('hasCompletedOnboarding', 'true');
+      // Set user-specific onboarding flag
+      if (userProfile?.user_id) {
+        await AsyncStorage.setItem(`user_${userProfile.user_id}_hasCompletedOnboarding`, 'true');
+      }
       setIsLoggedIn(true);
     } else {
       // Renters and owners go to Details screen
@@ -58,13 +61,18 @@ const WelcomeScreen: React.FC<Props> = ({ navigation }) => {
     }
   };
 
+  const insets = useSafeAreaInsets();
+
   const features = getRoleFeatures();
   const firstName = userProfile?.first_name || 'there';
 
   return (
-    <View className="flex-1 bg-background" style={{ paddingTop: Platform.OS === 'ios' ? 20 : 0 }}>
+    <View
+      className="flex-1 bg-background"
+      style={{ paddingTop: Platform.OS === 'ios' ? 0 : insets.top + 8 }}>
       <ScrollView
-        className="flex-1"
+        className="flex-grow-1"
+        style={{ paddingTop: Platform.OS === 'ios' ? 40 : 0 }}
         contentContainerStyle={{ flexGrow: 1 }}
         showsVerticalScrollIndicator={false}>
         <View className="flex-1 justify-center px-8 py-8">
