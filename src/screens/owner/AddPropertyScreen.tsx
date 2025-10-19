@@ -17,8 +17,6 @@ import { usePropertyUpload } from '../../store/usePropertyUpload';
 import { usePropertyEdit } from '../../store/usePropertyEdit';
 import { uploadPropertyInBackground } from '../../services/backgroundPropertyUpload';
 import { editPropertyInBackground } from '../../services/backgroundPropertyEdit';
-import { propertySchema, PropertyFormData } from '../../schemas/propertySchema';
-import { supabase } from '../../utils/supabase';
 import { z } from 'zod';
 
 import Input from '../../components/Input';
@@ -28,6 +26,29 @@ import RadioGroup from '../../components/RadioGroup';
 import MultiImagePicker from '../../components/MultiImagePicker';
 import LocationPicker from '../../components/LocationPicker';
 import NumericStepper from '../../components/NumericStepper';
+
+// Property validation schema
+export const propertySchema = z.object({
+  title: z.string().min(1, 'Property title is required'),
+  description: z.string().optional(),
+  category: z.enum(['apartment', 'room', 'bedspace'], 'Please select a property category'),
+  street: z.string().optional(),
+  barangay: z.string().optional(),
+  city: z.enum(['Dumaguete City', 'Valencia', 'Bacong', 'Sibulan'], 'Please select a city'),
+  coordinates: z.string().min(1, 'Location is required'),
+  rent: z.number().positive('Rent must be greater than 0'),
+  max_renters: z.number().int().positive().min(1, 'At least 1 renter is required'),
+  images: z.array(z.string()).min(1, 'At least one image is required'),
+  has_internet: z.boolean(),
+  allows_pets: z.boolean(),
+  is_furnished: z.boolean(),
+  has_ac: z.boolean(),
+  is_secure: z.boolean(),
+  has_parking: z.boolean(),
+  amenities: z.array(z.string()).min(2, 'Bedrooms and bathrooms are required'),
+});
+
+export type PropertyFormData = z.infer<typeof propertySchema>;
 
 export default function AddPropertyScreen() {
   const insets = useSafeAreaInsets();
@@ -203,7 +224,7 @@ export default function AddPropertyScreen() {
       category: categoryValue,
       street: street || undefined,
       barangay: barangay || undefined,
-      city,
+      city: city as 'Dumaguete City' | 'Valencia' | 'Bacong' | 'Sibulan',
       coordinates,
       rent: parseFloat(rent),
       max_renters: maxRenters,
