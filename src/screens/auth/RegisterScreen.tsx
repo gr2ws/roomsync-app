@@ -164,6 +164,9 @@ export default function RegisterScreen({ navigation }: Props) {
       });
 
       // Create user profile (this should succeed since we checked uniqueness)
+      const createdDate = new Date().toISOString().split('T')[0]; // Format: YYYY-MM-DD
+      const timestamp = new Date().toISOString().replace('Z', ''); // Remove 'Z' for timestamp without time zone
+
       const { error: userError } = await supabase.from('users').insert([
         {
           auth_id: authData.user.id,
@@ -172,7 +175,8 @@ export default function RegisterScreen({ navigation }: Props) {
           email,
           phone_number: phoneNumber,
           user_type: userRole ?? 'renter',
-          account_created_date: new Date().toISOString().split('T')[0],
+          account_created_date: createdDate,
+          last_login_date: timestamp,
           // Profile picture, birth date, and preferences handled in PreferencesScreen
         },
       ]);
@@ -183,17 +187,21 @@ export default function RegisterScreen({ navigation }: Props) {
         throw new Error('Failed to create user profile: ' + userError.message);
       }
 
-      // Success - update local state
-      setUserRole(userRole ?? 'renter');
-      setUserProfile({
-        auth_id: authData.user.id,
-        first_name: toTitleCase(firstName),
-        last_name: toTitleCase(lastName),
-        email,
-        phone_number: phoneNumber,
-        user_type: userRole ?? 'renter',
-        // Profile picture, birth date, and preferences handled in PreferencesScreen
-      });
+      // Fetch the complete user profile including user_id
+      const { data: userData, error: fetchError } = await supabase
+        .from('users')
+        .select('*')
+        .eq('auth_id', authData.user.id)
+        .single();
+
+      if (fetchError || !userData) {
+        await supabase.auth.signOut();
+        throw new Error('Failed to fetch user profile after registration.');
+      }
+
+      // Success - update local state with complete user profile
+      setUserRole(userData.user_type);
+      setUserProfile(userData);
 
       setLoading(false);
 

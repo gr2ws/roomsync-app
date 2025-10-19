@@ -68,9 +68,10 @@ export default function AuthScreen({ navigation }: Props) {
     }
 
     // Update last login date
+    const timestamp = new Date().toISOString().replace('Z', ''); // Remove 'Z' for timestamp without time zone
     await supabase
       .from('users')
-      .update({ last_login_date: new Date().toISOString() })
+      .update({ last_login_date: timestamp })
       .eq('auth_id', data.user.id);
 
     setUserRole(userData.user_type);
