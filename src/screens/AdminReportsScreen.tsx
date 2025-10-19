@@ -371,3 +371,4 @@ async function updateStatus(reportId: number, newStatus: string) {
 
   if (error) console.error('Error updating report status:', error);
 }
+// checkpoint
