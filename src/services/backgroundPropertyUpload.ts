@@ -1,7 +1,7 @@
 import { Alert } from 'react-native';
 import { supabase } from '../utils/supabase';
 import { uploadPropertyImages } from '../utils/uploadPropertyImages';
-import { PropertyFormData } from '../schemas/propertySchema';
+import { PropertyFormData } from '../screens/owner/AddPropertyScreen';
 import { usePropertyUpload } from '../store/usePropertyUpload';
 
 /**

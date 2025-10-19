@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { PropertyFormData } from '../schemas/propertySchema';
+import { PropertyFormData } from '../screens/owner/AddPropertyScreen';
 
 interface UploadProgress {
   current: number;
