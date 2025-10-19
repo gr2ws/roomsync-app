@@ -168,12 +168,28 @@ export default function ProfileScreen() {
   };
 
   const handleLogout = async () => {
-    const { error } = await supabase.auth.signOut();
-    if (error) {
-      Alert.alert('Error', 'Failed to log out: ' + error.message);
-      return;
-    }
-    setIsLoggedIn(false);
+    Alert.alert(
+      'Log Out',
+      'Are you sure you want to log out?',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Log Out',
+          style: 'destructive',
+          onPress: async () => {
+            const { error } = await supabase.auth.signOut();
+            if (error) {
+              Alert.alert('Error', 'Failed to log out: ' + error.message);
+              return;
+            }
+            setIsLoggedIn(false);
+          },
+        },
+      ]
+    );
   };
 
   const handleNameTap = () => {
@@ -477,7 +493,7 @@ export default function ProfileScreen() {
               </Button>
             )}
 
-            <Button onPress={handleLogout} variant="secondary">
+            <Button onPress={handleLogout} variant="destructive">
               Log Out
             </Button>
           </View>

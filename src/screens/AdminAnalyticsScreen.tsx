@@ -1,7 +1,7 @@
 // AdminAnalyticsScreen.tsx
 // Analytics dashboard for admin panel
 import { View, Text, ScrollView, Dimensions, Platform, StatusBar } from 'react-native';
-import { /* useSafeAreaInsets, SafeAreaView */ } from 'react-native-safe-area-context';
+import {} from /* useSafeAreaInsets, SafeAreaView */ 'react-native-safe-area-context';
 import { useAdminData } from '../store/useAdminData';
 import { Ionicons } from '@expo/vector-icons';
 

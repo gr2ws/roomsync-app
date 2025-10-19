@@ -58,7 +58,9 @@ const Picker: React.FC<PickerProps> = ({
         <Pressable
           onPress={() => setIsModalOpen(false)}
           className="flex-1 items-center justify-center bg-black/50">
-          <Pressable onPress={(e) => e.stopPropagation()} className="w-4/5 max-h-96 rounded-lg bg-card">
+          <Pressable
+            onPress={(e) => e.stopPropagation()}
+            className="max-h-96 w-4/5 rounded-lg bg-card">
             {/* Header */}
             <View className="border-b border-border p-4">
               <Text className="text-lg font-semibold text-card-foreground">

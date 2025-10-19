@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Wifi, PawPrint, Armchair, Wind, ShieldCheck, Car, X, Plus } from 'lucide-react-native';
 import { useLoggedIn } from '../../store/useLoggedIn';
 import { usePropertyUpload } from '../../store/usePropertyUpload';
@@ -69,6 +69,40 @@ export default function AddPropertyScreen() {
   const cityOptions = ['Dumaguete City', 'Valencia', 'Bacong', 'Sibulan'];
   const categoryOptions = ['Apartment', 'Room', 'Bed Space'];
 
+  // Helper function to reset form to initial state
+  const resetForm = () => {
+    setTitle('');
+    setDescription('');
+    setCategory('');
+    setStreet('');
+    setBarangay('');
+    setCity('');
+    setCoordinates('');
+    setRent('');
+    setMaxRenters(1);
+    setImages([]);
+    setNumBedrooms(1);
+    setNumBathrooms(1);
+    setCustomAmenities([]);
+    setNewAmenityInput('');
+    setHasInternet(false);
+    setAllowsPets(false);
+    setIsFurnished(false);
+    setHasAc(false);
+    setIsSecure(false);
+    setHasParking(false);
+    setFormErrors({});
+  };
+
+  // Clear form when screen gains focus and not in edit mode
+  useFocusEffect(
+    React.useCallback(() => {
+      if (!isEditing) {
+        resetForm();
+      }
+    }, [isEditing])
+  );
+
   // Pre-fill form when in edit mode
   useEffect(() => {
     if (isEditing && propertyData) {
@@ -76,9 +110,10 @@ export default function AddPropertyScreen() {
       setDescription(propertyData.description || '');
 
       // Convert category to display format
-      const categoryDisplay = propertyData.category === 'bedspace'
-        ? 'Bed Space'
-        : propertyData.category.charAt(0).toUpperCase() + propertyData.category.slice(1);
+      const categoryDisplay =
+        propertyData.category === 'bedspace'
+          ? 'Bed Space'
+          : propertyData.category.charAt(0).toUpperCase() + propertyData.category.slice(1);
       setCategory(categoryDisplay);
 
       setStreet(propertyData.street || '');
@@ -90,8 +125,8 @@ export default function AddPropertyScreen() {
       setImages(propertyData.image_url);
 
       // Parse amenities
-      const bedroomMatch = propertyData.amenities.find(a => a.includes('Bedroom'));
-      const bathroomMatch = propertyData.amenities.find(a => a.includes('Bathroom'));
+      const bedroomMatch = propertyData.amenities.find((a) => a.includes('Bedroom'));
+      const bathroomMatch = propertyData.amenities.find((a) => a.includes('Bathroom'));
 
       if (bedroomMatch) {
         const bedroomCount = parseInt(bedroomMatch.split(' ')[0]);
@@ -105,7 +140,7 @@ export default function AddPropertyScreen() {
 
       // Get custom amenities (exclude bedrooms and bathrooms)
       const customAms = propertyData.amenities.filter(
-        a => !a.includes('Bedroom') && !a.includes('Bathroom')
+        (a) => !a.includes('Bedroom') && !a.includes('Bathroom')
       );
       setCustomAmenities(customAms);
 
@@ -156,7 +191,10 @@ export default function AddPropertyScreen() {
     ];
 
     // Convert category to database format (handle "Bed Space" -> "bedspace")
-    const categoryValue = category.toLowerCase().replace(/\s+/g, '') as 'apartment' | 'room' | 'bedspace';
+    const categoryValue = category.toLowerCase().replace(/\s+/g, '') as
+      | 'apartment'
+      | 'room'
+      | 'bedspace';
 
     // Validate form data
     const formData = {
@@ -238,26 +276,7 @@ export default function AddPropertyScreen() {
     );
 
     // Reset form immediately
-    setTitle('');
-    setDescription('');
-    setCategory('');
-    setStreet('');
-    setBarangay('');
-    setCity('');
-    setCoordinates('');
-    setRent('');
-    setMaxRenters(1);
-    setImages([]);
-    setNumBedrooms(1);
-    setNumBathrooms(1);
-    setCustomAmenities([]);
-    setNewAmenityInput('');
-    setHasInternet(false);
-    setAllowsPets(false);
-    setIsFurnished(false);
-    setHasAc(false);
-    setIsSecure(false);
-    setHasParking(false);
+    resetForm();
 
     // Navigate to Manage Properties screen
     navigation.navigate('ManageProperties' as never);
@@ -540,14 +559,18 @@ export default function AddPropertyScreen() {
         />
 
         {/* Submit Button */}
-        <Button variant="primary" className="mt-2" onPress={handleSubmit} disabled={loading || isUploading}>
+        <Button
+          variant="primary"
+          className="mt-2"
+          onPress={handleSubmit}
+          disabled={loading || isUploading}>
           {loading
             ? isEditing
               ? 'Updating...'
               : 'Submitting...'
             : isEditing
-            ? 'Update Property'
-            : 'Submit Property for Verification'}
+              ? 'Update Property'
+              : 'Submit Property for Verification'}
         </Button>
       </KeyboardAwareScrollView>
     </View>

@@ -518,7 +518,7 @@ const LocationPicker: React.FC<LocationPickerProps> = ({
 
             <View className="flex-row gap-2">
               <View className="flex-1">
-                <Button variant="secondary" onPress={handleCancel}>
+                <Button variant="destructive" onPress={handleCancel}>
                   Cancel
                 </Button>
               </View>

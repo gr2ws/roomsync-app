@@ -35,9 +35,7 @@ const NumericStepper: React.FC<NumericStepperProps> = ({
     <View className="mb-4 w-full">
       {label && <Text className="mb-1 text-base font-medium text-foreground">{label}</Text>}
       <View className="flex-row items-center rounded-lg border border-input bg-card">
-        <Text className="flex-1 px-4 py-3 text-center text-base text-card-foreground">
-          {value}
-        </Text>
+        <Text className="flex-1 px-4 py-3 text-center text-base text-card-foreground">{value}</Text>
         <View className="flex-row border-l border-input">
           <TouchableOpacity
             onPress={handleDecrement}

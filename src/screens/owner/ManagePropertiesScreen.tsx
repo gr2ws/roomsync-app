@@ -1,17 +1,22 @@
-import { View, Text, Alert, ActivityIndicator, RefreshControl, Platform } from 'react-native';
+import {
+  View,
+  Text,
+  Alert,
+  ActivityIndicator,
+  FlatList,
+  Platform,
+  RefreshControl,
+  TouchableOpacity,
+} from 'react-native';
 import { useState, useCallback, useEffect } from 'react';
-import { Home } from 'lucide-react-native';
+import { Home, RefreshCw } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
-import { createMaterialTopTabNavigator } from '@react-navigation/material-top-tabs';
 import { supabase } from '../../utils/supabase';
 import { useLoggedIn } from '../../store/useLoggedIn';
 import { usePropertyEdit } from '../../store/usePropertyEdit';
 import { usePropertyUpload } from '../../store/usePropertyUpload';
-import PropertyCard from '../../components/PropertyCard';
-import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
-
-const Tab = createMaterialTopTabNavigator();
+import PropertyListItem from '../../components/PropertyListItem';
 
 interface Property {
   property_id: number;
@@ -168,27 +173,15 @@ export default function ManagePropertiesScreen() {
     );
   }, []);
 
-  const PropertyTabScreen = ({ property }: { property: PropertyWithRenters }) => (
-    <KeyboardAwareScrollView
-      className="flex-1"
-      refreshControl={
-        <RefreshControl
-          refreshing={isRefreshing}
-          onRefresh={handleRefresh}
-          colors={['#644A40']}
-          tintColor="#644A40"
-        />
-      }
-      showsVerticalScrollIndicator={false}>
-      <PropertyCard
-        property={property}
-        currentRenters={property.currentRenters}
-        isUploading={isUploading}
-        onEdit={() => handleEdit(property)}
-        onDelete={() => handleDelete(property.property_id, property.title)}
-        onViewReviews={() => handleViewReviews(property.property_id)}
-      />
-    </KeyboardAwareScrollView>
+  const renderProperty = ({ item }: { item: PropertyWithRenters }) => (
+    <PropertyListItem
+      property={item}
+      currentRenters={item.currentRenters}
+      isUploading={isUploading}
+      onEdit={() => handleEdit(item)}
+      onDelete={() => handleDelete(item.property_id, item.title)}
+      onViewReviews={() => handleViewReviews(item.property_id)}
+    />
   );
 
   if (isLoading) {
@@ -211,7 +204,8 @@ export default function ManagePropertiesScreen() {
             No Properties Listed
           </Text>
           <Text className="mt-2 text-center text-base text-muted-foreground">
-            You haven't added any properties yet. Tap the "Add" tab to list your first property.
+            You haven&apos;t added any properties yet. Tap the &quot;Add&quot; tab to list your
+            first property.
           </Text>
         </View>
       </View>
@@ -222,44 +216,50 @@ export default function ManagePropertiesScreen() {
     <View
       className="flex-1 bg-background"
       style={{ paddingTop: Platform.OS === 'ios' ? 0 : insets.top + 8 }}>
-      <Tab.Navigator
-        screenOptions={{
-          tabBarActiveTintColor: '#644A40',
-          tabBarInactiveTintColor: 'rgba(100, 74, 64, 0.5)',
-          tabBarIndicatorStyle: {
-            backgroundColor: '#644A40',
-            height: 3,
-          },
-          tabBarStyle: {
-            backgroundColor: '#FAF4EB',
-            elevation: 0,
-            shadowOpacity: 0,
-            borderBottomWidth: 1,
-            borderBottomColor: '#E8E8E8',
-          },
-          tabBarLabelStyle: {
-            fontSize: 14,
-            fontWeight: '600',
-            textTransform: 'none',
-          },
-          tabBarScrollEnabled: properties.length > 3,
-          tabBarItemStyle: {
-            width: properties.length > 3 ? 120 : undefined,
-          },
-        }}>
-        {properties.map((property) => (
-          <Tab.Screen
-            key={property.property_id}
-            name={`Property${property.property_id}`}
-            options={{
-              tabBarLabel: property.title.length > 15
-                ? property.title.substring(0, 15) + '...'
-                : property.title,
-            }}>
-            {() => <PropertyTabScreen property={property} />}
-          </Tab.Screen>
-        ))}
-      </Tab.Navigator>
+      <FlatList
+        data={properties}
+        renderItem={renderProperty}
+        keyExtractor={(item) => item.property_id.toString()}
+        ListHeaderComponent={
+          <View className="mb-6 px-6">
+            <View className="flex-row items-center justify-between">
+              <View className="flex-1">
+                <Text className="text-3xl font-bold text-primary">Manage Properties</Text>
+                <Text className="mt-2 text-base text-muted-foreground">
+                  View and manage all your property listings.
+                </Text>
+              </View>
+              <TouchableOpacity
+                onPress={handleRefresh}
+                disabled={isRefreshing}
+                className="ml-4">
+                {isRefreshing ? (
+                  <ActivityIndicator size="small" color="#644A40" />
+                ) : (
+                  <RefreshCw size={24} color="#644A40" />
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        }
+        contentContainerStyle={{
+          paddingTop: Platform.OS === 'ios' ? 50 : 8,
+          paddingBottom: 16,
+          flexGrow: 1,
+        }}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={false}
+            onRefresh={handleRefresh}
+            tintColor="transparent"
+            colors={['transparent']}
+            progressViewOffset={-1000}
+            progressBackgroundColor="transparent"
+            style={{ backgroundColor: 'transparent' }}
+          />
+        }
+      />
     </View>
   );
 }

@@ -30,8 +30,7 @@ export const usePropertyUpload = create<PropertyUploadState>((set) => ({
       progress: { current: 0, total: data.images.length },
       error: null,
     }),
-  updateProgress: (current: number, total: number) =>
-    set({ progress: { current, total } }),
+  updateProgress: (current: number, total: number) => set({ progress: { current, total } }),
   completeUpload: () =>
     set({
       isUploading: false,

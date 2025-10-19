@@ -1,5 +1,5 @@
-import 'react-native-gesture-handler';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+
 import { NavigationContainer } from '@react-navigation/native';
 import {
   createBottomTabNavigator,
@@ -160,11 +160,7 @@ function MainApp() {
             isUploading ? (
               <ActivityIndicator size={size} color={color} />
             ) : isEditing ? (
-              <Ionicons
-                name={focused ? 'create' : 'create-outline'}
-                size={size}
-                color={color}
-              />
+              <Ionicons name={focused ? 'create' : 'create-outline'} size={size} color={color} />
             ) : (
               <Ionicons
                 name={focused ? 'add-circle' : 'add-circle-outline'}

@@ -28,12 +28,10 @@ export async function uploadPropertyImages(
 
       // Upload to Supabase Storage
       // Use image/jpeg as default content type since most mobile images are JPEG
-      const { error } = await supabase.storage
-        .from('room-pics')
-        .upload(filePath, fileData, {
-          contentType: 'image/jpeg',
-          upsert: false,
-        });
+      const { error } = await supabase.storage.from('room-pics').upload(filePath, fileData, {
+        contentType: 'image/jpeg',
+        upsert: false,
+      });
 
       if (error) {
         console.error(`Error uploading image ${i + 1}:`, error);
@@ -45,9 +43,7 @@ export async function uploadPropertyImages(
       }
 
       // Get public URL
-      const { data: publicUrlData } = supabase.storage
-        .from('room-pics')
-        .getPublicUrl(filePath);
+      const { data: publicUrlData } = supabase.storage.from('room-pics').getPublicUrl(filePath);
 
       uploadedUrls.push(publicUrlData.publicUrl);
     }

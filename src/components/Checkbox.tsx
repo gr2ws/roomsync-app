@@ -32,7 +32,8 @@ const Checkbox: React.FC<CheckboxProps> = ({
       )}
 
       {/* Label */}
-      <Text className={`flex-1 text-base ${checked ? 'font-semibold text-primary' : 'text-foreground'}`}>
+      <Text
+        className={`flex-1 text-base ${checked ? 'font-semibold text-primary' : 'text-foreground'}`}>
         {label}
       </Text>
 

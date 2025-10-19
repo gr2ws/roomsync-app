@@ -82,7 +82,6 @@ export default function AdminUserManagementScreen() {
 
   useEffect(() => {
     fetchUsers();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Calculate user statistics (based on current page's users)

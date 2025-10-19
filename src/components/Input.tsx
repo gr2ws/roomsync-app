@@ -7,7 +7,14 @@ interface InputProps extends TextInputProps {
   className?: string;
 }
 
-const Input: React.FC<InputProps> = ({ label, error, className = '', multiline, numberOfLines, ...props }) => {
+const Input: React.FC<InputProps> = ({
+  label,
+  error,
+  className = '',
+  multiline,
+  numberOfLines,
+  ...props
+}) => {
   // Calculate minimum height for multiline inputs (approximately 40px per line)
   const minHeight = multiline && numberOfLines ? numberOfLines * 40 : undefined;
 
@@ -19,7 +26,7 @@ const Input: React.FC<InputProps> = ({ label, error, className = '', multiline, 
           error ? 'border-destructive' : ''
         } ${className}`}
         placeholderTextColor="#888"
-        textAlignVertical={multiline ? "top" : "center"}
+        textAlignVertical={multiline ? 'top' : 'center'}
         multiline={multiline}
         numberOfLines={numberOfLines}
         style={minHeight ? { minHeight } : undefined}

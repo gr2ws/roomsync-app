@@ -139,9 +139,7 @@ export default function PropertyCard({
           <Text className="mb-2 text-lg font-semibold text-foreground">Amenities</Text>
           <View className="flex-row flex-wrap gap-2">
             {property.amenities.map((amenity, index) => (
-              <View
-                key={index}
-                className="rounded-lg border border-input bg-card px-3 py-2">
+              <View key={index} className="rounded-lg border border-input bg-card px-3 py-2">
                 <Text className="text-sm text-card-foreground">{amenity}</Text>
               </View>
             ))}
@@ -152,11 +150,7 @@ export default function PropertyCard({
       {/* Action Buttons */}
       <View className="gap-3">
         <View className="flex-row gap-3">
-          <Button
-            variant="primary"
-            className="flex-1"
-            onPress={onEdit}
-            disabled={isUploading}>
+          <Button variant="primary" className="flex-1" onPress={onEdit} disabled={isUploading}>
             <View className="flex-row items-center justify-center">
               <Edit size={18} color="white" />
               <Text className="ml-2 text-base font-semibold text-primary-foreground">
@@ -175,10 +169,7 @@ export default function PropertyCard({
           </Button>
         </View>
 
-        <Button
-          variant="secondary"
-          className="border-destructive bg-red-50"
-          onPress={onDelete}>
+        <Button variant="destructive" onPress={onDelete}>
           <View className="flex-row items-center justify-center">
             <Trash2 size={18} color="#E54D2E" />
             <Text className="ml-2 text-base font-semibold text-destructive">Delete Property</Text>
