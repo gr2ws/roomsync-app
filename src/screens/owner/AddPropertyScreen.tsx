@@ -209,9 +209,7 @@ export default function AddPropertyScreen() {
         style={{ paddingTop: Platform.OS === 'ios' ? 50 : 0 }}
         contentContainerClassName="px-6 pb-4"
         enableOnAndroid={true}
-        enableAutomaticScroll={false}
         keyboardShouldPersistTaps="handled"
-        extraHeight={Platform.OS === 'ios' ? 100 : 150}
         enableResetScrollToCoords={false}>
         {/* Header */}
         <View className="mb-6">

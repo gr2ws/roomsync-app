@@ -244,8 +244,7 @@ export default function RegisterScreen({ navigation }: Props) {
         contentContainerClassName="px-6 pb-8"
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={true}
-        enableOnAndroid={true}
-        extraScrollHeight={20}>
+        enableOnAndroid={true}>
         <BackButton onPress={handleGoBack} />
         <Text className="mb-2 mt-6 text-center text-4xl font-bold text-primary">
           Create your account
