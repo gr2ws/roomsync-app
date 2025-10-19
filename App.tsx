@@ -16,6 +16,7 @@ import './src/style/global.css';
 import { MainScaffold } from '~/components/layout/MainScaffold';
 import { useLoggedIn } from './src/store/useLoggedIn';
 import { usePropertyUpload } from './src/store/usePropertyUpload';
+import { usePropertyEdit } from './src/store/usePropertyEdit';
 import AuthScreen from './src/screens/auth/AuthScreen';
 import RegisterScreen from './src/screens/auth/RegisterScreen';
 import AdminDashboardScreen from './src/screens/AdminDashboardScreen';
@@ -44,6 +45,7 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 function MainApp() {
   const { userRole } = useLoggedIn();
   const { isUploading } = usePropertyUpload();
+  const { isEditing, cancelEdit } = usePropertyEdit();
 
   const commonScreenOptions: BottomTabNavigationOptions = {
     headerShown: false,
@@ -153,10 +155,16 @@ function MainApp() {
         name="AddProperty"
         component={AddPropertyScreen}
         options={{
-          tabBarLabel: 'Add',
+          tabBarLabel: isEditing ? 'Edit' : 'Add',
           tabBarIcon: ({ focused, color, size }) =>
             isUploading ? (
               <ActivityIndicator size={size} color={color} />
+            ) : isEditing ? (
+              <Ionicons
+                name={focused ? 'create' : 'create-outline'}
+                size={size}
+                color={color}
+              />
             ) : (
               <Ionicons
                 name={focused ? 'add-circle' : 'add-circle-outline'}
@@ -173,6 +181,12 @@ function MainApp() {
                 'Upload in Progress',
                 'Please wait for the current property to finish uploading.'
               );
+            }
+          },
+          blur: () => {
+            // Reset edit state when navigating away from AddProperty tab
+            if (isEditing) {
+              cancelEdit();
             }
           },
         }}

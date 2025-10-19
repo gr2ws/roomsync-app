@@ -14,8 +14,11 @@ import { useNavigation } from '@react-navigation/native';
 import { Wifi, PawPrint, Armchair, Wind, ShieldCheck, Car, X, Plus } from 'lucide-react-native';
 import { useLoggedIn } from '../../store/useLoggedIn';
 import { usePropertyUpload } from '../../store/usePropertyUpload';
+import { usePropertyEdit } from '../../store/usePropertyEdit';
 import { uploadPropertyInBackground } from '../../services/backgroundPropertyUpload';
+import { editPropertyInBackground } from '../../services/backgroundPropertyEdit';
 import { propertySchema, PropertyFormData } from '../../schemas/propertySchema';
+import { supabase } from '../../utils/supabase';
 import { z } from 'zod';
 
 import Input from '../../components/Input';
@@ -31,6 +34,7 @@ export default function AddPropertyScreen() {
   const navigation = useNavigation();
   const { userProfile } = useLoggedIn();
   const { isUploading, startUpload } = usePropertyUpload();
+  const { isEditing, propertyId, propertyData, completeEdit } = usePropertyEdit();
   const [loading, setLoading] = useState(false);
 
   // Form state
@@ -65,6 +69,56 @@ export default function AddPropertyScreen() {
   const cityOptions = ['Dumaguete City', 'Valencia', 'Bacong', 'Sibulan'];
   const categoryOptions = ['Apartment', 'Room', 'Bed Space'];
 
+  // Pre-fill form when in edit mode
+  useEffect(() => {
+    if (isEditing && propertyData) {
+      setTitle(propertyData.title);
+      setDescription(propertyData.description || '');
+
+      // Convert category to display format
+      const categoryDisplay = propertyData.category === 'bedspace'
+        ? 'Bed Space'
+        : propertyData.category.charAt(0).toUpperCase() + propertyData.category.slice(1);
+      setCategory(categoryDisplay);
+
+      setStreet(propertyData.street || '');
+      setBarangay(propertyData.barangay || '');
+      setCity(propertyData.city);
+      setCoordinates(propertyData.coordinates);
+      setRent(propertyData.rent.toString());
+      setMaxRenters(propertyData.max_renters);
+      setImages(propertyData.image_url);
+
+      // Parse amenities
+      const bedroomMatch = propertyData.amenities.find(a => a.includes('Bedroom'));
+      const bathroomMatch = propertyData.amenities.find(a => a.includes('Bathroom'));
+
+      if (bedroomMatch) {
+        const bedroomCount = parseInt(bedroomMatch.split(' ')[0]);
+        setNumBedrooms(bedroomCount || 1);
+      }
+
+      if (bathroomMatch) {
+        const bathroomCount = parseInt(bathroomMatch.split(' ')[0]);
+        setNumBathrooms(bathroomCount || 1);
+      }
+
+      // Get custom amenities (exclude bedrooms and bathrooms)
+      const customAms = propertyData.amenities.filter(
+        a => !a.includes('Bedroom') && !a.includes('Bathroom')
+      );
+      setCustomAmenities(customAms);
+
+      // Set features
+      setHasInternet(propertyData.has_internet);
+      setAllowsPets(propertyData.allows_pets);
+      setIsFurnished(propertyData.is_furnished);
+      setHasAc(propertyData.has_ac);
+      setIsSecure(propertyData.is_secure);
+      setHasParking(propertyData.has_parking);
+    }
+  }, [isEditing, propertyData]);
+
   // Handle adding custom amenity
   const handleAddAmenity = () => {
     const trimmedInput = newAmenityInput.trim();
@@ -93,7 +147,7 @@ export default function AddPropertyScreen() {
     setCustomAmenities(customAmenities.filter((_, i) => i !== index));
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     // Construct amenities array
     const amenitiesArray = [
       `${numBedrooms} Bedroom${numBedrooms !== 1 ? 's' : ''}`,
@@ -146,7 +200,31 @@ export default function AddPropertyScreen() {
       return;
     }
 
-    // Start background upload
+    // Handle edit mode
+    if (isEditing && propertyId && propertyData) {
+      // Start background upload for edit
+      startUpload(formData);
+
+      // Get existing image URLs
+      const existingImageUrls = propertyData.image_url;
+
+      // Trigger background edit asynchronously
+      editPropertyInBackground(formData, propertyId, userProfile.user_id, existingImageUrls);
+
+      // Show brief notification
+      Alert.alert(
+        'Updating Property',
+        'Your property is being updated! You will be notified when it is complete.',
+        [{ text: 'OK' }]
+      );
+
+      // Complete edit state and navigate back
+      completeEdit();
+      navigation.navigate('ManageProperties' as never);
+      return;
+    }
+
+    // Start background upload for new property
     startUpload(formData);
 
     // Trigger background upload asynchronously (fire and forget)
@@ -195,10 +273,12 @@ export default function AddPropertyScreen() {
           <View className="items-center rounded-lg bg-card p-8 shadow-lg">
             <ActivityIndicator size="large" color="#644A40" />
             <Text className="mt-4 text-center text-lg font-semibold text-foreground">
-              Property Upload in Progress
+              {isEditing ? 'Property Update in Progress' : 'Property Upload in Progress'}
             </Text>
             <Text className="mt-2 text-center text-sm text-muted-foreground">
-              Please wait while your property is being uploaded...
+              {isEditing
+                ? 'Please wait while your property is being updated...'
+                : 'Please wait while your property is being uploaded...'}
             </Text>
           </View>
         </View>
@@ -213,9 +293,13 @@ export default function AddPropertyScreen() {
         enableResetScrollToCoords={false}>
         {/* Header */}
         <View className="mb-6">
-          <Text className="text-3xl font-bold text-primary">Add New Property</Text>
+          <Text className="text-3xl font-bold text-primary">
+            {isEditing ? 'Edit Property' : 'Add New Property'}
+          </Text>
           <Text className="mt-2 text-base text-muted-foreground">
-            Fill in the details of your property and apply to make it available for recommendation.
+            {isEditing
+              ? 'Update the details of your property below.'
+              : 'Fill in the details of your property and apply to make it available for recommendation.'}
           </Text>
         </View>
 
@@ -456,8 +540,14 @@ export default function AddPropertyScreen() {
         />
 
         {/* Submit Button */}
-        <Button variant="primary" className="mt-2" onPress={handleSubmit} disabled={loading}>
-          {loading ? 'Submitting...' : 'Submit Property for Verification'}
+        <Button variant="primary" className="mt-2" onPress={handleSubmit} disabled={loading || isUploading}>
+          {loading
+            ? isEditing
+              ? 'Updating...'
+              : 'Submitting...'
+            : isEditing
+            ? 'Update Property'
+            : 'Submit Property for Verification'}
         </Button>
       </KeyboardAwareScrollView>
     </View>

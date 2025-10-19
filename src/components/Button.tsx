@@ -57,7 +57,7 @@ export default function Button({
   return (
     <Pressable
       className={getButtonStyles()}
-      style={({ pressed }) => [{ opacity: pressed ? 0.8 : 1 }]}
+      style={({ pressed }) => [{ opacity: pressed || props.disabled ? 0.5 : 1 }]}
       {...props}>
       {typeof children === 'string' ? (
         <Text className={getTextStyles()}>{children}</Text>
