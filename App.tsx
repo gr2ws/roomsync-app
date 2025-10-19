@@ -7,7 +7,7 @@ import {
 } from '@react-navigation/bottom-tabs';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
-import { Platform } from 'react-native';
+import { Platform, Alert, ActivityIndicator } from 'react-native';
 
 import ProfileScreen from './src/screens/ProfileScreen';
 import NotificationsScreen from './src/screens/NotificationsScreen';
@@ -15,6 +15,7 @@ import { RootStackParamList, RootTabParamList } from './src/utils/navigation';
 import './src/style/global.css';
 import { MainScaffold } from '~/components/layout/MainScaffold';
 import { useLoggedIn } from './src/store/useLoggedIn';
+import { usePropertyUpload } from './src/store/usePropertyUpload';
 import AuthScreen from './src/screens/auth/AuthScreen';
 import RegisterScreen from './src/screens/auth/RegisterScreen';
 import AdminDashboardScreen from './src/screens/AdminDashboardScreen';
@@ -42,6 +43,7 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 
 function MainApp() {
   const { userRole } = useLoggedIn();
+  const { isUploading } = usePropertyUpload();
 
   const commonScreenOptions: BottomTabNavigationOptions = {
     headerShown: false,
@@ -152,13 +154,27 @@ function MainApp() {
         component={AddPropertyScreen}
         options={{
           tabBarLabel: 'Add',
-          tabBarIcon: ({ focused, color, size }) => (
-            <Ionicons
-              name={focused ? 'add-circle' : 'add-circle-outline'}
-              size={size}
-              color={color}
-            />
-          ),
+          tabBarIcon: ({ focused, color, size }) =>
+            isUploading ? (
+              <ActivityIndicator size={size} color={color} />
+            ) : (
+              <Ionicons
+                name={focused ? 'add-circle' : 'add-circle-outline'}
+                size={size}
+                color={color}
+              />
+            ),
+        }}
+        listeners={{
+          tabPress: (e) => {
+            if (isUploading) {
+              e.preventDefault();
+              Alert.alert(
+                'Upload in Progress',
+                'Please wait for the current property to finish uploading.'
+              );
+            }
+          },
         }}
       />,
       <Tab.Screen

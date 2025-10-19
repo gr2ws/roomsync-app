@@ -4,7 +4,7 @@
 
 Finding safe, affordable, and convenient living spaces in Dumaguete City is challenging for students and employees relocating from other provinces or towns. Traditional word of mouth or basic listings on social media often lack updated information, honest reviews, or intelligent filtering.
 
-RoomSync addresses this gap by providing a digital platform for apartment, dormitory, and boarding house listings tailored to user preferences. Features include location-based filtering, machine learning recommendations, and peer ratings to empower informed choices.
+RoomSync addresses this gap by providing a digital platform for apartment, room, and bed space listings tailored to user preferences. Features include location-based filtering, machine learning recommendations, and peer ratings to empower informed choices.
 
 The project integrates data analytics to uncover trends in rental preferences and availability across Dumaguete City and nearby municipalities (Valencia, Sibulan, Bacong), with visualizations like heatmaps and charts for data-driven insights.
 
@@ -12,7 +12,7 @@ By combining essential functionalities, modern design, AI features, and APIs (Re
 
 ## Project Objectives
 
-- Provide an AI-powered platform for boarding-house, dormitory, and apartment searches.
+- Provide an AI-powered platform for bed space, room, and apartment searches.
 - Enable students and employees to find, evaluate, and apply for accommodations in Dumaguete City and nearby areas.
 
 ### Specific Goals
