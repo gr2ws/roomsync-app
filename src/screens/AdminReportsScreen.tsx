@@ -14,7 +14,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-export default function AdminAnalyticsScreen() {
+export default function AdminReportsScreen() {
   const insets = useSafeAreaInsets();
 
   return (

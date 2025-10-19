@@ -1,6 +1,3 @@
-// AdminDashboard.tsx
-// Expo + React Native, no extra libs required. Optional: `npx expo install @expo/vector-icons react-native-safe-area-context` for icons & safe areas.
-
 import * as React from 'react';
 import { useMemo, useRef, useState } from 'react';
 import { useAdminData } from '../store/useAdminData';
@@ -16,7 +13,7 @@ import {
   Image,
   TextInput,
 } from 'react-native';
-import { useSafeAreaInsets, SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 
 const TABS = [
@@ -51,82 +48,25 @@ export default function AdminDashboard() {
   const [active, setActive] = useState<TabKey>('overview');
   const [open, setOpen] = useState(false);
 
-  // Sidebar animation
-  const slide = useRef(new Animated.Value(0)).current; // 0 closed, 1 open
-  const toggle = (next?: boolean) => {
-    const to = typeof next === 'boolean' ? Number(next) : open ? 0 : 1;
-    setOpen(Boolean(to));
-    Animated.timing(slide, {
-      toValue: to,
-      duration: 260,
-      easing: Easing.out(Easing.cubic),
-      useNativeDriver: true,
-    }).start();
-  };
-
-  const sidebarTranslate = slide.interpolate({
-    inputRange: [0, 1],
-    outputRange: [-SIDEBAR_WIDTH, 0],
-  });
-
-  const overlayOpacity = slide.interpolate({ inputRange: [0, 1], outputRange: [0, 0.35] });
-
   return (
-    <SafeAreaView
+    <View
       className="flex-1 bg-white"
-      style={{ paddingTop: Platform.OS === 'android' ? insets.top : 0 }}>
-      {/* Header */}
-      <View className="flex-row items-center border-b border-gray-200 bg-white px-4 py-3">
-        <Text className="ml-2 flex-1 text-lg font-semibold">Admin Dashboard</Text>
-        <View className="w-10" />
-      </View>
+      style={{
+        flex: 1,
+        paddingTop: Platform.OS === 'android' ? insets.top + 8 : insets.top, // use insets.top for both platforms to handle safe area via flexbox
+      }}>
 
       {/* Content */}
       <ScrollView
-        className="px-2 py-4"
+        className="px-4 pb-4 pt-0"
         contentContainerStyle={{ paddingBottom: insets.bottom + 16 }}>
+          {/* Header */}
+      <View className="mb-6 pt-1">
+          <Text className="mb-2 text-3xl font-bold text-gray-900">Admin Dashboard</Text>
+      </View>
         {active === 'overview' && <OverviewTab />}
       </ScrollView>
-
-      {/* Overlay */}
-      {/** Dark overlay for sidebar */}
-      <Animated.View
-        pointerEvents={open ? 'auto' : 'none'}
-        className="absolute inset-0 bg-black"
-        style={{ opacity: overlayOpacity }}>
-        <TouchableOpacity className="flex-1" onPress={() => toggle(false)} />
-      </Animated.View>
-
-      {/* Sidebar */}
-      <Animated.View
-        className="absolute bottom-0 left-0 top-0 border-r border-gray-200 bg-white px-3"
-        style={{
-          width: SIDEBAR_WIDTH,
-          paddingTop: insets.top,
-          transform: [{ translateX: sidebarTranslate }],
-        }}>
-        <View className="flex-row items-center justify-between py-3">
-          <Text className="text-base font-bold">Admin Dashboard</Text>
-          <TouchableOpacity
-            onPress={() => toggle(false)}
-            className="h-10 w-10 items-center justify-center rounded-xl">
-            <Ionicons name="close" size={22} />
-          </TouchableOpacity>
-        </View>
-        {TABS.map((t) => (
-          <TouchableOpacity
-            key={t.key}
-            className={`flex-row items-center rounded-xl px-2 py-3 ${active === t.key ? 'bg-gray-100' : ''}`}
-            onPress={() => {
-              setActive(t.key as TabKey);
-              toggle(false);
-            }}>
-            <Ionicons className="mr-3" name={t.icon as any} size={18} />
-            <Text className={`text-sm ${active === t.key ? 'font-bold' : ''}`}>{t.label}</Text>
-          </TouchableOpacity>
-        ))}
-      </Animated.View>
-    </SafeAreaView>
+    </View>
   );
 }
 

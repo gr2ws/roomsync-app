@@ -18,7 +18,7 @@ import { useLoggedIn } from './src/store/useLoggedIn';
 import AuthScreen from './src/screens/auth/AuthScreen';
 import RegisterScreen from './src/screens/auth/RegisterScreen';
 import AdminDashboardScreen from './src/screens/AdminDashboardScreen';
-import AdminAnalyticsScreen from './src/screens/AdminAnalyticsScreen';
+import AdminReportsScreen from './src/screens/AdminReportsScreen';
 import AdminUserManagementScreen from './src/screens/AdminUserManagementScreen';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import IntroductionScreen from './src/screens/auth/IntroductionScreen';
@@ -204,14 +204,14 @@ function MainApp() {
         }}
       />,
       <Tab.Screen
-        key="AdminAnalytics"
-        name="AdminAnalytics"
-        component={AdminAnalyticsScreen}
+        key="AdminReports"
+        name="AdminReports"
+        component={AdminReportsScreen}
         options={{
-          tabBarLabel: 'Analytics',
+          tabBarLabel: 'Reports',
           tabBarIcon: ({ focused, color, size }) => (
             <Ionicons
-              name={focused ? 'bar-chart' : 'bar-chart-outline'}
+              name={focused ? 'shield-checkmark-outline' : 'shield-checkmark-outline'}
               size={size}
               color={color}
             />
