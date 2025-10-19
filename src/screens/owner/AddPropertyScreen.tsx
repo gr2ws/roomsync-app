@@ -1,9 +1,20 @@
-import React, { useState } from 'react';
-import { View, Text, ScrollView, Alert, KeyboardAvoidingView, Platform } from 'react-native';
-import { Wifi, PawPrint, Armchair, Wind, ShieldCheck, Car } from 'lucide-react-native';
+import React, { useState, useEffect } from 'react';
+import {
+  View,
+  Text,
+  Alert,
+  Platform,
+  TouchableOpacity,
+  TextInput,
+  ActivityIndicator,
+} from 'react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
+import { Wifi, PawPrint, Armchair, Wind, ShieldCheck, Car, X, Plus } from 'lucide-react-native';
 import { useLoggedIn } from '../../store/useLoggedIn';
-import { supabase } from '../../utils/supabase';
-import { uploadPropertyImages } from '../../utils/uploadPropertyImages';
+import { usePropertyUpload } from '../../store/usePropertyUpload';
+import { uploadPropertyInBackground } from '../../services/backgroundPropertyUpload';
 import { propertySchema, PropertyFormData } from '../../schemas/propertySchema';
 import { z } from 'zod';
 
@@ -11,12 +22,15 @@ import Input from '../../components/Input';
 import Button from '../../components/Button';
 import Checkbox from '../../components/Checkbox';
 import RadioGroup from '../../components/RadioGroup';
-import Picker from '../../components/Picker';
 import MultiImagePicker from '../../components/MultiImagePicker';
 import LocationPicker from '../../components/LocationPicker';
+import NumericStepper from '../../components/NumericStepper';
 
 export default function AddPropertyScreen() {
+  const insets = useSafeAreaInsets();
+  const navigation = useNavigation();
   const { userProfile } = useLoggedIn();
+  const { isUploading, startUpload } = usePropertyUpload();
   const [loading, setLoading] = useState(false);
 
   // Form state
@@ -28,10 +42,16 @@ export default function AddPropertyScreen() {
   const [city, setCity] = useState('');
   const [coordinates, setCoordinates] = useState('');
   const [rent, setRent] = useState('');
-  const [maxRenters, setMaxRenters] = useState('');
+  const [maxRenters, setMaxRenters] = useState(1);
   const [images, setImages] = useState<string[]>([]);
 
-  // Amenities state (matching user preferences)
+  // Amenities state
+  const [numBedrooms, setNumBedrooms] = useState(1);
+  const [numBathrooms, setNumBathrooms] = useState(1);
+  const [customAmenities, setCustomAmenities] = useState<string[]>([]);
+  const [newAmenityInput, setNewAmenityInput] = useState('');
+
+  // Features state (matching user preferences)
   const [hasInternet, setHasInternet] = useState(false);
   const [allowsPets, setAllowsPets] = useState(false);
   const [isFurnished, setIsFurnished] = useState(false);
@@ -43,20 +63,58 @@ export default function AddPropertyScreen() {
   const [formErrors, setFormErrors] = useState<Partial<Record<keyof PropertyFormData, string>>>({});
 
   const cityOptions = ['Dumaguete City', 'Valencia', 'Bacong', 'Sibulan'];
-  const categoryOptions = ['Apartment', 'Dormitory', 'Boarding House'];
+  const categoryOptions = ['Apartment', 'Room', 'Bed Space'];
 
-  const handleSubmit = async () => {
+  // Handle adding custom amenity
+  const handleAddAmenity = () => {
+    const trimmedInput = newAmenityInput.trim();
+
+    if (!trimmedInput) {
+      Alert.alert('Empty Input', 'Please enter an amenity.');
+      return;
+    }
+
+    if (customAmenities.length >= 5) {
+      Alert.alert('Maximum Reached', 'You can add a maximum of 5 additional amenities.');
+      return;
+    }
+
+    if (customAmenities.includes(trimmedInput)) {
+      Alert.alert('Duplicate Amenity', 'This amenity has already been added.');
+      return;
+    }
+
+    setCustomAmenities([...customAmenities, trimmedInput]);
+    setNewAmenityInput('');
+  };
+
+  // Handle removing custom amenity
+  const handleRemoveAmenity = (index: number) => {
+    setCustomAmenities(customAmenities.filter((_, i) => i !== index));
+  };
+
+  const handleSubmit = () => {
+    // Construct amenities array
+    const amenitiesArray = [
+      `${numBedrooms} Bedroom${numBedrooms !== 1 ? 's' : ''}`,
+      `${numBathrooms} Bathroom${numBathrooms !== 1 ? 's' : ''}`,
+      ...customAmenities,
+    ];
+
+    // Convert category to database format (handle "Bed Space" -> "bedspace")
+    const categoryValue = category.toLowerCase().replace(/\s+/g, '') as 'apartment' | 'room' | 'bedspace';
+
     // Validate form data
     const formData = {
       title,
       description: description || undefined,
-      category: category.toLowerCase() as 'apartment' | 'dormitory' | 'boarding house',
+      category: categoryValue,
       street: street || undefined,
       barangay: barangay || undefined,
       city,
       coordinates,
       rent: parseFloat(rent),
-      max_renters: parseInt(maxRenters, 10),
+      max_renters: maxRenters,
       images,
       has_internet: hasInternet,
       allows_pets: allowsPets,
@@ -64,6 +122,7 @@ export default function AddPropertyScreen() {
       has_ac: hasAc,
       is_secure: isSecure,
       has_parking: hasParking,
+      amenities: amenitiesArray,
     };
 
     const result = propertySchema.safeParse(formData);
@@ -87,99 +146,78 @@ export default function AddPropertyScreen() {
       return;
     }
 
-    setLoading(true);
+    // Start background upload
+    startUpload(formData);
 
-    try {
-      // Upload images to Supabase Storage
-      const imageUrls = await uploadPropertyImages(images, userProfile.user_id);
+    // Trigger background upload asynchronously (fire and forget)
+    uploadPropertyInBackground(formData, userProfile.user_id);
 
-      if (!imageUrls) {
-        throw new Error('Failed to upload images.');
-      }
+    // Show brief notification
+    Alert.alert(
+      'Uploading Property',
+      'Your property is being uploaded! You will be notified when it is complete.',
+      [{ text: 'OK' }]
+    );
 
-      // Insert property into database
-      const { error: insertError } = await supabase.from('properties').insert([
-        {
-          owner_id: userProfile.user_id,
-          title: formData.title,
-          description: formData.description || null,
-          category: formData.category,
-          street: formData.street || null,
-          barangay: formData.barangay || null,
-          city: formData.city,
-          coordinates: formData.coordinates,
-          image_url: imageUrls,
-          rent: formData.rent,
-          max_renters: formData.max_renters,
-          has_internet: formData.has_internet,
-          allows_pets: formData.allows_pets,
-          is_furnished: formData.is_furnished,
-          has_ac: formData.has_ac,
-          is_secure: formData.is_secure,
-          has_parking: formData.has_parking,
-          is_available: true,
-          is_verified: false,
-          rating: null,
-          amenities: null,
-        },
-      ]);
+    // Reset form immediately
+    setTitle('');
+    setDescription('');
+    setCategory('');
+    setStreet('');
+    setBarangay('');
+    setCity('');
+    setCoordinates('');
+    setRent('');
+    setMaxRenters(1);
+    setImages([]);
+    setNumBedrooms(1);
+    setNumBathrooms(1);
+    setCustomAmenities([]);
+    setNewAmenityInput('');
+    setHasInternet(false);
+    setAllowsPets(false);
+    setIsFurnished(false);
+    setHasAc(false);
+    setIsSecure(false);
+    setHasParking(false);
 
-      if (insertError) {
-        throw new Error(insertError.message);
-      }
-
-      setLoading(false);
-      Alert.alert(
-        'Success!',
-        'Property submitted successfully! It will be available once approved by an admin.',
-        [
-          {
-            text: 'OK',
-            onPress: () => {
-              // Reset form
-              setTitle('');
-              setDescription('');
-              setCategory('');
-              setStreet('');
-              setBarangay('');
-              setCity('');
-              setCoordinates('');
-              setRent('');
-              setMaxRenters('');
-              setImages([]);
-              setHasInternet(false);
-              setAllowsPets(false);
-              setIsFurnished(false);
-              setHasAc(false);
-              setIsSecure(false);
-              setHasParking(false);
-            },
-          },
-        ]
-      );
-    } catch (error) {
-      setLoading(false);
-      Alert.alert(
-        'Error',
-        error instanceof Error ? error.message : 'Failed to submit property. Please try again.'
-      );
-    }
+    // Navigate to Manage Properties screen
+    navigation.navigate('ManageProperties' as never);
   };
 
   return (
-    <KeyboardAvoidingView
+    <View
       className="flex-1 bg-background"
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-      <ScrollView
+      style={{ paddingTop: Platform.OS === 'ios' ? 0 : insets.top + 8 }}>
+      {/* Full-screen blocker when upload is in progress */}
+      {isUploading && (
+        <View className="absolute inset-0 z-50 flex items-center justify-center bg-background/95">
+          <View className="items-center rounded-lg bg-card p-8 shadow-lg">
+            <ActivityIndicator size="large" color="#644A40" />
+            <Text className="mt-4 text-center text-lg font-semibold text-foreground">
+              Property Upload in Progress
+            </Text>
+            <Text className="mt-2 text-center text-sm text-muted-foreground">
+              Please wait while your property is being uploaded...
+            </Text>
+          </View>
+        </View>
+      )}
+
+      <KeyboardAwareScrollView
         className="flex-1"
-        contentContainerClassName="px-6 py-8"
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled">
+        style={{ paddingTop: Platform.OS === 'ios' ? 50 : 0 }}
+        contentContainerClassName="px-6 pb-4"
+        enableOnAndroid={true}
+        enableAutomaticScroll={false}
+        keyboardShouldPersistTaps="handled"
+        extraHeight={Platform.OS === 'ios' ? 100 : 150}
+        enableResetScrollToCoords={false}>
         {/* Header */}
         <View className="mb-6">
           <Text className="text-3xl font-bold text-primary">Add New Property</Text>
           <Text className="mt-2 text-base text-muted-foreground">
-            Fill in the details of your property
+            Fill in the details of your property and apply to make it available for recommendation.
           </Text>
         </View>
 
@@ -222,7 +260,7 @@ export default function AddPropertyScreen() {
         />
 
         {/* Location Section */}
-        <Text className="mb-3 mt-2 text-lg font-semibold text-foreground">Location</Text>
+        <Text className="mb-2 mt-4 text-lg font-semibold text-foreground">Location</Text>
 
         <Input
           label="Street"
@@ -240,46 +278,142 @@ export default function AddPropertyScreen() {
           error={formErrors.barangay}
         />
 
-        <Picker
-          label="City *"
-          options={cityOptions}
-          value={city}
-          onChange={setCity}
-          placeholder="Select city"
-          error={formErrors.city}
-        />
+        <View className="mb-4">
+          <RadioGroup
+            label="City *"
+            options={cityOptions}
+            value={city}
+            onChange={setCity}
+            error={formErrors.city}
+          />
+        </View>
 
         <LocationPicker
-          label="Pin Location on Map *"
+          label="Map Location *"
           value={coordinates}
           onChange={setCoordinates}
+          onAddressChange={(address) => {
+            if (address.street) setStreet(address.street);
+            if (address.barangay) setBarangay(address.barangay);
+            if (address.city) setCity(address.city);
+          }}
+          enableAddressAutofill={true}
           placeholder="Select location"
           error={formErrors.coordinates}
         />
 
         {/* Pricing & Capacity */}
-        <Text className="mb-3 mt-2 text-lg font-semibold text-foreground">Pricing & Capacity</Text>
+        <Text className="mb-2 mt-4 text-lg font-semibold text-foreground">Pricing & Capacity</Text>
 
-        <Input
-          label="Monthly Rent (₱) *"
-          placeholder="e.g., 5000"
-          value={rent}
-          onChangeText={setRent}
-          keyboardType="numeric"
-          error={formErrors.rent}
-        />
+        <View className="flex-row gap-3">
+          <View className="flex-1">
+            <Input
+              label="Monthly Rent (₱) *"
+              placeholder="e.g., 5000"
+              value={rent}
+              onChangeText={setRent}
+              keyboardType="numeric"
+              error={formErrors.rent}
+            />
+          </View>
 
-        <Input
-          label="Maximum Renters *"
-          placeholder="e.g., 2"
-          value={maxRenters}
-          onChangeText={setMaxRenters}
-          keyboardType="numeric"
-          error={formErrors.max_renters}
-        />
+          <View className="flex-1">
+            <NumericStepper
+              label="Maximum Renters *"
+              value={maxRenters}
+              onChange={setMaxRenters}
+              min={1}
+              max={10}
+              error={formErrors.max_renters}
+            />
+          </View>
+        </View>
 
         {/* Amenities */}
-        <Text className="mb-3 mt-2 text-lg font-semibold text-foreground">Amenities</Text>
+        <Text className="mb-2 mt-4 text-lg font-semibold text-foreground">Amenities</Text>
+
+        <View className="flex-row gap-3">
+          <View className="flex-1">
+            <NumericStepper
+              label="Bedrooms *"
+              value={numBedrooms}
+              onChange={setNumBedrooms}
+              min={1}
+              max={5}
+              error={formErrors.amenities}
+            />
+          </View>
+
+          <View className="flex-1">
+            <NumericStepper
+              label="Bathrooms *"
+              value={numBathrooms}
+              onChange={setNumBathrooms}
+              min={0}
+              max={5}
+            />
+          </View>
+        </View>
+
+        {/* Custom Amenities Input */}
+        <View className="mb-4 w-full">
+          <View className="mb-1 flex-row items-center justify-between">
+            <Text className="text-base font-medium text-foreground">Additional Amenities</Text>
+            <Text className="text-sm text-muted-foreground">{customAmenities.length}/5</Text>
+          </View>
+          <View className="flex-row items-center rounded-lg border border-input bg-card">
+            <TextInput
+              className="flex-1 px-4 py-3 text-base text-card-foreground"
+              placeholder="e.g., Kitchen, Balcony, Laundry Area"
+              placeholderTextColor="#888"
+              value={newAmenityInput}
+              onChangeText={setNewAmenityInput}
+              onSubmitEditing={handleAddAmenity}
+              returnKeyType="done"
+              editable={customAmenities.length < 5}
+            />
+            <View className="border-l border-input">
+              <TouchableOpacity
+                onPress={handleAddAmenity}
+                disabled={!newAmenityInput.trim() || customAmenities.length >= 5}
+                className={`px-3 py-3 ${!newAmenityInput.trim() || customAmenities.length >= 5 ? 'opacity-50' : ''}`}>
+                <Plus
+                  size={20}
+                  color={newAmenityInput.trim() && customAmenities.length < 5 ? '#644A40' : '#888'}
+                />
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+
+        {/* Custom Amenities List */}
+        {customAmenities.length > 0 && (
+          <View className="mb-4">
+            <Text className="mb-2 text-sm font-medium text-muted-foreground">
+              Added Amenities ({customAmenities.length})
+            </Text>
+            {customAmenities.map((amenity, index) => (
+              <View
+                key={index}
+                className="mb-2 flex-row items-center rounded-lg border border-input bg-card">
+                <View className="flex-1 flex-row items-center px-4 py-3">
+                  <Text className="mr-2 text-base font-semibold text-primary">{index + 1}.</Text>
+                  <Text className="flex-1 text-base text-card-foreground">{amenity}</Text>
+                </View>
+                <View className="border-l border-input">
+                  <TouchableOpacity
+                    onPress={() => handleRemoveAmenity(index)}
+                    className="px-3 py-3">
+                    <X size={20} color="#644A40" />
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ))}
+          </View>
+        )}
+
+        {/* Features */}
+        <Text className="mb-3 mt-2 text-lg font-semibold text-foreground">Features</Text>
 
         <Checkbox
           label="Internet Availability"
@@ -324,10 +458,10 @@ export default function AddPropertyScreen() {
         />
 
         {/* Submit Button */}
-        <Button variant="primary" className="mb-8 mt-6" onPress={handleSubmit} disabled={loading}>
-          {loading ? 'Submitting...' : 'Submit Property'}
+        <Button variant="primary" className="mt-2" onPress={handleSubmit} disabled={loading}>
+          {loading ? 'Submitting...' : 'Submit Property for Verification'}
         </Button>
-      </ScrollView>
-    </KeyboardAvoidingView>
+      </KeyboardAwareScrollView>
+    </View>
   );
 }

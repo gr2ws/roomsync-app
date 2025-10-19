@@ -54,18 +54,18 @@ const MultiImagePicker: React.FC<MultiImagePickerProps> = ({
     <View className="mb-4 w-full">
       {label && <Text className="mb-2 text-base font-medium text-foreground">{label}</Text>}
 
-      <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-        <View className="flex-row gap-3">
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ overflow: 'visible' }}>
+        <View className="flex-row gap-3" style={{ overflow: 'visible' }}>
           {/* Existing Images */}
           {images.map((uri, index) => (
-            <View key={index} className="relative">
+            <View key={index} className="relative" style={{ overflow: 'visible' }}>
               <Image source={{ uri }} className="h-24 w-24 rounded-lg" />
               {/* Remove Button */}
               <TouchableOpacity
                 onPress={() => handleRemoveImage(index)}
-                className="absolute -right-2 -top-2 rounded-full bg-destructive p-1"
-                style={{ elevation: 3, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.25, shadowRadius: 3.84 }}>
-                <X size={16} color="white" />
+                className="absolute -right-2 -top-2 rounded-full bg-destructive p-1.5"
+                style={{ overflow: 'visible' }}>
+                <X size={14} color="white" strokeWidth={3} />
               </TouchableOpacity>
             </View>
           ))}
@@ -76,9 +76,7 @@ const MultiImagePicker: React.FC<MultiImagePickerProps> = ({
               onPress={handlePickImages}
               className="h-24 w-24 items-center justify-center rounded-lg border-2 border-dashed border-border bg-card">
               <Camera size={24} color="#888" />
-              <Text className="mt-1 text-xs text-muted-foreground">
-                Add Photo
-              </Text>
+              <Text className="mt-1 text-xs text-muted-foreground">Add Photo</Text>
             </TouchableOpacity>
           )}
         </View>

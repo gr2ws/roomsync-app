@@ -3,7 +3,7 @@ import { z } from 'zod';
 export const propertySchema = z.object({
   title: z.string().min(1, 'Property title is required'),
   description: z.string().optional(),
-  category: z.enum(['apartment', 'dormitory', 'boarding house'], {
+  category: z.enum(['apartment', 'room', 'bedspace'], {
     errorMap: () => ({ message: 'Please select a property category' }),
   }),
   street: z.string().optional(),
@@ -21,6 +21,7 @@ export const propertySchema = z.object({
   has_ac: z.boolean(),
   is_secure: z.boolean(),
   has_parking: z.boolean(),
+  amenities: z.array(z.string()).min(2, 'Bedrooms and bathrooms are required'),
 });
 
 export type PropertyFormData = z.infer<typeof propertySchema>;
