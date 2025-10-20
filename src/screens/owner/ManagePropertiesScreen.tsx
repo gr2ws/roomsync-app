@@ -39,6 +39,7 @@ interface Property {
   is_available: boolean;
   is_verified: boolean;
   amenities: string[];
+  number_reviews: number;
 }
 
 interface PropertyWithRenters extends Property {

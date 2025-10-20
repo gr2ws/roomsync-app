@@ -19,6 +19,7 @@ interface PropertyData {
   is_secure: boolean;
   has_parking: boolean;
   amenities: string[];
+  number_reviews: number;
 }
 
 interface PropertyEditState {

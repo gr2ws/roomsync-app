@@ -24,6 +24,7 @@ interface PropertyListItemProps {
     is_available: boolean;
     is_verified: boolean;
     amenities: string[];
+    number_reviews: number;
   };
   currentRenters: number;
   isUploading?: boolean;
@@ -76,10 +77,10 @@ export default function PropertyListItem({
           <View className="mt-3 flex-row items-center justify-between">
             {/* Availability */}
             <View className="flex-row items-center">
-              <CheckCircle size={16} color={isAvailable ? '#16a34a' : '#dc2626'} />
+              <CheckCircle size={16} color={isAvailable ? 'rgb(76, 175, 80)' : 'rgb(229, 77, 46)'} />
               <Text
                 className={`ml-1 text-sm font-medium ${
-                  isAvailable ? 'text-green-700' : 'text-red-700'
+                  isAvailable ? 'text-success' : 'text-destructive'
                 }`}>
                 {isAvailable ? 'Available' : 'Full'}
               </Text>
@@ -88,13 +89,13 @@ export default function PropertyListItem({
             {/* Verification */}
             <View className="flex-row items-center">
               {property.is_verified ? (
-                <CheckCircle size={16} color="#16a34a" />
+                <CheckCircle size={16} color="rgb(76, 175, 80)" />
               ) : (
-                <Clock size={16} color="#ca8a04" />
+                <Clock size={16} color="rgb(251, 191, 36)" />
               )}
               <Text
                 className={`ml-1 text-sm font-medium ${
-                  property.is_verified ? 'text-green-700' : 'text-yellow-700'
+                  property.is_verified ? 'text-success' : 'text-warning'
                 }`}>
                 {property.is_verified ? 'Verified' : 'Pending'}
               </Text>
@@ -127,7 +128,9 @@ export default function PropertyListItem({
               className="flex-1 flex-row items-center justify-center rounded-lg border border-input bg-card px-3 py-2"
               onPress={onViewReviews}>
               <Star size={14} color="#644A40" />
-              <Text className="ml-1 text-xs font-semibold text-secondary-foreground">Reviews</Text>
+              <Text className="ml-1 text-xs font-semibold text-secondary-foreground">
+                Reviews ({property.number_reviews || 0})
+              </Text>
             </TouchableOpacity>
 
             <TouchableOpacity

@@ -7,6 +7,7 @@ export type RootStackParamList = {
   Welcome: undefined;
   Details: undefined;
   Preferences: { fromProfile?: boolean } | undefined;
+  PropertyDetails: { propertyId: number };
 };
 
 export type RootTabParamList = {

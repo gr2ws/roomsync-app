@@ -31,6 +31,7 @@ import PreferencesScreen from './src/screens/auth/PreferencesScreen';
 import FeedScreen from './src/screens/renter/FeedScreen';
 import ApplicationsScreen from './src/screens/renter/ApplicationsScreen';
 import ChatScreen from './src/screens/renter/ChatScreen';
+import PropertyDetailsScreen from './src/screens/renter/PropertyDetailsScreen';
 import AddPropertyScreen from './src/screens/owner/AddPropertyScreen';
 import ManagePropertiesScreen from './src/screens/owner/ManagePropertiesScreen';
 import ViewReviewsScreen from './src/screens/owner/ViewReviewsScreen';
@@ -342,6 +343,7 @@ export default function App() {
               <>
                 <Stack.Screen name="Home" component={MainApp} />
                 <Stack.Screen name="Preferences" component={PreferencesScreen} />
+                <Stack.Screen name="PropertyDetails" component={PropertyDetailsScreen} />
               </>
             ) : (
               <>

@@ -21,6 +21,7 @@ create table public.properties (
   has_ac boolean null,
   is_secure boolean null,
   has_parking boolean null,
+  number_reviews integer null default 0,
   constraint properties_pkey primary key (property_id),
   constraint fk_properties_owner foreign KEY (owner_id) references users (user_id) on update CASCADE on delete set null
 ) TABLESPACE pg_default;
