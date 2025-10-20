@@ -309,7 +309,7 @@ function StatCard({ icon, label, value, color, fullWidth }: StatCardProps) {
   return (
     <View
       className={`mb-2 mr-2 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm ${
-        fullWidth ? 'w-full' : 'flex-1'
+        fullWidth ? 'w-full text-center' : 'flex-1'
       }`}>
       <View className="mb-2 flex-row items-center">
         <Ionicons name={icon} size={18} color={color || '#6B7280'} />
