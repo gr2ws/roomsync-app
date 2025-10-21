@@ -36,7 +36,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { RootStackParamList } from '../../utils/navigation';
 import { supabase } from '../../utils/supabase';
 import { useLoggedIn } from '../../store/useLoggedIn';
-import { Property, PropertyOwner, Review } from '../../types/property';
+import { Property, PropertyOwner, Review, Application } from '../../types/property';
 import {
   calculateDistanceFromStrings,
   formatDistance,
@@ -44,6 +44,7 @@ import {
 } from '../../utils/distance';
 import Button from '../../components/Button';
 import ReviewCard from '../../components/ReviewCard';
+import ConfirmationModal from '../../components/ConfirmationModal';
 
 // Dynamic import for react-native-maps (only loads if native modules are available)
 let MapView: any = null;
@@ -118,6 +119,14 @@ export default function PropertyDetailsScreen({ navigation, route }: PropertyDet
   const [currentReviewsPage, setCurrentReviewsPage] = useState(0);
   const REVIEWS_PER_PAGE = 5;
 
+  // Application state
+  const [pendingApplicationsCount, setPendingApplicationsCount] = useState(0);
+  const [hasApprovedApplication, setHasApprovedApplication] = useState(false);
+  const [hasPendingApplicationToThisProperty, setHasPendingApplicationToThisProperty] =
+    useState(false);
+  const [showApplicationModal, setShowApplicationModal] = useState(false);
+  const [isSubmittingApplication, setIsSubmittingApplication] = useState(false);
+
   useEffect(() => {
     loadData();
   }, [propertyId]);
@@ -125,7 +134,12 @@ export default function PropertyDetailsScreen({ navigation, route }: PropertyDet
   const loadData = async () => {
     try {
       setIsLoading(true);
-      await Promise.all([fetchProperty(), fetchReviews(false), loadUserPreferences()]);
+      await Promise.all([
+        fetchProperty(),
+        fetchReviews(false),
+        loadUserPreferences(),
+        fetchApplications(),
+      ]);
     } catch (error) {
       console.error('Error loading data:', error);
     } finally {
@@ -258,6 +272,45 @@ export default function PropertyDetailsScreen({ navigation, route }: PropertyDet
     }
   };
 
+  const fetchApplications = async () => {
+    if (!userProfile?.user_id) return;
+
+    try {
+      console.log('[PropertyDetails] Fetching applications for renter_id:', userProfile.user_id);
+
+      // Fetch all user's applications
+      const { data: applications, error } = await supabase
+        .from('applications')
+        .select('application_id, property_id, status')
+        .eq('renter_id', userProfile.user_id);
+
+      if (error) throw error;
+
+      console.log('[PropertyDetails] Applications fetched:', applications?.length || 0);
+
+      if (applications) {
+        // Count pending applications
+        const pendingCount = applications.filter((app) => app.status === 'pending').length;
+        setPendingApplicationsCount(pendingCount);
+        console.log('[PropertyDetails] Pending applications count:', pendingCount);
+
+        // Check for approved application
+        const hasApproved = applications.some((app) => app.status === 'approved');
+        setHasApprovedApplication(hasApproved);
+        console.log('[PropertyDetails] Has approved application:', hasApproved);
+
+        // Check for pending application to this property
+        const hasPendingToThisProperty = applications.some(
+          (app) => app.property_id === propertyId && app.status === 'pending'
+        );
+        setHasPendingApplicationToThisProperty(hasPendingToThisProperty);
+        console.log('[PropertyDetails] Has pending to property_id', propertyId, ':', hasPendingToThisProperty);
+      }
+    } catch (error) {
+      console.error('[PropertyDetails] Error fetching applications:', error);
+    }
+  };
+
   const parsePriceRange = (priceRange: string | null): { min: number; max: number } | null => {
     if (!priceRange) return null;
 
@@ -319,7 +372,51 @@ export default function PropertyDetailsScreen({ navigation, route }: PropertyDet
   };
 
   const handleFileApplication = () => {
-    Alert.alert('Coming Soon', 'Application filing feature will be implemented soon!');
+    // Show confirmation modal if user is allowed to apply
+    if (!hasApprovedApplication && !hasPendingApplicationToThisProperty && pendingApplicationsCount < 5) {
+      setShowApplicationModal(true);
+    }
+  };
+
+  const submitApplication = async () => {
+    if (!userProfile?.user_id || !property?.owner_id) {
+      Alert.alert('Error', 'Unable to submit application. Please try again.');
+      return;
+    }
+
+    setIsSubmittingApplication(true);
+    setShowApplicationModal(false);
+
+    try {
+      console.log('[PropertyDetails] Submitting application:', {
+        property_id: propertyId,
+        renter_id: userProfile.user_id,
+        owner_id: property.owner_id,
+      });
+
+      const { error } = await supabase.from('applications').insert({
+        property_id: propertyId,
+        renter_id: userProfile.user_id,
+        owner_id: property.owner_id,
+        status: 'pending',
+        message: null,
+        date_applied: new Date().toISOString(),
+        date_updated: null,
+      });
+
+      if (error) throw error;
+
+      console.log('[PropertyDetails] Application submitted successfully');
+      Alert.alert('Success', 'Your application has been submitted successfully!');
+
+      // Refresh applications data
+      await fetchApplications();
+    } catch (error) {
+      console.error('[PropertyDetails] Error submitting application:', error);
+      Alert.alert('Error', 'Failed to submit application. Please try again.');
+    } finally {
+      setIsSubmittingApplication(false);
+    }
   };
 
   const handleScroll = (event: any) => {
@@ -982,8 +1079,34 @@ export default function PropertyDetailsScreen({ navigation, route }: PropertyDet
         style={{ paddingBottom: Platform.OS === 'ios' ? 19 : insets.bottom + 6 }}>
         <View className="flex-row gap-3">
           <View className="flex-1">
-            <Button variant="primary" onPress={handleFileApplication}>
-              Rent
+            <Button
+              variant="primary"
+              onPress={handleFileApplication}
+              disabled={
+                isSubmittingApplication ||
+                hasApprovedApplication ||
+                hasPendingApplicationToThisProperty ||
+                pendingApplicationsCount >= 5 ||
+                userProfile?.is_banned ||
+                !userProfile?.is_verified
+              }>
+              {isSubmittingApplication ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : userProfile?.is_banned ? (
+                'Account Banned'
+              ) : !userProfile?.is_verified ? (
+                'Account Not Verified'
+              ) : hasPendingApplicationToThisProperty ? (
+                'Application Pending'
+              ) : hasApprovedApplication ? (
+                'Rent (Approved)'
+              ) : pendingApplicationsCount >= 5 ? (
+                'Rent (5/5)'
+              ) : pendingApplicationsCount > 0 ? (
+                `Rent (${pendingApplicationsCount}/5)`
+              ) : (
+                'Rent'
+              )}
             </Button>
           </View>
           {owner?.phone_number && (
@@ -995,6 +1118,17 @@ export default function PropertyDetailsScreen({ navigation, route }: PropertyDet
           )}
         </View>
       </View>
+
+      {/* Application Confirmation Modal */}
+      <ConfirmationModal
+        visible={showApplicationModal}
+        title="Apply to this Property"
+        message="Are you sure you want to apply to this property? You can have up to 5 pending applications at a time."
+        confirmText="Apply"
+        cancelText="Cancel"
+        onConfirm={submitApplication}
+        onCancel={() => setShowApplicationModal(false)}
+      />
     </View>
   );
 }

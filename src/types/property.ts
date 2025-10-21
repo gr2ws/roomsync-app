@@ -67,3 +67,36 @@ export interface UserPreferences {
   place_of_work_study: string | null;
   preferences_order: string[]; // Array of preference labels from AsyncStorage
 }
+
+export type ApplicationStatus = 'pending' | 'approved' | 'rejected' | 'cancelled' | 'completed';
+
+export interface Application {
+  application_id: number;
+  property_id: number;
+  renter_id: number;
+  owner_id: number;
+  status: ApplicationStatus;
+  message: string | null;
+  date_applied: string;
+  date_updated: string | null;
+}
+
+export interface ApplicationWithProperty extends Application {
+  property: Property;
+  property_owner?: PropertyOwner;
+}
+
+export interface ApplicationWithRenter extends Application {
+  renter: {
+    user_id: number;
+    first_name: string;
+    last_name: string;
+    email: string;
+    phone_number: string | null;
+    profile_picture: string | null;
+    occupation: string | null;
+    place_of_work_study: string | null;
+    price_range: string | null;
+    room_preference: PropertyCategory | null;
+  };
+}

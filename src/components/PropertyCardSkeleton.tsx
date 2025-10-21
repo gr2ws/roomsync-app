@@ -1,6 +1,6 @@
-import { View } from 'react-native';
+import { View , Animated } from 'react-native';
 import { useEffect, useRef } from 'react';
-import { Animated } from 'react-native';
+
 
 export default function PropertyCardSkeleton() {
   const pulseAnim = useRef(new Animated.Value(0)).current;

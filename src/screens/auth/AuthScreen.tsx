@@ -67,6 +67,36 @@ export default function AuthScreen({ navigation }: Props) {
       return;
     }
 
+    // Check if user is banned
+    if (userData.is_banned) {
+      console.log('[AuthScreen] User is banned, preventing login for user_id:', userData.user_id);
+      setLoading(false);
+      setAuthenticating(false);
+      await supabase.auth.signOut();
+      Alert.alert(
+        'Account Banned',
+        'Your account has been banned. Please contact support for more information.',
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+
+    // Check if user is warned
+    if (userData.is_warned) {
+      console.log('[AuthScreen] User has warning, showing alert for user_id:', userData.user_id);
+      Alert.alert(
+        'Account Warning',
+        'Your account has received a warning. Please review our community guidelines to avoid further action.',
+        [{ text: 'I Understand' }]
+      );
+    }
+
+    console.log('[AuthScreen] Login successful for user:', {
+      user_id: userData.user_id,
+      user_type: userData.user_type,
+      is_verified: userData.is_verified,
+    });
+
     // Update last login date
     const timestamp = new Date().toISOString().replace('Z', ''); // Remove 'Z' for timestamp without time zone
     await supabase.from('users').update({ last_login_date: timestamp }).eq('auth_id', data.user.id);

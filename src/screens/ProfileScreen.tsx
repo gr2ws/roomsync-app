@@ -1,4 +1,4 @@
-import { View, Text, ScrollView, Alert, Platform } from 'react-native';
+import { View, Text, ScrollView, Alert, Platform, Image, ActivityIndicator } from 'react-native';
 import { useState, useEffect, useMemo } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useLoggedIn } from '../store/useLoggedIn';
@@ -10,10 +10,13 @@ import ProfilePicturePicker from '../components/ProfilePicturePicker';
 import RadioGroup from '../components/RadioGroup';
 import LocationPicker from '../components/LocationPicker';
 import DatePicker from '../components/DatePicker';
+import ConfirmationModal from '../components/ConfirmationModal';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../utils/navigation';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { ApplicationWithProperty } from '../types/property';
+import { MapPin } from 'lucide-react-native';
 
 // Schema for renters
 const renterSchema = z
@@ -79,6 +82,12 @@ export default function ProfileScreen() {
     Partial<Record<keyof RenterFormFields | keyof OwnerFormFields, string>>
   >({});
 
+  // Current Rental state
+  const [currentRental, setCurrentRental] = useState<ApplicationWithProperty | null>(null);
+  const [isLoadingRental, setIsLoadingRental] = useState(true);
+  const [showEndRentalModal, setShowEndRentalModal] = useState(false);
+  const [isEndingRental, setIsEndingRental] = useState(false);
+
   // Initialize budget fields from price_range and reset fields when userProfile changes
   useEffect(() => {
     setFirstName(userProfile?.first_name || '');
@@ -99,6 +108,102 @@ export default function ProfileScreen() {
       setMaxBudget('');
     }
   }, [userProfile]);
+
+  // Fetch current rental for renters
+  useEffect(() => {
+    if (userRole === 'renter') {
+      fetchCurrentRental();
+    } else {
+      setIsLoadingRental(false);
+    }
+  }, [userProfile, userRole]);
+
+  const fetchCurrentRental = async () => {
+    if (!userProfile?.user_id) {
+      setIsLoadingRental(false);
+      return;
+    }
+
+    try {
+      console.log('[ProfileScreen] Fetching current rental for renter_id:', userProfile.user_id);
+
+      const { data, error } = await supabase
+        .from('applications')
+        .select(
+          `
+          application_id,
+          property_id,
+          renter_id,
+          owner_id,
+          status,
+          message,
+          date_applied,
+          date_updated,
+          property:properties (
+            property_id,
+            owner_id,
+            title,
+            description,
+            category,
+            street,
+            barangay,
+            city,
+            coordinates,
+            image_url,
+            rent,
+            amenities,
+            rating,
+            max_renters,
+            is_available,
+            is_verified,
+            has_internet,
+            allows_pets,
+            is_furnished,
+            has_ac,
+            is_secure,
+            has_parking,
+            number_reviews
+          )
+        `
+        )
+        .eq('renter_id', userProfile.user_id)
+        .eq('status', 'approved')
+        .single();
+
+      if (error) {
+        if (error.code !== 'PGRST116') {
+          // PGRST116 is "no rows returned", which is fine
+          console.error('[ProfileScreen] Error fetching current rental:', error);
+        } else {
+          console.log('[ProfileScreen] No current rental found (approved application)');
+        }
+        setCurrentRental(null);
+      } else if (data) {
+        console.log('[ProfileScreen] Current rental found:', {
+          application_id: data.application_id,
+          property_id: data.property_id,
+        });
+
+        const transformedData: ApplicationWithProperty = {
+          application_id: data.application_id,
+          property_id: data.property_id,
+          renter_id: data.renter_id,
+          owner_id: data.owner_id,
+          status: data.status,
+          message: data.message,
+          date_applied: data.date_applied,
+          date_updated: data.date_updated,
+          property: data.property,
+        };
+        setCurrentRental(transformedData);
+      }
+    } catch (error) {
+      console.error('[ProfileScreen] Error fetching current rental:', error);
+      setCurrentRental(null);
+    } finally {
+      setIsLoadingRental(false);
+    }
+  };
 
   // Store initial values to detect changes
   const initialValues = useMemo(
@@ -348,6 +453,99 @@ export default function ProfileScreen() {
     Alert.alert('Success', 'Profile updated successfully');
   };
 
+  const handleEndRental = async (optionalMessage?: string) => {
+    if (!currentRental || !userProfile?.user_id) {
+      Alert.alert('Error', 'Unable to end rental. Please try again.');
+      return;
+    }
+
+    setIsEndingRental(true);
+    setShowEndRentalModal(false);
+
+    try {
+      const endDate = new Date().toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+      });
+      const message = `Rental ended by tenant on ${endDate}.${optionalMessage ? ' ' + optionalMessage : ''}`;
+
+      console.log('[ProfileScreen] Ending rental:', {
+        application_id: currentRental.application_id,
+        property_id: currentRental.property_id,
+        message: message,
+      });
+
+      // Update application status to completed
+      const { error: appError } = await supabase
+        .from('applications')
+        .update({
+          status: 'completed',
+          message: message,
+          date_updated: new Date().toISOString(),
+        })
+        .eq('application_id', currentRental.application_id);
+
+      if (appError) throw appError;
+      console.log('[ProfileScreen] Application status updated to completed');
+
+      // Remove rented_property FK from users table
+      const { error: userError } = await supabase
+        .from('users')
+        .update({ rented_property: null })
+        .eq('user_id', userProfile.user_id);
+
+      if (userError) throw userError;
+      console.log('[ProfileScreen] User rented_property FK removed');
+
+      // Query current renters count for the property
+      const { count: currentRentersCount, error: countError } = await supabase
+        .from('users')
+        .select('*', { count: 'exact', head: true })
+        .eq('rented_property', currentRental.property_id);
+
+      if (countError) throw countError;
+
+      console.log('[ProfileScreen] Current renters count:', currentRentersCount, '/', currentRental.property.max_renters);
+
+      // If current renters < max_renters, set property to available
+      if (
+        currentRentersCount !== null &&
+        currentRental.property.max_renters &&
+        currentRentersCount < currentRental.property.max_renters
+      ) {
+        const { error: propError } = await supabase
+          .from('properties')
+          .update({ is_available: true })
+          .eq('property_id', currentRental.property_id);
+
+        if (propError) {
+          console.error('[ProfileScreen] Error updating property availability:', propError);
+          // Don't throw - rental ending was successful even if this fails
+        } else {
+          console.log('[ProfileScreen] Property set to available');
+        }
+      } else {
+        console.log('[ProfileScreen] Property remains unavailable (still at capacity)');
+      }
+
+      console.log('[ProfileScreen] Rental ended successfully');
+      Alert.alert('Success', 'Your rental has been ended successfully.');
+
+      // Update local state
+      setCurrentRental(null);
+      setUserProfile({
+        ...userProfile,
+        rented_property: null,
+      });
+    } catch (error) {
+      console.error('[ProfileScreen] Error ending rental:', error);
+      Alert.alert('Error', 'Failed to end rental. Please try again.');
+    } finally {
+      setIsEndingRental(false);
+    }
+  };
+
   const insets = useSafeAreaInsets();
 
   return (
@@ -366,6 +564,70 @@ export default function ProfileScreen() {
         <Text className="mb-8 text-center text-base text-muted-foreground">
           {userRole === 'renter' ? 'Renter' : 'Property Owner'}
         </Text>
+
+        {/* Current Rental Section - Renters only */}
+        {userRole === 'renter' && (
+          <View className="mb-6">
+            {isLoadingRental ? (
+              <View className="items-center justify-center rounded-xl border border-input bg-card p-6">
+                <ActivityIndicator size="small" color="#644A40" />
+                <Text className="mt-2 text-sm text-muted-foreground">
+                  Loading current rental...
+                </Text>
+              </View>
+            ) : currentRental ? (
+              <View className="overflow-hidden rounded-xl border border-input bg-card shadow-sm">
+                <View className="rounded-t-xl bg-primary px-4 py-3">
+                  <Text className="text-lg font-bold text-primary-foreground">Current Rental</Text>
+                </View>
+
+                {/* Property Image */}
+                {currentRental.property.image_url &&
+                currentRental.property.image_url.length > 0 ? (
+                  <Image
+                    source={{ uri: currentRental.property.image_url[0] }}
+                    className="h-48 w-full"
+                    resizeMode="cover"
+                  />
+                ) : (
+                  <View className="h-48 w-full items-center justify-center bg-secondary">
+                    <Text className="text-muted-foreground">No Image</Text>
+                  </View>
+                )}
+
+                {/* Property Details */}
+                <View className="p-4">
+                  <Text className="mb-2 text-xl font-bold text-card-foreground">
+                    {currentRental.property.title}
+                  </Text>
+
+                  <View className="mb-2 flex-row items-center">
+                    <MapPin size={14} color="#888" />
+                    <Text className="ml-1 text-sm text-muted-foreground">
+                      {currentRental.property.street && `${currentRental.property.street}, `}
+                      {currentRental.property.barangay}, {currentRental.property.city}
+                    </Text>
+                  </View>
+
+                  <Text className="mb-3 text-lg font-semibold text-primary">
+                    ₱{currentRental.property.rent.toLocaleString()}/month
+                  </Text>
+
+                  <Button
+                    variant="destructive"
+                    onPress={() => setShowEndRentalModal(true)}
+                    disabled={isEndingRental}>
+                    {isEndingRental ? (
+                      <ActivityIndicator size="small" color="#fff" />
+                    ) : (
+                      'End Rental'
+                    )}
+                  </Button>
+                </View>
+              </View>
+            ) : null}
+          </View>
+        )}
 
         <View className="w-full max-w-sm self-center">
           {/* Profile Picture Picker - All roles */}
@@ -499,6 +761,21 @@ export default function ProfileScreen() {
           </View>
         </View>
       </View>
+
+      {/* End Rental Confirmation Modal */}
+      <ConfirmationModal
+        visible={showEndRentalModal}
+        title="End Rental"
+        message="Are you sure you want to end your current rental? This action will cancel your approved application and make the property available again."
+        confirmText="End Rental"
+        cancelText="Cancel"
+        showMessageInput
+        messageInputPlaceholder="Add an optional message (e.g., reason for ending rental)"
+        messageInputLabel="Optional Message"
+        confirmVariant="destructive"
+        onConfirm={handleEndRental}
+        onCancel={() => setShowEndRentalModal(false)}
+      />
     </ScrollView>
   );
 }

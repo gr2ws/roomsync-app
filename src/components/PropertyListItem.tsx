@@ -1,4 +1,4 @@
-import { View, Text, Image, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, Image, TouchableOpacity } from 'react-native';
 import {
   MapPin,
   Edit,
@@ -28,32 +28,29 @@ interface PropertyListItemProps {
     number_reviews: number;
   };
   currentRenters: number;
+  applicationsCount?: number;
   isUploading?: boolean;
   onEdit: () => void;
   onDelete: () => void;
   onViewReviews: () => void;
+  onViewApplications: () => void;
 }
 
 export default function PropertyListItem({
   property,
   currentRenters,
+  applicationsCount = 0,
   isUploading = false,
   onEdit,
   onDelete,
   onViewReviews,
+  onViewApplications,
 }: PropertyListItemProps) {
   const getLocation = () => {
     return [property.street, property.barangay, property.city].filter(Boolean).join(', ');
   };
 
   const isAvailable = property.is_available && currentRenters < property.max_renters;
-
-  const handleApplicationsPress = () => {
-    Alert.alert('Applications', 'This is a placeholder for viewing applications.');
-  };
-
-  // Placeholder count for applications - replace with actual data
-  const applicationsCount = 0;
 
   return (
     <View className="mx-4 mb-2 overflow-hidden rounded-2xl border border-input bg-card">
@@ -152,7 +149,7 @@ export default function PropertyListItem({
 
         <TouchableOpacity
           className="flex-1 flex-row items-center justify-center rounded-lg border border-primary bg-secondary px-3 py-2"
-          onPress={handleApplicationsPress}
+          onPress={onViewApplications}
           activeOpacity={0.7}>
           <FileText size={14} color="#582D1D" />
           <Text className="ml-1.5 text-xs font-semibold text-secondary-foreground">

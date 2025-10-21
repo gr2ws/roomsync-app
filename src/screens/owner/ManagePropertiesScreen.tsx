@@ -48,6 +48,7 @@ interface Property {
 
 interface PropertyWithRenters extends Property {
   currentRenters: number;
+  applicationsCount: number;
 }
 
 export default function ManagePropertiesScreen() {
@@ -97,24 +98,47 @@ export default function ManagePropertiesScreen() {
         return;
       }
 
-      // Fetch current renters count for each property
+      console.log('[ManagePropertiesScreen] Properties fetched:', propertiesData.length);
+
+      // Fetch current renters count and applications count for each property
       const propertiesWithRenters = await Promise.all(
         propertiesData.map(async (property) => {
-          const { count, error: countError } = await supabase
+          // Count current renters
+          const { count: rentersCount, error: countError } = await supabase
             .from('users')
             .select('*', { count: 'exact', head: true })
             .eq('rented_property', property.property_id);
 
           if (countError) {
-            console.error('Error counting renters:', countError);
-            return { ...property, currentRenters: 0 };
+            console.error('[ManagePropertiesScreen] Error counting renters for property_id', property.property_id, ':', countError);
           }
 
-          return { ...property, currentRenters: count || 0 };
+          // Count applications
+          const { count: appsCount, error: appsError } = await supabase
+            .from('applications')
+            .select('*', { count: 'exact', head: true })
+            .eq('property_id', property.property_id);
+
+          if (appsError) {
+            console.error('[ManagePropertiesScreen] Error counting applications for property_id', property.property_id, ':', appsError);
+          }
+
+          console.log('[ManagePropertiesScreen] Property', property.property_id, ':', {
+            currentRenters: rentersCount || 0,
+            maxRenters: property.max_renters,
+            applicationsCount: appsCount || 0,
+          });
+
+          return {
+            ...property,
+            currentRenters: rentersCount || 0,
+            applicationsCount: appsCount || 0,
+          };
         })
       );
 
       setProperties(propertiesWithRenters as PropertyWithRenters[]);
+      console.log('[ManagePropertiesScreen] All properties loaded with counts');
     } catch (error) {
       console.error('Error fetching properties:', error);
       Alert.alert('Error', 'Failed to load properties. Please try again.');
@@ -194,6 +218,13 @@ export default function ManagePropertiesScreen() {
     [navigation]
   );
 
+  const handleViewApplications = useCallback(
+    (propertyId: number) => {
+      navigation.navigate('ApplicationsList' as never, { propertyId } as never);
+    },
+    [navigation]
+  );
+
   const handleSearch = () => {
     setSearchQuery(searchInput);
     fetchProperties(searchInput);
@@ -209,10 +240,12 @@ export default function ManagePropertiesScreen() {
     <PropertyListItem
       property={item}
       currentRenters={item.currentRenters}
+      applicationsCount={item.applicationsCount}
       isUploading={isUploading}
       onEdit={() => handleEdit(item)}
       onDelete={() => handleDelete(item.property_id, item.title)}
       onViewReviews={() => handleViewReviews(item.property_id)}
+      onViewApplications={() => handleViewApplications(item.property_id)}
     />
   );
 

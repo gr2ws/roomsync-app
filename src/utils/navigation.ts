@@ -17,6 +17,7 @@ export type RootTabParamList = {
   AddProperty: undefined;
   EditProperty: { propertyId: number };
   ManageProperties: undefined;
+  ApplicationsList: { propertyId: number };
   ViewReviews: { propertyId?: number } | undefined;
   Profile: undefined;
   Notifications: undefined;
