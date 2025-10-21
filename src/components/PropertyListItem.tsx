@@ -1,4 +1,4 @@
-import { View, Text, Image, TouchableOpacity } from 'react-native';
+import { View, Text, Image, TouchableOpacity, Alert } from 'react-native';
 import {
   MapPin,
   Edit,
@@ -7,6 +7,7 @@ import {
   CheckCircle,
   Clock,
   Users,
+  FileText,
 } from 'lucide-react-native';
 
 interface PropertyListItemProps {
@@ -23,7 +24,7 @@ interface PropertyListItemProps {
     max_renters: number;
     is_available: boolean;
     is_verified: boolean;
-    amenities: string[];
+    amenities: string[] | null;
     number_reviews: number;
   };
   currentRenters: number;
@@ -46,6 +47,13 @@ export default function PropertyListItem({
   };
 
   const isAvailable = property.is_available && currentRenters < property.max_renters;
+
+  const handleApplicationsPress = () => {
+    Alert.alert('Applications', 'This is a placeholder for viewing applications.');
+  };
+
+  // Placeholder count for applications - replace with actual data
+  const applicationsCount = 0;
 
   return (
     <View className="mx-4 mb-2 overflow-hidden rounded-2xl border border-input bg-card">
@@ -109,36 +117,6 @@ export default function PropertyListItem({
               </Text>
             </View>
           </View>
-
-          {/* Action Buttons */}
-          <View className="mt-3 flex-row gap-2">
-            <TouchableOpacity
-              className={`flex-1 flex-row items-center justify-center rounded-lg border border-primary bg-primary px-3 py-2 ${
-                isUploading ? 'opacity-50' : ''
-              }`}
-              onPress={onEdit}
-              disabled={isUploading}>
-              <Edit size={14} color="white" />
-              <Text className="ml-1 text-xs font-semibold text-primary-foreground">
-                {isUploading ? 'Uploading...' : 'Edit'}
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              className="flex-1 flex-row items-center justify-center rounded-lg border border-input bg-card px-3 py-2"
-              onPress={onViewReviews}>
-              <Star size={14} color="#644A40" />
-              <Text className="ml-1 text-xs font-semibold text-secondary-foreground">
-                Reviews ({property.number_reviews || 0})
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              className="flex-row items-center justify-center rounded-lg border border-destructive bg-card px-3 py-2"
-              onPress={onDelete}>
-              <Trash2 size={14} color="#E54D2E" />
-            </TouchableOpacity>
-          </View>
         </View>
 
         {/* Left: Image */}
@@ -155,6 +133,49 @@ export default function PropertyListItem({
             </View>
           )}
         </View>
+      </View>
+
+      {/* Action Buttons Row - Below the main card */}
+      <View className="flex-row gap-2 border-t border-input p-3">
+        <TouchableOpacity
+          className={`flex-1 flex-row items-center justify-center rounded-lg bg-primary px-3 py-2 shadow-sm ${
+            isUploading ? 'opacity-50' : ''
+          }`}
+          onPress={onEdit}
+          disabled={isUploading}
+          activeOpacity={0.7}>
+          <Edit size={14} color="white" />
+          <Text className="ml-1.5 text-xs font-semibold text-primary-foreground">
+            {isUploading ? 'Uploading...' : 'Edit'}
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          className="flex-1 flex-row items-center justify-center rounded-lg border border-primary bg-secondary px-3 py-2"
+          onPress={handleApplicationsPress}
+          activeOpacity={0.7}>
+          <FileText size={14} color="#582D1D" />
+          <Text className="ml-1.5 text-xs font-semibold text-secondary-foreground">
+            Applications ({applicationsCount})
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          className="flex-1 flex-row items-center justify-center rounded-lg border border-primary bg-secondary px-3 py-2"
+          onPress={onViewReviews}
+          activeOpacity={0.7}>
+          <Star size={14} color="#582D1D" />
+          <Text className="ml-1.5 text-xs font-semibold text-secondary-foreground">
+            Reviews ({property.number_reviews || 0})
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          className="flex-row items-center justify-center rounded-lg border border-destructive bg-secondary px-3 py-2"
+          onPress={onDelete}
+          activeOpacity={0.7}>
+          <Trash2 size={14} color="#E54D2E" />
+        </TouchableOpacity>
       </View>
     </View>
   );

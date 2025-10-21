@@ -26,6 +26,7 @@ import {
   extractCityFromLocation,
 } from '../../utils/distance';
 import PropertyCardSkeleton from '../../components/PropertyCardSkeleton';
+import ImageSkeleton from '../../components/ImageSkeleton';
 
 type FeedScreenNavigationProp = StackNavigationProp<RootStackParamList>;
 
@@ -120,6 +121,21 @@ export default function FeedScreen() {
       const priceRange = parsePriceRange(userProfile?.price_range);
       const userLocation = userProfile?.place_of_work_study;
 
+      // Fetch current renters count for all properties
+      const propertyIds = data.map((p) => p.property_id);
+      const { data: rentersData } = await supabase
+        .from('users')
+        .select('rented_property')
+        .in('rented_property', propertyIds);
+
+      // Count renters per property
+      const renterCounts: { [key: number]: number } = {};
+      rentersData?.forEach((renter) => {
+        if (renter.rented_property) {
+          renterCounts[renter.rented_property] = (renterCounts[renter.rented_property] || 0) + 1;
+        }
+      });
+
       // Calculate distance and price match for each property
       const propertiesWithMetadata: PropertyWithDistance[] = data.map((property) => {
         const distance = calculateDistanceFromStrings(userLocation, property.coordinates);
@@ -131,6 +147,7 @@ export default function FeedScreen() {
           ...property,
           distance,
           matchesPriceRange,
+          currentRenters: renterCounts[property.property_id] || 0,
         };
       });
 
@@ -225,17 +242,17 @@ export default function FeedScreen() {
 
     return (
       <TouchableOpacity
-        className="my-1 h-40 flex-row border border-input bg-card shadow-sm"
+        className="my-1 h-36 flex-row border border-input bg-card shadow-sm"
         style={{ borderRadius: 12, overflow: 'hidden' }}
-        onPress={() => navigation.navigate('PropertyDetails', { propertyId: property.property_id })}>
+        onPress={() =>
+          navigation.navigate('PropertyDetails', { propertyId: property.property_id })
+        }>
         {/* Image (35%) */}
         {property.image_url && property.image_url.length > 0 ? (
-          <View className="w-[35%]" style={{ borderTopLeftRadius: 12, borderBottomLeftRadius: 12 }}>
+          <View className="w-[35%] overflow-hidden" style={{ borderTopLeftRadius: 12, borderBottomLeftRadius: 12 }}>
             {isImageLoading && (
-              <View
-                className="absolute inset-0 items-center justify-center bg-muted"
-                style={{ borderTopLeftRadius: 12, borderBottomLeftRadius: 12 }}>
-                <ActivityIndicator size="small" color="#644A40" />
+              <View className="absolute inset-0" style={{ borderTopLeftRadius: 12, borderBottomLeftRadius: 12 }}>
+                <ImageSkeleton width="100%" height="100%" borderRadius={12} />
               </View>
             )}
             <Image
@@ -271,51 +288,59 @@ export default function FeedScreen() {
             </Text>
           </View>
 
-          {/* Price and In Range Badge */}
-          <View className="mb-1 flex-row items-center justify-between">
-            <View className="flex-row items-center">
-              <Text className="text-base font-bold text-foreground">
-                ₱{property.rent.toLocaleString()}
-              </Text>
-              <Text className="text-sm text-muted-foreground">/mo</Text>
-            </View>
+          {/* Price */}
+          <View className="mb-1 flex-row items-center">
+            <Text
+              className="text-base font-bold"
+              style={{ color: property.matchesPriceRange ? 'rgb(76, 175, 80)' : undefined }}>
+              ₱{property.rent.toLocaleString()}
+            </Text>
+            <Text className="text-sm text-muted-foreground">/mo</Text>
             {property.matchesPriceRange && (
-              <View className="flex-row items-center rounded-full bg-success/10 px-2 py-0.5">
-                <Ionicons name="checkmark-circle" size={14} color="rgb(76, 175, 80)" />
-                <Text className="ml-1 text-xs font-medium text-success">In Range</Text>
-              </View>
+              <Ionicons
+                name="checkmark-circle-outline"
+                size={14}
+                color="rgb(76, 175, 80)"
+                style={{ marginLeft: 4 }}
+              />
             )}
           </View>
 
-          {/* Rating and Category Row */}
+          {/* Rating and Occupancy */}
           <View className="mb-1 flex-row items-center justify-between">
             <View className="flex-row items-center">
               {property.rating && property.rating > 0 ? (
                 <>
                   <Ionicons name="star" size={14} color="#FFD700" />
                   <Text className="ml-1 text-sm text-muted-foreground">
-                    {property.rating.toFixed(1)} ({property.number_reviews || 0} reviews)
+                    {property.rating.toFixed(1)} ({property.number_reviews || 0})
                   </Text>
                 </>
               ) : (
                 <Text className="text-sm text-muted-foreground">No reviews</Text>
               )}
             </View>
-            <View className="rounded-full border border-primary/20 bg-secondary/30 px-2 py-0.5">
-              <Text className="text-xs font-medium text-secondary-foreground">
-                {getCategoryLabel(property.category)}
+            <View className="flex-row items-center">
+              <Ionicons name="people-outline" size={14} color="#644A40" />
+              <Text className="ml-1 text-sm text-muted-foreground">
+                {property.currentRenters || 0}/{property.max_renters}
               </Text>
             </View>
           </View>
 
-          {/* Distance and Amenities */}
+          {/* Distance and Room Type Badge */}
           <View className="flex-row items-center justify-between">
             <View className="flex-row items-center">
               <Ionicons name="location-outline" size={14} color="#644A40" />
               <Text className="ml-1 text-xs text-muted-foreground">
                 {property.distance !== null
-                  ? `${formatDistance(property.distance)} from work/study`
+                  ? `${formatDistance(property.distance)} from work/school`
                   : 'Set location to see distance'}
+              </Text>
+            </View>
+            <View className="rounded-full border border-primary/20 bg-secondary/30 px-2 py-0.5">
+              <Text className="text-xs font-medium text-secondary-foreground">
+                {getCategoryLabel(property.category)}
               </Text>
             </View>
           </View>
@@ -347,7 +372,7 @@ export default function FeedScreen() {
     if (!hasMore && filteredProperties.length > 0) {
       return (
         <View className="items-center py-4">
-          <Text className="text-sm text-muted-foreground">You've reached the end</Text>
+          <Text className="text-sm text-muted-foreground">You&apos;ve reached the end</Text>
         </View>
       );
     }
@@ -359,7 +384,7 @@ export default function FeedScreen() {
     if (isLoading) return null;
     return (
       <View className="flex-1 items-center justify-center py-20">
-        <Ionicons name="home-outline" size={64} color="#EFEFEF" />
+        <Ionicons name="home-outline" size={64} color="#A0A0A0" />
         <Text className="mt-4 text-lg font-semibold text-foreground">No properties found</Text>
         <Text className="mt-2 text-center text-muted-foreground">
           {searchQuery ? 'Try adjusting your search terms' : 'Check back later for new listings'}
@@ -373,9 +398,7 @@ export default function FeedScreen() {
       className="flex-1 bg-background"
       style={{ paddingTop: Platform.OS === 'ios' ? 0 : insets.top + 8 }}>
       {/* Fixed Header Section */}
-      <View
-        className="bg-background px-4"
-        style={{ paddingTop: Platform.OS === 'ios' ? 50 : 0 }}>
+      <View className="bg-background px-4" style={{ paddingTop: Platform.OS === 'ios' ? 50 : 0 }}>
         {/* Header Text */}
         <View className="mb-4">
           <Text className="text-3xl font-bold text-primary">Find Your Room</Text>

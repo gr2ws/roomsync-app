@@ -9,8 +9,12 @@ import {
   Linking,
   ScrollView,
   Dimensions,
+  Animated,
+  Pressable,
+  FlatList,
+  RefreshControl,
 } from 'react-native';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RouteProp } from '@react-navigation/native';
@@ -18,22 +22,28 @@ import { Ionicons } from '@expo/vector-icons';
 import {
   Star,
   MapPin,
-  CheckCircle,
+  Check,
   Wifi,
   Dog,
   Armchair,
   Wind,
   ShieldCheck,
   Car,
+  Bed,
+  Bath,
 } from 'lucide-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import { RootStackParamList } from '../../utils/navigation';
 import { supabase } from '../../utils/supabase';
 import { useLoggedIn } from '../../store/useLoggedIn';
 import { Property, PropertyOwner, Review } from '../../types/property';
-import { calculateDistanceFromStrings, formatDistance, parseCoordinates } from '../../utils/distance';
+import {
+  calculateDistanceFromStrings,
+  formatDistance,
+  parseCoordinates,
+} from '../../utils/distance';
 import Button from '../../components/Button';
+import ReviewCard from '../../components/ReviewCard';
 
 // Dynamic import for react-native-maps (only loads if native modules are available)
 let MapView: any = null;
@@ -59,7 +69,7 @@ interface PropertyDetailsScreenProps {
   route: PropertyDetailsScreenRouteProp;
 }
 
-const { width } = Dimensions.get('window');
+const { width, height } = Dimensions.get('window');
 const IMAGE_WIDTH = width;
 
 // Map preference labels to property boolean fields
@@ -82,10 +92,7 @@ const PREFERENCE_ICONS: Record<string, any> = {
   Parking: Car,
 };
 
-export default function PropertyDetailsScreen({
-  navigation,
-  route,
-}: PropertyDetailsScreenProps) {
+export default function PropertyDetailsScreen({ navigation, route }: PropertyDetailsScreenProps) {
   const insets = useSafeAreaInsets();
   const { userProfile } = useLoggedIn();
   const { propertyId } = route.params;
@@ -94,11 +101,22 @@ export default function PropertyDetailsScreen({
   const [owner, setOwner] = useState<PropertyOwner | null>(null);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [userPreferences, setUserPreferences] = useState<string[]>([]);
+  const [currentRenters, setCurrentRenters] = useState<number>(0);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'Overview' | 'Features' | 'Reviews' | 'Location'>(
     'Overview'
   );
   const [activeImageIndex, setActiveImageIndex] = useState(0);
+  const [isImageExpanded, setIsImageExpanded] = useState(false);
+  const imageHeightAnim = useRef(new Animated.Value(280)).current;
+
+  // Reviews pagination state
+  const [isLoadingReviews, setIsLoadingReviews] = useState(false);
+  const [isRefreshingReviews, setIsRefreshingReviews] = useState(false);
+  const [isLoadingMoreReviews, setIsLoadingMoreReviews] = useState(false);
+  const [hasMoreReviews, setHasMoreReviews] = useState(true);
+  const [currentReviewsPage, setCurrentReviewsPage] = useState(0);
+  const REVIEWS_PER_PAGE = 5;
 
   useEffect(() => {
     loadData();
@@ -107,7 +125,7 @@ export default function PropertyDetailsScreen({
   const loadData = async () => {
     try {
       setIsLoading(true);
-      await Promise.all([fetchProperty(), fetchReviews(), loadUserPreferences()]);
+      await Promise.all([fetchProperty(), fetchReviews(false), loadUserPreferences()]);
     } catch (error) {
       console.error('Error loading data:', error);
     } finally {
@@ -128,6 +146,16 @@ export default function PropertyDetailsScreen({
 
       setProperty(propertyData);
 
+      // Fetch current renters count
+      const { count: rentersCount, error: rentersError } = await supabase
+        .from('users')
+        .select('*', { count: 'exact', head: true })
+        .eq('rented_property', propertyId);
+
+      if (!rentersError && rentersCount !== null) {
+        setCurrentRenters(rentersCount);
+      }
+
       // Fetch owner information
       if (propertyData?.owner_id) {
         const { data: ownerData, error: ownerError } = await supabase
@@ -146,8 +174,20 @@ export default function PropertyDetailsScreen({
     }
   };
 
-  const fetchReviews = async () => {
+  const fetchReviews = async (loadMore: boolean = false) => {
     try {
+      if (loadMore) {
+        setIsLoadingMoreReviews(true);
+      } else {
+        setIsLoadingReviews(true);
+        setCurrentReviewsPage(0);
+        setHasMoreReviews(true);
+      }
+
+      const page = loadMore ? currentReviewsPage + 1 : 0;
+      const from = page * REVIEWS_PER_PAGE;
+      const to = from + REVIEWS_PER_PAGE - 1;
+
       const { data, error } = await supabase
         .from('reviews')
         .select(
@@ -157,8 +197,6 @@ export default function PropertyDetailsScreen({
           property_id,
           rating,
           comment,
-          upvotes,
-          downvotes,
           date_created,
           user:user_id (
             first_name,
@@ -168,13 +206,43 @@ export default function PropertyDetailsScreen({
         `
         )
         .eq('property_id', propertyId)
-        .order('date_created', { ascending: false });
+        .order('date_created', { ascending: false })
+        .range(from, to);
 
       if (error) throw error;
 
-      setReviews((data as any) || []);
+      const reviewsData = (data as any) || [];
+
+      // Check if there are more items
+      if (reviewsData.length < REVIEWS_PER_PAGE) {
+        setHasMoreReviews(false);
+      }
+
+      if (loadMore) {
+        setReviews((prev) => [...prev, ...reviewsData]);
+        setCurrentReviewsPage(page);
+      } else {
+        setReviews(reviewsData);
+        setCurrentReviewsPage(0);
+      }
     } catch (error) {
       console.error('Error fetching reviews:', error);
+    } finally {
+      setIsLoadingReviews(false);
+      setIsLoadingMoreReviews(false);
+    }
+  };
+
+  const handleRefreshReviews = () => {
+    setIsRefreshingReviews(true);
+    fetchReviews(false).finally(() => {
+      setIsRefreshingReviews(false);
+    });
+  };
+
+  const handleLoadMoreReviews = () => {
+    if (!isLoadingMoreReviews && hasMoreReviews && !isLoadingReviews) {
+      fetchReviews(true);
     }
   };
 
@@ -260,66 +328,77 @@ export default function PropertyDetailsScreen({
     setActiveImageIndex(index);
   };
 
+  const handleImagePress = () => {
+    const toValue = isImageExpanded ? 280 : height * 0.8;
+    Animated.timing(imageHeightAnim, {
+      toValue,
+      duration: 250,
+      useNativeDriver: false,
+    }).start();
+    setIsImageExpanded(!isImageExpanded);
+  };
+
   const getCategoryLabel = (category: string) => {
     if (category === 'bedspace') return 'Bed Space';
     return category.charAt(0).toUpperCase() + category.slice(1);
   };
 
-  const renderFeatureItem = (label: string, fieldKey: keyof Property) => {
+  const renderFeatureItem = (label: string, fieldKey: keyof Property, index: number) => {
     const hasFeature = property?.[fieldKey] === true;
     const level = getPreferenceLevel(label);
     const Icon = PREFERENCE_ICONS[label];
+    const preferenceIndex = userPreferences.indexOf(label);
 
-    // Only show features that the property has OR that user has prioritized
-    if (!hasFeature && !level) {
-      return null;
+    // Calculate number of checks (top 3 preferences only, and property must have it)
+    let numChecks = 0;
+    if (hasFeature && preferenceIndex !== -1 && preferenceIndex < 3) {
+      numChecks = 3 - preferenceIndex; // Top 1 = 3 checks, Top 2 = 2 checks, Top 3 = 1 check
     }
 
     return (
       <View
         key={label}
-        className={`mb-2 flex-row items-center justify-between rounded-lg border p-3 ${
-          level === 'must-have'
-            ? 'border-green-500 bg-green-50'
-            : level === 'nice-to-have'
-              ? 'border-primary/30 bg-secondary/20'
-              : 'border-input bg-card'
+        style={
+          !hasFeature
+            ? {
+                borderColor: '#d4d4d8',
+                borderWidth: 1,
+                borderStyle: 'dashed',
+              }
+            : undefined
+        }
+        className={`mb-3 flex-row items-center justify-between rounded-lg p-3 ${
+          hasFeature
+            ? level === 'must-have'
+              ? 'border border-green-500 bg-green-50'
+              : 'border border-primary bg-secondary'
+            : 'bg-muted/20'
         }`}>
         <View className="flex-1 flex-row items-center">
           {Icon && (
             <Icon
               size={20}
-              color={
-                level === 'must-have' ? '#16a34a' : level === 'nice-to-have' ? '#644A40' : '#646464'
-              }
+              color={hasFeature ? (level === 'must-have' ? '#16a34a' : '#644A40') : '#d4d4d8'}
             />
           )}
           <Text
+            style={!hasFeature ? { color: '#d4d4d8' } : undefined}
             className={`ml-2 text-sm font-medium ${
-              level === 'must-have'
-                ? 'text-green-700'
-                : level === 'nice-to-have'
-                  ? 'text-secondary-foreground'
-                  : 'text-foreground'
+              hasFeature
+                ? level === 'must-have'
+                  ? 'text-green-700'
+                  : 'text-secondary-foreground'
+                : ''
             }`}>
             {label}
           </Text>
         </View>
 
-        <View className="flex-row items-center gap-2">
-          {level === 'must-have' && (
-            <View className="rounded-md bg-green-600 px-2 py-0.5">
-              <Text className="text-xs font-semibold text-white">Must-have</Text>
-            </View>
-          )}
-          {level === 'nice-to-have' && (
-            <View className="rounded-md bg-primary/20 px-2 py-0.5">
-              <Text className="text-xs font-medium text-primary">Nice-to-have</Text>
-            </View>
-          )}
-          {hasFeature && (
-            <CheckCircle size={20} color={level === 'must-have' ? '#16a34a' : '#644A40'} />
-          )}
+        <View className="flex-row items-center gap-1">
+          {numChecks > 0 &&
+            Array.from({ length: numChecks }).map((_, i) => (
+              <Check key={i} size={16} color="#16a34a" strokeWidth={3} />
+            ))}
         </View>
       </View>
     );
@@ -331,92 +410,240 @@ export default function PropertyDetailsScreen({
     switch (activeTab) {
       case 'Overview':
         return (
-          <View>
-            <Text className="mb-2 text-base font-semibold text-foreground">Description</Text>
-            {property.description ? (
-              <Text className="mb-4 text-sm leading-6 text-muted-foreground">
-                {property.description}
-              </Text>
-            ) : (
-              <Text className="mb-4 text-sm italic text-muted-foreground">
-                No description available
-              </Text>
-            )}
+          <View className="flex-1">
+            <ScrollView showsVerticalScrollIndicator={false}>
+              {/* Property Details at top */}
+              <View className="mb-4 mt-2">
+                <Text className="mb-2 text-base font-semibold text-foreground">
+                  Property Details
+                </Text>
+                <View className="gap-2">
+                  <View className="flex-row justify-between">
+                    <Text className="text-sm text-muted-foreground">Type</Text>
+                    <Text className="text-sm font-medium text-foreground">
+                      {getCategoryLabel(property.category)}
+                    </Text>
+                  </View>
+                  <View className="flex-row justify-between">
+                    <Text className="text-sm text-muted-foreground">Max Renters</Text>
+                    <Text className="text-sm font-medium text-foreground">
+                      {property.max_renters}
+                    </Text>
+                  </View>
+                  <View className="flex-row justify-between">
+                    <Text className="text-sm text-muted-foreground">Status</Text>
+                    <Text className="text-sm font-medium text-foreground">
+                      {property.is_available ? 'Available' : 'Not Available'}
+                    </Text>
+                  </View>
+                  <View className="flex-row justify-between">
+                    <Text className="text-sm text-muted-foreground">Verification</Text>
+                    <Text className="text-sm font-medium text-green-600">
+                      {property.is_verified ? 'Verified' : 'Pending'}
+                    </Text>
+                  </View>
+                </View>
+              </View>
 
-            <Text className="mb-2 text-base font-semibold text-foreground">Property Details</Text>
-            <View className="gap-2">
-              <View className="flex-row justify-between">
-                <Text className="text-sm text-muted-foreground">Type</Text>
-                <Text className="text-sm font-medium text-foreground">
-                  {getCategoryLabel(property.category)}
-                </Text>
+              {/* Description at bottom */}
+              <View>
+                <Text className="mb-2 text-base font-semibold text-foreground">Description</Text>
+                {property.description ? (
+                  <Text className="mb-4 text-sm leading-6 text-muted-foreground">
+                    {property.description}
+                  </Text>
+                ) : (
+                  <Text className="mb-4 text-sm italic text-muted-foreground">
+                    No description available
+                  </Text>
+                )}
               </View>
-              <View className="flex-row justify-between">
-                <Text className="text-sm text-muted-foreground">Max Renters</Text>
-                <Text className="text-sm font-medium text-foreground">{property.max_renters}</Text>
-              </View>
-              <View className="flex-row justify-between">
-                <Text className="text-sm text-muted-foreground">Status</Text>
-                <Text className="text-sm font-medium text-foreground">
-                  {property.is_available ? 'Available' : 'Not Available'}
-                </Text>
-              </View>
-              <View className="flex-row justify-between">
-                <Text className="text-sm text-muted-foreground">Verification</Text>
-                <Text className="text-sm font-medium text-green-600">
-                  {property.is_verified ? 'Verified' : 'Pending'}
-                </Text>
-              </View>
-            </View>
+            </ScrollView>
           </View>
         );
 
       case 'Features':
+        // Order features: top 3 preferences (present) -> other present features -> non-present features
+        const orderedFeatures = Object.entries(PREFERENCE_MAP).sort(
+          ([labelA, fieldA], [labelB, fieldB]) => {
+            const indexA = userPreferences.indexOf(labelA);
+            const indexB = userPreferences.indexOf(labelB);
+            const hasA = property?.[fieldA] === true;
+            const hasB = property?.[fieldB] === true;
+
+            // Group 1: Top 3 preferences that are present (sorted by preference order)
+            const isTopThreeA = hasA && indexA !== -1 && indexA < 3;
+            const isTopThreeB = hasB && indexB !== -1 && indexB < 3;
+
+            if (isTopThreeA && isTopThreeB) {
+              return indexA - indexB; // Sort by preference order (1, 2, 3)
+            }
+            if (isTopThreeA) return -1; // A is top 3, put it first
+            if (isTopThreeB) return 1; // B is top 3, put it first
+
+            // Group 2: Present features that are not in top 3
+            if (hasA && hasB) {
+              // Both present but not top 3, maintain arbitrary order
+              return 0;
+            }
+            if (hasA) return -1; // A is present, B is not
+            if (hasB) return 1; // B is present, A is not
+
+            // Group 3: Non-present features (maintain arbitrary order)
+            return 0;
+          }
+        );
+
+        // If amenities is null or empty, provide a fallback
+        const amenitiesList = property.amenities || [];
+
+        const bedroomsBathrooms = amenitiesList.filter(
+          (amenity) => amenity.includes('Bedroom') || amenity.includes('Bathroom')
+        );
+
+        const otherAmenities = amenitiesList.filter(
+          (amenity) => !amenity.includes('Bedroom') && !amenity.includes('Bathroom')
+        );
+
+        // Extract bedroom and bathroom counts
+        const bedroomCount =
+          bedroomsBathrooms.find((a) => a.includes('Bedroom'))?.match(/\d+/)?.[0] || '?';
+        const bathroomCount =
+          bedroomsBathrooms.find((a) => a.includes('Bathroom'))?.match(/\d+/)?.[0] || '?';
+
         return (
-          <View>
-            <Text className="mb-3 text-base font-semibold text-foreground">Property Features</Text>
-            {Object.entries(PREFERENCE_MAP).map(([label, fieldKey]) =>
-              renderFeatureItem(label, fieldKey)
-            )}
+          <View className="flex-1">
+            <ScrollView showsVerticalScrollIndicator={false}>
+              {/* Amenities Section */}
+              <View className="mb-4 mt-2">
+                <Text className="mb-3 text-base font-semibold text-foreground">Amenities</Text>
+                <View className="flex-row gap-3">
+                  {/* Bedrooms and Bathrooms stacked - outside the box */}
+                  <View className="gap-2" style={{ height: 110 }}>
+                    {/* Bedrooms */}
+                    <View className="flex-1 flex-row items-center gap-2 rounded-lg border border-primary/30 bg-secondary/20 px-3 py-2">
+                      <Bed size={20} color="#644A40" />
+                      <Text className="text-xl font-bold text-primary">{bedroomCount}</Text>
+                      <Text className="text-xs text-muted-foreground">
+                        Bedroom{bedroomCount !== '1' ? 's' : ''}
+                      </Text>
+                    </View>
+
+                    {/* Bathrooms */}
+                    <View className="flex-1 flex-row items-center gap-2 rounded-lg border border-primary/30 bg-secondary/20 px-3 py-2">
+                      <Bath size={20} color="#644A40" />
+                      <Text className="text-xl font-bold text-primary">{bathroomCount}</Text>
+                      <Text className="text-xs text-muted-foreground">
+                        Bathroom{bathroomCount !== '1' ? 's' : ''}
+                      </Text>
+                    </View>
+                  </View>
+
+                  {/* Other Amenities as Bullet Points - in the box */}
+                  <View
+                    className="flex-1 rounded-lg border border-input bg-card p-2"
+                    style={{ height: 110 }}>
+                    {otherAmenities.length > 0 ? (
+                      <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
+                        {otherAmenities.map((amenity, index) => (
+                          <View key={index} className="mb-0.5 flex-row items-start">
+                            <Text className="mr-1.5 text-xs text-muted-foreground">•</Text>
+                            <Text
+                              numberOfLines={1}
+                              ellipsizeMode="tail"
+                              className="flex-1 text-xs text-muted-foreground">
+                              {amenity}
+                            </Text>
+                          </View>
+                        ))}
+                      </ScrollView>
+                    ) : (
+                      <View style={{ flex: 1 }} className="items-center justify-center">
+                        <Text className="text-xs italic text-muted-foreground">
+                          No additional amenities listed...
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+                </View>
+              </View>
+
+              {/* Property Features */}
+              <Text className="mb-3 text-base font-semibold text-foreground">
+                Property Features
+              </Text>
+              {orderedFeatures.map(([label, fieldKey], index) =>
+                renderFeatureItem(label, fieldKey, index)
+              )}
+            </ScrollView>
           </View>
         );
 
       case 'Reviews':
-        return (
-          <View>
-            <Text className="mb-3 text-base font-semibold text-foreground">
-              Reviews ({reviews.length})
-            </Text>
-            {reviews.length === 0 ? (
-              <View className="items-center py-8">
-                <Star size={48} color="#EFEFEF" />
-                <Text className="mt-2 text-muted-foreground">No reviews yet</Text>
+        const renderReviewFooter = () => {
+          if (isLoadingMoreReviews) {
+            return (
+              <View className="items-center">
+                <ActivityIndicator color="#644A40" />
+                <Text className="mt-2 text-sm text-muted-foreground">Loading more reviews...</Text>
               </View>
-            ) : (
-              reviews.map((review) => (
-                <View
-                  key={review.review_id}
-                  className="mb-3 rounded-lg border border-input bg-card p-3">
-                  <View className="mb-2 flex-row items-center justify-between">
-                    <Text className="font-semibold text-foreground">
-                      {review.user?.first_name} {review.user?.last_name}
-                    </Text>
-                    <View className="flex-row items-center">
-                      <Ionicons name="star" size={14} color="#FFD700" />
-                      <Text className="ml-1 text-sm font-medium text-foreground">
-                        {review.rating}/5
-                      </Text>
-                    </View>
-                  </View>
-                  {review.comment && (
-                    <Text className="mb-2 text-sm text-muted-foreground">{review.comment}</Text>
-                  )}
-                  <Text className="text-xs text-muted-foreground">
-                    {new Date(review.date_created).toLocaleDateString()}
-                  </Text>
-                </View>
-              ))
-            )}
+            );
+          }
+
+          if (hasMoreReviews && reviews.length > 0 && !isLoadingReviews) {
+            return (
+              <View className="items-center py-4">
+                <Text className="text-sm text-muted-foreground">Pull up to load more</Text>
+              </View>
+            );
+          }
+
+          if (!hasMoreReviews && reviews.length > 0) {
+            return (
+              <View className="items-center pb-8 pt-2">
+                <Text className="text-sm text-muted-foreground">You&apos;ve reached the end</Text>
+              </View>
+            );
+          }
+
+          return null;
+        };
+
+        const renderEmptyReviews = () => {
+          if (isLoadingReviews) return null;
+          return (
+            <View className="items-center py-8">
+              <Star size={48} color="#EFEFEF" />
+              <Text className="mt-2 text-muted-foreground">No reviews yet</Text>
+            </View>
+          );
+        };
+
+        return (
+          <View className="flex-1">
+            <FlatList
+              data={reviews}
+              renderItem={({ item }) => <ReviewCard review={item} />}
+              keyExtractor={(item) => item.review_id.toString()}
+              ListHeaderComponent={
+                <Text className="mb-3 mt-2 text-base font-semibold text-foreground">
+                  Reviews ({reviews.length})
+                </Text>
+              }
+              ListFooterComponent={renderReviewFooter}
+              ListEmptyComponent={renderEmptyReviews}
+              refreshControl={
+                <RefreshControl
+                  refreshing={isRefreshingReviews}
+                  onRefresh={handleRefreshReviews}
+                  colors={['#644A40']}
+                  tintColor="#644A40"
+                />
+              }
+              onEndReached={handleLoadMoreReviews}
+              onEndReachedThreshold={0.5}
+              showsVerticalScrollIndicator={false}
+            />
           </View>
         );
 
@@ -425,40 +652,88 @@ export default function PropertyDetailsScreen({
         const userCoords = parseCoordinates(userProfile?.place_of_work_study || null);
         const propertyCoords = parseCoordinates(property.coordinates);
 
+        // Calculate midpoint and region to show both pins
+        const getMapRegion = () => {
+          if (!propertyCoords) return null;
+
+          if (!userCoords) {
+            // Only property pin
+            return {
+              latitude: propertyCoords.lat,
+              longitude: propertyCoords.lon,
+              latitudeDelta: 0.01,
+              longitudeDelta: 0.01,
+            };
+          }
+
+          // Calculate midpoint
+          const midLat = (propertyCoords.lat + userCoords.lat) / 2;
+          const midLon = (propertyCoords.lon + userCoords.lon) / 2;
+
+          // Calculate distance between points and set appropriate zoom
+          const latDiff = Math.abs(propertyCoords.lat - userCoords.lat);
+          const lonDiff = Math.abs(propertyCoords.lon - userCoords.lon);
+
+          // Add padding (multiply by 1.5 to ensure both pins are visible with margin)
+          const latDelta = Math.max(latDiff * 1.5, 0.01);
+          const lonDelta = Math.max(lonDiff * 1.5, 0.01);
+
+          return {
+            latitude: midLat,
+            longitude: midLon,
+            latitudeDelta: latDelta,
+            longitudeDelta: lonDelta,
+          };
+        };
+
+        const mapRegion = getMapRegion();
+
         return (
-          <View>
-            <Text className="mb-2 text-base font-semibold text-foreground">Location</Text>
-            <View className="mb-3 flex-row items-start">
-              <MapPin size={18} color="#644A40" className="mt-0.5" />
-              <Text className="ml-2 flex-1 text-sm text-foreground">
-                {[property.street, property.barangay, property.city].filter(Boolean).join(', ')}
-              </Text>
+          <View className="flex-1">
+            {/* Distance and Legend Row */}
+            <View className="mb-2 mt-2 flex-row items-center justify-between gap-3">
+              {/* Distance */}
+              <View className="flex-1 rounded-lg border border-primary/20 bg-secondary/20 p-3">
+                <Text className="text-xs font-medium text-secondary-foreground">Distance</Text>
+                {distance !== null ? (
+                  <Text className="mt-0.5 text-base font-bold text-primary">
+                    {formatDistance(distance)}
+                  </Text>
+                ) : (
+                  <Text className="mt-0.5 text-sm italic text-muted-foreground">
+                    Location unset
+                  </Text>
+                )}
+              </View>
+
+              {/* Legend */}
+              {propertyCoords && (
+                <View className="flex-1 rounded-lg border border-input bg-card p-3">
+                  <View className="mb-1.5 flex-row items-center">
+                    <View className="mr-1.5 h-3 w-3 rounded-full bg-[#644A40]" />
+                    <Text className="text-xs text-foreground">Property</Text>
+                  </View>
+                  <View className="flex-row items-center">
+                    <View
+                      className="mr-1.5 h-3 w-3 rounded-full"
+                      style={{ backgroundColor: userCoords ? '#3b82f6' : '#d4d4d8' }}
+                    />
+                    <Text className={`text-xs ${userCoords ? 'text-foreground' : 'text-muted-foreground'}`}>
+                      Work/Study
+                    </Text>
+                  </View>
+                </View>
+              )}
             </View>
 
-            {distance !== null && (
-              <View className="mb-3 rounded-lg border border-primary/20 bg-secondary/20 p-3">
-                <Text className="text-sm font-medium text-secondary-foreground">
-                  Distance from your work/study location
-                </Text>
-                <Text className="mt-1 text-lg font-bold text-primary">
-                  {formatDistance(distance)}
-                </Text>
-              </View>
-            )}
-
-            {/* Map View */}
-            <View className="mb-3 h-64 overflow-hidden rounded-lg border border-input">
-              {MapView && propertyCoords ? (
+            {/* Map View - fills remaining space */}
+            <View className="mb-3 flex-1 overflow-hidden rounded-lg border border-input">
+              {MapView && mapRegion && propertyCoords ? (
                 <MapView
                   style={{ flex: 1 }}
-                  initialRegion={{
-                    latitude: propertyCoords.lat,
-                    longitude: propertyCoords.lon,
-                    latitudeDelta: userCoords ? 0.02 : 0.01,
-                    longitudeDelta: userCoords ? 0.02 : 0.01,
-                  }}
-                  scrollEnabled={true}
-                  zoomEnabled={true}
+                  initialRegion={mapRegion}
+                  scrollEnabled={false}
+                  zoomEnabled={false}
                   pitchEnabled={false}
                   rotateEnabled={false}>
                   {/* Property Marker */}
@@ -488,8 +763,8 @@ export default function PropertyDetailsScreen({
                         { latitude: userCoords.lat, longitude: userCoords.lon },
                       ]}
                       strokeColor="#644A40"
-                      strokeWidth={2}
-                      lineDashPattern={[5, 5]}
+                      strokeWidth={0.3}
+                      lineDashPattern={[3, 3]}
                     />
                   )}
                 </MapView>
@@ -505,29 +780,11 @@ export default function PropertyDetailsScreen({
                     </Text>
                   )}
                   {!userCoords && propertyCoords && (
-                    <Text className="mt-1 text-xs text-muted-foreground">
-                      1 pin would be shown
-                    </Text>
+                    <Text className="mt-1 text-xs text-muted-foreground">1 pin would be shown</Text>
                   )}
                 </View>
               )}
             </View>
-
-            {/* Map Legend */}
-            {propertyCoords && (
-              <View className="rounded-lg border border-input bg-card p-3">
-                <View className="mb-2 flex-row items-center">
-                  <View className="mr-2 h-4 w-4 rounded-full bg-[#644A40]" />
-                  <Text className="text-sm text-foreground">Property Location</Text>
-                </View>
-                {userCoords && (
-                  <View className="flex-row items-center">
-                    <View className="mr-2 h-4 w-4 rounded-full bg-[#3b82f6]" />
-                    <Text className="text-sm text-foreground">Your Work/Study Location</Text>
-                  </View>
-                )}
-              </View>
-            )}
           </View>
         );
     }
@@ -557,13 +814,31 @@ export default function PropertyDetailsScreen({
     <View
       className="flex-1 bg-background"
       style={{ paddingTop: Platform.OS === 'ios' ? 0 : insets.top + 8 }}>
-      <KeyboardAwareScrollView
+      {/* Tap outside overlay when expanded */}
+      {isImageExpanded && (
+        <Pressable
+          onPress={handleImagePress}
+          style={{
+            position: 'absolute',
+            top: height * 0.7,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            zIndex: 5,
+          }}
+        />
+      )}
+      <View
         className="flex-1"
-        style={{ paddingTop: Platform.OS === 'ios' ? 40 : 0 }}
-        contentContainerClassName="pb-8">
+        style={{ paddingTop: Platform.OS === 'ios' ? 40 : 0, paddingBottom: 70 }}>
         {/* Image Carousel */}
         {property.image_url && property.image_url.length > 0 && (
-          <View className="relative" style={{ marginTop: Platform.OS === 'ios' ? -40 : 0 }}>
+          <View
+            className="relative"
+            style={{
+              marginTop: Platform.OS === 'ios' ? -40 : 0,
+              zIndex: isImageExpanded ? 10 : 1,
+            }}>
             <ScrollView
               horizontal
               pagingEnabled
@@ -571,26 +846,29 @@ export default function PropertyDetailsScreen({
               onScroll={handleScroll}
               scrollEventThrottle={16}>
               {property.image_url.map((url, index) => (
-                <Image
-                  key={index}
-                  source={{ uri: url }}
-                  style={{ width: IMAGE_WIDTH, height: 280 }}
-                  resizeMode="cover"
-                />
+                <Pressable key={index} onPress={handleImagePress}>
+                  <Animated.Image
+                    source={{ uri: url }}
+                    style={{ width: IMAGE_WIDTH, height: imageHeightAnim }}
+                    resizeMode="cover"
+                  />
+                </Pressable>
               ))}
             </ScrollView>
 
             {/* Back Button */}
             <TouchableOpacity
               onPress={() => navigation.goBack()}
-              className="absolute left-4 rounded-full bg-white/90 p-2"
-              style={{ top: Platform.OS === 'ios' ? insets.top + 8 : 16 }}>
+              className="absolute left-4 rounded-full border border-primary bg-background p-2"
+              style={{ top: Platform.OS === 'ios' ? insets.top + 8 : 16, zIndex: 20 }}>
               <Ionicons name="arrow-back" size={24} color="#222" />
             </TouchableOpacity>
 
             {/* Image Indicators */}
             {property.image_url.length > 1 && (
-              <View className="absolute bottom-4 left-0 right-0 flex-row justify-center gap-2">
+              <View
+                className="absolute bottom-4 left-0 right-0 flex-row justify-center gap-2"
+                style={{ zIndex: 20 }}>
                 {property.image_url.map((_, index) => (
                   <View
                     key={index}
@@ -604,25 +882,10 @@ export default function PropertyDetailsScreen({
           </View>
         )}
 
-        <View className="px-6 pt-4">
-          {/* Title and Category */}
+        <View className="flex-1 px-6 pt-4">
+          {/* Title */}
           <View className="mb-3">
-            <View className="mb-2 flex-row items-center justify-between">
-              <Text className="flex-1 text-2xl font-bold text-foreground">{property.title}</Text>
-              {matchesRoomPreference() && (
-                <View className="ml-2 rounded-md bg-green-100 px-2 py-1">
-                  <Text className="text-xs font-semibold text-green-700">Matches preference</Text>
-                </View>
-              )}
-            </View>
-
-            <View className="flex-row items-center">
-              <View className="rounded-md border border-primary/20 bg-secondary/30 px-2 py-1">
-                <Text className="text-sm font-medium text-secondary-foreground">
-                  {getCategoryLabel(property.category)}
-                </Text>
-              </View>
-            </View>
+            <Text className="text-2xl font-bold text-primary">{property.title}</Text>
           </View>
 
           {/* Location */}
@@ -633,59 +896,64 @@ export default function PropertyDetailsScreen({
             </Text>
           </View>
 
-          {/* Price */}
-          <View className="mb-4 flex-row items-center">
-            <Text className="text-3xl font-bold text-primary">
-              ₱{property.rent.toLocaleString()}
-            </Text>
-            <Text className="ml-1 text-base text-muted-foreground">/month</Text>
-            {matchesPriceRange() && (
-              <View className="ml-2 flex-row items-center rounded-md bg-green-100 px-2 py-1">
-                <CheckCircle size={14} color="#16a34a" />
-                <Text className="ml-1 text-xs font-semibold text-green-700">Within budget</Text>
-              </View>
-            )}
-          </View>
-
-          {/* Rating and Availability */}
+          {/* Price, Reviews and Category Badge */}
           <View className="mb-4 flex-row items-center justify-between">
-            <View className="flex-row items-center">
-              <Ionicons name="star" size={20} color="#FFD700" />
-              <Text className="ml-1 text-lg font-semibold text-foreground">
-                {property.rating?.toFixed(1) || 'N/A'}
-              </Text>
-              <Text className="ml-2 text-sm text-muted-foreground">
-                ({property.number_reviews || 0} reviews)
-              </Text>
+            <View className="flex-row items-center gap-3">
+              {/* Price */}
+              <View className="flex-row items-center">
+                <Text
+                  className="text-2xl font-bold"
+                  style={{ color: matchesPriceRange() ? 'rgb(76, 175, 80)' : '#644A40' }}>
+                  ₱{property.rent.toLocaleString()}
+                </Text>
+                <Text className="text-sm text-muted-foreground">/mo</Text>
+                {matchesPriceRange() && (
+                  <Ionicons
+                    name="checkmark-circle-outline"
+                    size={18}
+                    color="rgb(76, 175, 80)"
+                    style={{ marginLeft: 4 }}
+                  />
+                )}
+              </View>
+
+              {/* Reviews */}
+              <View className="flex-row items-center">
+                <Ionicons name="star" size={20} color="#FFD700" />
+                <Text className="ml-1 text-lg font-semibold text-foreground">
+                  {property.rating?.toFixed(1) || 'N/A'}
+                </Text>
+                <Text className="ml-2 text-sm text-muted-foreground">
+                  {property.number_reviews === 0
+                    ? '(No reviews)'
+                    : property.number_reviews === 1
+                      ? '(1 review)'
+                      : `(${property.number_reviews} reviews)`}
+                </Text>
+              </View>
             </View>
 
-            <View
-              className={`rounded-full border px-3 py-1 ${
-                property.is_available ? 'border-green-500 bg-green-50' : 'border-border bg-muted'
-              }`}>
-              <Text
-                className={`text-xs font-medium ${
-                  property.is_available ? 'text-green-700' : 'text-muted-foreground'
-                }`}>
-                {property.is_available ? 'Available' : 'Not Available'}
-              </Text>
-            </View>
-          </View>
+            {/* Renters Count and Category Badge */}
+            <View className="flex-row items-center gap-2">
+              {/* Current/Max Renters */}
+              <View className="flex-row items-center">
+                <Ionicons name="people-outline" size={14} color="#644A40" />
+                <Text className="ml-1 text-sm text-muted-foreground">
+                  {currentRenters}/{property.max_renters}
+                </Text>
+              </View>
 
-          {/* Action Buttons - Contact & Apply */}
-          <View className="mb-4 gap-3">
-            <Button variant="primary" onPress={handleFileApplication}>
-              File an Application to Rent
-            </Button>
-            {owner?.phone_number && (
-              <Button variant="secondary" onPress={handleContactOwner}>
-                Contact Owner
-              </Button>
-            )}
+              {/* Category Badge */}
+              <View className="rounded-full border border-primary/20 bg-secondary/30 px-3 py-1">
+                <Text className="text-xs font-medium text-secondary-foreground">
+                  {getCategoryLabel(property.category)}
+                </Text>
+              </View>
+            </View>
           </View>
 
           {/* Tabs */}
-          <View className="mb-4 flex-row border-b border-border">
+          <View className="flex-row border-b border-border">
             {(['Overview', 'Features', 'Reviews', 'Location'] as const).map((tab) => (
               <TouchableOpacity
                 key={tab}
@@ -706,7 +974,27 @@ export default function PropertyDetailsScreen({
           {/* Tab Content */}
           {renderTabContent()}
         </View>
-      </KeyboardAwareScrollView>
+      </View>
+
+      {/* Fixed Action Buttons at Bottom */}
+      <View
+        className="absolute bottom-0 left-0 right-0 border-t border-border bg-background px-6 py-2"
+        style={{ paddingBottom: Platform.OS === 'ios' ? 19 : insets.bottom + 6 }}>
+        <View className="flex-row gap-3">
+          <View className="flex-1">
+            <Button variant="primary" onPress={handleFileApplication}>
+              Rent
+            </Button>
+          </View>
+          {owner?.phone_number && (
+            <View className="flex-1">
+              <Button variant="secondary" onPress={handleContactOwner}>
+                Contact
+              </Button>
+            </View>
+          )}
+        </View>
+      </View>
     </View>
   );
 }

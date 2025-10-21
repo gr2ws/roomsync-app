@@ -7,9 +7,11 @@ import {
   Platform,
   RefreshControl,
   TouchableOpacity,
+  TextInput,
 } from 'react-native';
 import { useState, useCallback, useEffect } from 'react';
-import { Home, RefreshCw } from 'lucide-react-native';
+import { Home } from 'lucide-react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { supabase } from '../../utils/supabase';
@@ -20,25 +22,27 @@ import PropertyListItem from '../../components/PropertyListItem';
 
 interface Property {
   property_id: number;
+  owner_id: number;
   title: string;
   description: string | null;
   category: 'apartment' | 'room' | 'bedspace';
   street: string | null;
   barangay: string | null;
   city: string;
-  coordinates: string;
+  coordinates: string | null;
   image_url: string[];
   rent: number;
   max_renters: number;
-  has_internet: boolean;
-  allows_pets: boolean;
-  is_furnished: boolean;
-  has_ac: boolean;
-  is_secure: boolean;
-  has_parking: boolean;
+  has_internet: boolean | null;
+  allows_pets: boolean | null;
+  is_furnished: boolean | null;
+  has_ac: boolean | null;
+  is_secure: boolean | null;
+  has_parking: boolean | null;
   is_available: boolean;
   is_verified: boolean;
-  amenities: string[];
+  amenities: string[] | null;
+  rating: number | null;
   number_reviews: number;
 }
 
@@ -55,20 +59,36 @@ export default function ManagePropertiesScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [properties, setProperties] = useState<PropertyWithRenters[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchInput, setSearchInput] = useState('');
+  const [isSearching, setIsSearching] = useState(false);
 
-  const fetchProperties = async () => {
+  const fetchProperties = async (searchTerm?: string) => {
     if (!userProfile?.user_id) {
       Alert.alert('Error', 'User profile not found. Please log in again.');
       return;
     }
 
     try {
+      if (searchTerm !== undefined) {
+        setIsSearching(true);
+      }
+
       // Fetch properties for current owner
-      const { data: propertiesData, error: propertiesError } = await supabase
+      let query = supabase
         .from('properties')
         .select('*')
         .eq('owner_id', userProfile.user_id)
         .order('property_id', { ascending: false });
+
+      // Apply search if provided
+      if (searchTerm && searchTerm.trim()) {
+        query = query.or(
+          `title.ilike.%${searchTerm}%,street.ilike.%${searchTerm}%,barangay.ilike.%${searchTerm}%,city.ilike.%${searchTerm}%`
+        );
+      }
+
+      const { data: propertiesData, error: propertiesError } = await query;
 
       if (propertiesError) throw propertiesError;
 
@@ -101,6 +121,7 @@ export default function ManagePropertiesScreen() {
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);
+      setIsSearching(false);
     }
   };
 
@@ -110,8 +131,8 @@ export default function ManagePropertiesScreen() {
 
   const handleRefresh = useCallback(async () => {
     setIsRefreshing(true);
-    await fetchProperties();
-  }, [userProfile?.user_id]);
+    await fetchProperties(searchQuery || undefined);
+  }, [userProfile?.user_id, searchQuery]);
 
   const handleEdit = useCallback(
     (property: PropertyWithRenters) => {
@@ -166,13 +187,23 @@ export default function ManagePropertiesScreen() {
     [fetchProperties]
   );
 
-  const handleViewReviews = useCallback((propertyId: number) => {
-    Alert.alert(
-      'Reviews',
-      'To be implemented: Navigate to Reviews screen with automatic filtering by property_id ' +
-        propertyId
-    );
-  }, []);
+  const handleViewReviews = useCallback(
+    (propertyId: number) => {
+      navigation.navigate('ViewReviews' as never, { propertyId } as never);
+    },
+    [navigation]
+  );
+
+  const handleSearch = () => {
+    setSearchQuery(searchInput);
+    fetchProperties(searchInput);
+  };
+
+  const handleClearSearch = () => {
+    setSearchInput('');
+    setSearchQuery('');
+    fetchProperties();
+  };
 
   const renderProperty = ({ item }: { item: PropertyWithRenters }) => (
     <PropertyListItem
@@ -217,47 +248,69 @@ export default function ManagePropertiesScreen() {
     <View
       className="flex-1 bg-background"
       style={{ paddingTop: Platform.OS === 'ios' ? 0 : insets.top + 8 }}>
+      {/* Fixed Header Section */}
+      <View
+        className="border-b border-border bg-background px-4 pb-4"
+        style={{ paddingTop: Platform.OS === 'ios' ? 50 : 0 }}>
+        {/* Header Text */}
+        <View className="mb-4">
+          <Text className="text-3xl font-bold text-primary">Manage Properties</Text>
+          <Text className="mt-2 text-base text-muted-foreground">
+            View and manage all your property listings.
+          </Text>
+        </View>
+
+        {/* Search Bar */}
+        <View
+          className={`flex-row items-center rounded-lg border border-input bg-card ${
+            isSearching ? 'opacity-60' : 'opacity-100'
+          }`}>
+          <TextInput
+            placeholder="Search properties..."
+            placeholderTextColor="#646464"
+            className="flex-1 px-4 py-3 text-foreground"
+            value={searchInput}
+            onChangeText={setSearchInput}
+            onSubmitEditing={handleSearch}
+            autoCapitalize="none"
+            returnKeyType="search"
+            editable={!isSearching}
+          />
+          {searchInput.length > 0 && (
+            <TouchableOpacity onPress={handleClearSearch} className="px-2" disabled={isSearching}>
+              <Ionicons name="close-circle" size={20} color="#646464" />
+            </TouchableOpacity>
+          )}
+          <View className="h-full w-px bg-input" />
+          <TouchableOpacity className="px-3 py-3" onPress={handleSearch} disabled={isSearching}>
+            {isSearching ? (
+              <ActivityIndicator size="small" color="#644A40" />
+            ) : (
+              <Ionicons name="search" size={20} color="#644A40" />
+            )}
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {/* Properties List */}
       <FlatList
         data={properties}
         renderItem={renderProperty}
         keyExtractor={(item) => item.property_id.toString()}
-        ListHeaderComponent={
-          <View className="mb-6 px-6">
-            <View className="flex-row items-center justify-between">
-              <View className="flex-1">
-                <Text className="text-3xl font-bold text-primary">Manage Properties</Text>
-                <Text className="mt-2 text-base text-muted-foreground">
-                  View and manage all your property listings.
-                </Text>
-              </View>
-              <TouchableOpacity
-                onPress={handleRefresh}
-                disabled={isRefreshing}
-                className="ml-4">
-                {isRefreshing ? (
-                  <ActivityIndicator size="small" color="#644A40" />
-                ) : (
-                  <RefreshCw size={24} color="#644A40" />
-                )}
-              </TouchableOpacity>
-            </View>
-          </View>
-        }
         contentContainerStyle={{
-          paddingTop: Platform.OS === 'ios' ? 50 : 8,
+          paddingTop: 8,
           paddingBottom: 16,
           flexGrow: 1,
         }}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
-            refreshing={false}
+            refreshing={isRefreshing}
             onRefresh={handleRefresh}
-            tintColor="transparent"
-            colors={['transparent']}
-            progressViewOffset={-1000}
-            progressBackgroundColor="transparent"
-            style={{ backgroundColor: 'transparent' }}
+            colors={['#644A40']}
+            tintColor="#644A40"
+            title="Refreshing..."
+            titleColor="#646464"
           />
         }
       />

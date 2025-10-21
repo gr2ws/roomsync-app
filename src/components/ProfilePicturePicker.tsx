@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, Image, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, TouchableOpacity, Image, Alert } from 'react-native';
 import { User, Camera } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { uploadProfilePicture } from '../utils/uploadProfilePicture';
+import { useLoggedIn } from '../store/useLoggedIn';
+import ImageSkeleton from './ImageSkeleton';
 
 interface ProfilePicturePickerProps {
   value: string | null;
@@ -12,6 +14,15 @@ interface ProfilePicturePickerProps {
 
 const ProfilePicturePicker: React.FC<ProfilePicturePickerProps> = ({ value, onChange, authId }) => {
   const [isUploading, setIsUploading] = useState(false);
+  const [imageLoading, setImageLoading] = useState(true);
+  const [imageError, setImageError] = useState(false);
+  const { userProfile } = useLoggedIn();
+
+  const getUserInitials = () => {
+    const firstName = userProfile?.first_name || '';
+    const lastName = userProfile?.last_name || '';
+    return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
+  };
 
   const requestPermissions = async () => {
     const { status: cameraStatus } = await ImagePicker.requestCameraPermissionsAsync();
@@ -96,11 +107,31 @@ const ProfilePicturePicker: React.FC<ProfilePicturePickerProps> = ({ value, onCh
         onPress={showImagePickerOptions}
         disabled={isUploading}
         className="relative">
-        <View className="h-24 w-24 items-center justify-center rounded-full border-2 border-primary bg-muted">
+        <View className="h-24 w-24 items-center justify-center overflow-hidden rounded-full border-2 border-primary bg-muted">
           {isUploading ? (
-            <ActivityIndicator size="large" color="#644A40" />
-          ) : value ? (
-            <Image source={{ uri: value }} className="h-full w-full rounded-full" />
+            <ImageSkeleton width={96} height={96} borderRadius={48} />
+          ) : value && !imageError ? (
+            <>
+              {imageLoading && (
+                <View className="absolute inset-0">
+                  <ImageSkeleton width={96} height={96} borderRadius={48} />
+                </View>
+              )}
+              <Image
+                source={{ uri: value }}
+                className="h-full w-full rounded-full"
+                onLoadStart={() => setImageLoading(true)}
+                onLoadEnd={() => setImageLoading(false)}
+                onError={() => {
+                  setImageLoading(false);
+                  setImageError(true);
+                }}
+              />
+            </>
+          ) : userProfile?.first_name && userProfile?.last_name ? (
+            <View className="h-24 w-24 items-center justify-center rounded-full bg-secondary">
+              <Text className="text-2xl font-bold text-primary">{getUserInitials()}</Text>
+            </View>
           ) : (
             <User size={48} color="#644A40" />
           )}

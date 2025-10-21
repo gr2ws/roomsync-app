@@ -29,6 +29,7 @@ export interface Property {
 export interface PropertyWithDistance extends Property {
   distance: number | null;
   matchesPriceRange: boolean;
+  currentRenters?: number;
 }
 
 export interface PropertyOwner {

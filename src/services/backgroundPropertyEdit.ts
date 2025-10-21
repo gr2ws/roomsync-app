@@ -69,9 +69,6 @@ export async function editPropertyInBackground(
 
     // Mark upload as complete
     completeUpload();
-
-    // Show success notification
-    Alert.alert('Success!', 'Property updated successfully!');
   } catch (error) {
     const errorMessage =
       error instanceof Error ? error.message : 'Failed to update property. Please try again.';
