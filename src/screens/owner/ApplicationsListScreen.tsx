@@ -12,16 +12,16 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import { RouteProp } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
-import { RootTabParamList } from '../../utils/navigation';
+import { RootStackParamList } from '../../utils/navigation';
 import { supabase } from '../../utils/supabase';
 import { ApplicationWithRenter } from '../../types/property';
 import Button from '../../components/Button';
 import ApplicationActionModal from '../../components/ApplicationActionModal';
 import { User, MapPin, Briefcase, DollarSign, Home } from 'lucide-react-native';
 
-type ApplicationsListScreenRouteProp = RouteProp<RootTabParamList, 'ApplicationsList'>;
+type ApplicationsListScreenRouteProp = RouteProp<RootStackParamList, 'ApplicationsList'>;
 type ApplicationsListScreenNavigationProp = StackNavigationProp<
-  RootTabParamList,
+  RootStackParamList,
   'ApplicationsList'
 >;
 
@@ -78,7 +78,7 @@ export default function ApplicationsListScreen({ route }: ApplicationsListScreen
           message,
           date_applied,
           date_updated,
-          renter:users!applications_renter_id_fkey (
+          renter:users!fk_applications_renter (
             user_id,
             first_name,
             last_name,

@@ -1,5 +1,5 @@
 import { View, Text, ScrollView, Alert, Platform, Image, ActivityIndicator } from 'react-native';
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useLoggedIn } from '../store/useLoggedIn';
 import { supabase } from '../utils/supabase';
@@ -11,12 +11,82 @@ import RadioGroup from '../components/RadioGroup';
 import LocationPicker from '../components/LocationPicker';
 import DatePicker from '../components/DatePicker';
 import ConfirmationModal from '../components/ConfirmationModal';
-import { useNavigation } from '@react-navigation/native';
-import { StackNavigationProp } from '@react-navigation/stack';
-import { RootStackParamList } from '../utils/navigation';
+import { useNavigation, CompositeNavigationProp } from '@react-navigation/native';
+import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ApplicationWithProperty } from '../types/property';
 import { MapPin } from 'lucide-react-native';
+import { RootStackParamList, RootTabParamList } from '../utils/navigation';
+
+// Define the composite navigation prop type
+type ProfileScreenNavigationProp = CompositeNavigationProp<
+  BottomTabNavigationProp<RootTabParamList, 'Profile'>,
+  NativeStackNavigationProp<RootStackParamList>
+>;
+
+// Separate component for Current Rental to isolate re-renders
+function CurrentRentalCard({
+  currentRental,
+  isEndingRental,
+  onEndRental,
+}: {
+  currentRental: ApplicationWithProperty;
+  isEndingRental: boolean;
+  onEndRental: () => void;
+}) {
+  console.log('[CurrentRentalCard] Rendering');
+
+  if (!currentRental.property) {
+    return null;
+  }
+
+  return (
+    <View className="overflow-hidden rounded-xl border border-input bg-card shadow-sm">
+      <View className="rounded-t-xl bg-primary px-4 py-3">
+        <Text className="text-lg font-bold text-primary-foreground">Current Rental</Text>
+      </View>
+
+      {/* Property Image */}
+      {currentRental.property.image_url &&
+      Array.isArray(currentRental.property.image_url) &&
+      currentRental.property.image_url.length > 0 ? (
+        <Image
+          source={{ uri: currentRental.property.image_url[0] }}
+          className="h-48 w-full"
+          resizeMode="cover"
+        />
+      ) : (
+        <View className="h-48 w-full items-center justify-center bg-secondary">
+          <Text className="text-muted-foreground">No Image</Text>
+        </View>
+      )}
+
+      {/* Property Details */}
+      <View className="p-4">
+        <Text className="mb-2 text-xl font-bold text-card-foreground">
+          {currentRental.property.title || 'Untitled Property'}
+        </Text>
+
+        <View className="mb-2 flex-row items-center">
+          <MapPin size={14} color="#888" />
+          <Text className="ml-1 text-sm text-muted-foreground">
+            {currentRental.property.street && `${currentRental.property.street}, `}
+            {currentRental.property.barangay}, {currentRental.property.city}
+          </Text>
+        </View>
+
+        <Text className="mb-3 text-lg font-semibold text-primary">
+          ₱{(currentRental.property.rent || 0).toLocaleString()}/month
+        </Text>
+
+        <Button variant="destructive" onPress={onEndRental} disabled={isEndingRental}>
+          {isEndingRental ? <ActivityIndicator size="small" color="#fff" /> : 'End Rental'}
+        </Button>
+      </View>
+    </View>
+  );
+}
 
 // Schema for renters
 const renterSchema = z
@@ -59,11 +129,12 @@ const ownerSchema = z.object({
 type RenterFormFields = z.infer<typeof renterSchema>;
 type OwnerFormFields = z.infer<typeof ownerSchema>;
 
-type ProfileScreenNavigationProp = StackNavigationProp<RootStackParamList>;
-
 export default function ProfileScreen() {
+  console.log('[ProfileScreen] Component render started');
   const navigation = useNavigation<ProfileScreenNavigationProp>();
+  console.log('[ProfileScreen] useNavigation called, navigation exists:', !!navigation);
   const { setIsLoggedIn, userProfile, setUserProfile, userRole } = useLoggedIn();
+  console.log('[ProfileScreen] useLoggedIn called, userRole:', userRole);
   const [tapCount, setTapCount] = useState(0);
 
   // Form fields
@@ -110,22 +181,29 @@ export default function ProfileScreen() {
   }, [userProfile]);
 
   // Fetch current rental for renters
-  useEffect(() => {
-    if (userRole === 'renter') {
-      fetchCurrentRental();
-    } else {
-      setIsLoadingRental(false);
-    }
-  }, [userProfile, userRole]);
+  const fetchCurrentRental = useCallback(async () => {
+    console.log('[ProfileScreen - fetchCurrentRental] START');
+    console.log('[ProfileScreen - fetchCurrentRental] userProfile:', {
+      user_id: userProfile?.user_id,
+      user_type: userRole,
+      exists: !!userProfile,
+    });
 
-  const fetchCurrentRental = async () => {
     if (!userProfile?.user_id) {
-      setIsLoadingRental(false);
+      console.log('[ProfileScreen - fetchCurrentRental] No user_id, aborting fetch');
+      // Don't call setIsLoadingRental here - it may be called during render
+      // The useEffect that calls this will handle setting isLoadingRental to false
       return;
     }
 
+    console.log('[ProfileScreen - fetchCurrentRental] Setting isLoadingRental to true');
+    setIsLoadingRental(true);
+
     try {
-      console.log('[ProfileScreen] Fetching current rental for renter_id:', userProfile.user_id);
+      console.log(
+        '[ProfileScreen - fetchCurrentRental] Querying Supabase for renter_id:',
+        userProfile.user_id
+      );
 
       const { data, error } = await supabase
         .from('applications')
@@ -173,17 +251,53 @@ export default function ProfileScreen() {
       if (error) {
         if (error.code !== 'PGRST116') {
           // PGRST116 is "no rows returned", which is fine
-          console.error('[ProfileScreen] Error fetching current rental:', error);
+          console.error('[ProfileScreen - fetchCurrentRental] ERROR fetching rental:', error);
+          console.error('[ProfileScreen - fetchCurrentRental] Error details:', {
+            code: error.code,
+            message: error.message,
+            details: error.details,
+          });
         } else {
-          console.log('[ProfileScreen] No current rental found (approved application)');
+          console.log(
+            '[ProfileScreen - fetchCurrentRental] No current rental found (PGRST116 - no rows)'
+          );
         }
+        console.log('[ProfileScreen - fetchCurrentRental] Setting currentRental to null');
         setCurrentRental(null);
       } else if (data) {
-        console.log('[ProfileScreen] Current rental found:', {
+        console.log('[ProfileScreen - fetchCurrentRental] Data received from Supabase:', {
           application_id: data.application_id,
           property_id: data.property_id,
+          has_property: !!data.property,
+          property_type: Array.isArray(data.property) ? 'array' : typeof data.property,
         });
 
+        console.log('[ProfileScreen - fetchCurrentRental] Raw property data:', data.property);
+
+        // Ensure property is treated as a single object (Supabase foreign key relation)
+        const property = Array.isArray(data.property) ? data.property[0] : data.property;
+        console.log('[ProfileScreen - fetchCurrentRental] Property after array check:', {
+          is_array: Array.isArray(data.property),
+          property_exists: !!property,
+          property_id: property?.property_id,
+        });
+
+        // Validate that property exists and has required fields
+        if (!property || !property.property_id) {
+          console.error(
+            '[ProfileScreen - fetchCurrentRental] INVALID property data received:',
+            property
+          );
+          console.error(
+            '[ProfileScreen - fetchCurrentRental] Setting currentRental to null due to invalid property'
+          );
+          setCurrentRental(null);
+          return;
+        }
+
+        console.log(
+          '[ProfileScreen - fetchCurrentRental] Property validation passed, creating transformedData'
+        );
         const transformedData: ApplicationWithProperty = {
           application_id: data.application_id,
           property_id: data.property_id,
@@ -193,17 +307,66 @@ export default function ProfileScreen() {
           message: data.message,
           date_applied: data.date_applied,
           date_updated: data.date_updated,
-          property: data.property,
+          property: property,
         };
+        console.log(
+          '[ProfileScreen - fetchCurrentRental] Setting current rental with transformed data:',
+          {
+            has_property: !!transformedData.property,
+            property_id: transformedData.property?.property_id,
+            property_title: transformedData.property?.title,
+            property_keys: transformedData.property ? Object.keys(transformedData.property) : [],
+          }
+        );
+        console.log('[ProfileScreen - fetchCurrentRental] About to call setCurrentRental...');
         setCurrentRental(transformedData);
+        console.log('[ProfileScreen - fetchCurrentRental] setCurrentRental called successfully');
+      } else {
+        console.log('[ProfileScreen - fetchCurrentRental] No data and no error (unexpected state)');
+        setCurrentRental(null);
       }
     } catch (error) {
-      console.error('[ProfileScreen] Error fetching current rental:', error);
+      console.error('[ProfileScreen - fetchCurrentRental] CATCH block - Unexpected error:', error);
+      console.error(
+        '[ProfileScreen - fetchCurrentRental] Error stack:',
+        error instanceof Error ? error.stack : 'No stack'
+      );
       setCurrentRental(null);
     } finally {
+      console.log(
+        '[ProfileScreen - fetchCurrentRental] FINALLY block - Setting isLoadingRental to false'
+      );
+      setIsLoadingRental(false);
+      console.log('[ProfileScreen - fetchCurrentRental] END');
+    }
+    // userRole is only used for logging, not in actual logic
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userProfile]);
+
+  useEffect(() => {
+    console.log('[ProfileScreen - useEffect] Rental fetch effect triggered');
+    console.log('[ProfileScreen - useEffect] userRole:', userRole);
+    console.log('[ProfileScreen - useEffect] userProfile exists:', !!userProfile);
+    console.log('[ProfileScreen - useEffect] isLoadingRental:', isLoadingRental);
+
+    if (userRole === 'renter') {
+      console.log('[ProfileScreen - useEffect] User is renter, calling fetchCurrentRental');
+      if (userProfile?.user_id) {
+        fetchCurrentRental();
+      } else {
+        console.log(
+          '[ProfileScreen - useEffect] No userProfile.user_id, setting isLoadingRental to false'
+        );
+        setIsLoadingRental(false);
+      }
+    } else {
+      console.log(
+        '[ProfileScreen - useEffect] User is NOT renter, setting isLoadingRental to false'
+      );
       setIsLoadingRental(false);
     }
-  };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userRole, fetchCurrentRental]);
 
   // Store initial values to detect changes
   const initialValues = useMemo(
@@ -273,28 +436,24 @@ export default function ProfileScreen() {
   };
 
   const handleLogout = async () => {
-    Alert.alert(
-      'Log Out',
-      'Are you sure you want to log out?',
-      [
-        {
-          text: 'Cancel',
-          style: 'cancel',
+    Alert.alert('Log Out', 'Are you sure you want to log out?', [
+      {
+        text: 'Cancel',
+        style: 'cancel',
+      },
+      {
+        text: 'Log Out',
+        style: 'destructive',
+        onPress: async () => {
+          const { error } = await supabase.auth.signOut();
+          if (error) {
+            Alert.alert('Error', 'Failed to log out: ' + error.message);
+            return;
+          }
+          setIsLoggedIn(false);
         },
-        {
-          text: 'Log Out',
-          style: 'destructive',
-          onPress: async () => {
-            const { error } = await supabase.auth.signOut();
-            if (error) {
-              Alert.alert('Error', 'Failed to log out: ' + error.message);
-              return;
-            }
-            setIsLoggedIn(false);
-          },
-        },
-      ]
-    );
+      },
+    ]);
   };
 
   const handleNameTap = () => {
@@ -506,7 +665,12 @@ export default function ProfileScreen() {
 
       if (countError) throw countError;
 
-      console.log('[ProfileScreen] Current renters count:', currentRentersCount, '/', currentRental.property.max_renters);
+      console.log(
+        '[ProfileScreen] Current renters count:',
+        currentRentersCount,
+        '/',
+        currentRental.property.max_renters
+      );
 
       // If current renters < max_renters, set property to available
       if (
@@ -548,219 +712,226 @@ export default function ProfileScreen() {
 
   const insets = useSafeAreaInsets();
 
+  // Debug: Log when component renders with rental data
+  useEffect(() => {
+    if (currentRental) {
+      console.log('[ProfileScreen] Rendering with current rental:', {
+        has_property: !!currentRental.property,
+        property_id: currentRental.property?.property_id,
+        has_image: !!(
+          currentRental.property?.image_url && currentRental.property.image_url.length > 0
+        ),
+      });
+    }
+  }, [currentRental]);
+
+  console.log('[ProfileScreen] About to return JSX, currentRental exists:', !!currentRental);
+  console.log('[ProfileScreen] About to return JSX, isLoadingRental:', isLoadingRental);
+  console.log('[ProfileScreen] About to return JSX, navigation exists:', !!navigation);
+
+  // Safety check - if navigation is not available, show error screen
+  if (!navigation) {
+    console.error('[ProfileScreen] Navigation context is missing!');
+    return (
+      <View className="flex-1 items-center justify-center bg-background p-6">
+        <Text className="mb-4 text-lg font-bold text-destructive">Navigation Error</Text>
+        <Text className="text-center text-muted-foreground">
+          Unable to load profile. Please restart the app.
+        </Text>
+      </View>
+    );
+  }
+
   return (
-    <ScrollView
+    <View
       className="flex-1 bg-background"
-      contentContainerClassName="px-6 pb-2"
       style={{ paddingTop: Platform.OS === 'ios' ? 0 : insets.top + 8 }}>
-      <View
-        style={{
-          paddingTop: Platform.OS === 'ios' ? 40 : 0,
-          paddingBottom: Platform.OS === 'ios' ? 0 : 32,
-        }}>
-        <Text className="mb-2 text-center text-3xl font-bold text-primary" onPress={handleNameTap}>
-          {userProfile?.full_name || 'Your Profile'}
-        </Text>
-        <Text className="mb-8 text-center text-base text-muted-foreground">
-          {userRole === 'renter' ? 'Renter' : 'Property Owner'}
-        </Text>
+      <ScrollView
+        className="flex-1"
+        contentContainerClassName="px-6 pb-2"
+        style={{ paddingTop: Platform.OS === 'ios' ? 40 : 0 }}>
+        <View
+          style={{
+            paddingBottom: Platform.OS === 'ios' ? 0 : 32,
+          }}>
+          <Text
+            className="mb-2 text-center text-3xl font-bold text-primary"
+            onPress={handleNameTap}>
+            {userProfile?.full_name || 'Your Profile'}
+          </Text>
+          <Text className="mb-8 text-center text-base text-muted-foreground">
+            {userRole === 'renter' ? 'Renter' : 'Property Owner'}
+          </Text>
 
-        {/* Current Rental Section - Renters only */}
-        {userRole === 'renter' && (
-          <View className="mb-6">
-            {isLoadingRental ? (
-              <View className="items-center justify-center rounded-xl border border-input bg-card p-6">
-                <ActivityIndicator size="small" color="#644A40" />
-                <Text className="mt-2 text-sm text-muted-foreground">
-                  Loading current rental...
-                </Text>
-              </View>
-            ) : currentRental ? (
-              <View className="overflow-hidden rounded-xl border border-input bg-card shadow-sm">
-                <View className="rounded-t-xl bg-primary px-4 py-3">
-                  <Text className="text-lg font-bold text-primary-foreground">Current Rental</Text>
-                </View>
-
-                {/* Property Image */}
-                {currentRental.property.image_url &&
-                currentRental.property.image_url.length > 0 ? (
-                  <Image
-                    source={{ uri: currentRental.property.image_url[0] }}
-                    className="h-48 w-full"
-                    resizeMode="cover"
-                  />
-                ) : (
-                  <View className="h-48 w-full items-center justify-center bg-secondary">
-                    <Text className="text-muted-foreground">No Image</Text>
-                  </View>
-                )}
-
-                {/* Property Details */}
-                <View className="p-4">
-                  <Text className="mb-2 text-xl font-bold text-card-foreground">
-                    {currentRental.property.title}
-                  </Text>
-
-                  <View className="mb-2 flex-row items-center">
-                    <MapPin size={14} color="#888" />
-                    <Text className="ml-1 text-sm text-muted-foreground">
-                      {currentRental.property.street && `${currentRental.property.street}, `}
-                      {currentRental.property.barangay}, {currentRental.property.city}
-                    </Text>
-                  </View>
-
-                  <Text className="mb-3 text-lg font-semibold text-primary">
-                    ₱{currentRental.property.rent.toLocaleString()}/month
-                  </Text>
-
-                  <Button
-                    variant="destructive"
-                    onPress={() => setShowEndRentalModal(true)}
-                    disabled={isEndingRental}>
-                    {isEndingRental ? (
-                      <ActivityIndicator size="small" color="#fff" />
-                    ) : (
-                      'End Rental'
-                    )}
-                  </Button>
-                </View>
-              </View>
-            ) : null}
-          </View>
-        )}
-
-        <View className="w-full max-w-sm self-center">
-          {/* Profile Picture Picker - All roles */}
-          <ProfilePicturePicker
-            value={profilePicture}
-            onChange={handleProfilePictureChange}
-            authId={userProfile?.auth_id || ''}
-          />
-
-          {/* Basic Information - All roles */}
-          <View className="gap-4">
-            <View>
-              <Text className="mb-2 text-base font-medium text-foreground">First Name</Text>
-              <Input
-                placeholder="Enter your first name"
-                autoCapitalize="words"
-                value={firstName}
-                onChangeText={setFirstName}
-                error={formErrors.firstName}
-              />
-            </View>
-            <View>
-              <Text className="mb-2 text-base font-medium text-foreground">Last Name</Text>
-              <Input
-                placeholder="Enter your last name"
-                autoCapitalize="words"
-                value={lastName}
-                onChangeText={setLastName}
-                error={formErrors.lastName}
-              />
-            </View>
-            <View>
-              <Text className="mb-2 text-base font-medium text-foreground">Phone Number</Text>
-              <Input
-                placeholder="Enter your phone number"
-                keyboardType="phone-pad"
-                autoCapitalize="none"
-                value={phoneNumber}
-                onChangeText={setPhoneNumber}
-                error={formErrors.phoneNumber}
-              />
-            </View>
-          </View>
-
-          {/* Birth Date - All roles */}
-          <DatePicker
-            label="Birth Date"
-            placeholder="Select your birth date"
-            value={birthDate}
-            onChange={setBirthDate}
-            error={formErrors.birthDate}
-          />
-
-          {/* Renter-specific fields */}
+          {/* Current Rental Section - Renters only */}
           {userRole === 'renter' && (
-            <View className="flex-1 gap-4">
-              <View>
-                <Text className="mb-2 text-base font-medium text-foreground">
-                  Monthly Budget Range
-                </Text>
-                <View className="flex-row gap-2">
-                  <View className="flex-1">
-                    <Input
-                      placeholder="Min. Budget"
-                      keyboardType="numeric"
-                      autoCapitalize="none"
-                      value={minBudget}
-                      onChangeText={setMinBudget}
-                      error={formErrors.minBudget}
-                    />
-                  </View>
-                  <View className="flex-1">
-                    <Input
-                      placeholder="Max. Budget"
-                      keyboardType="numeric"
-                      autoCapitalize="none"
-                      value={maxBudget}
-                      onChangeText={setMaxBudget}
-                      error={formErrors.maxBudget}
-                    />
-                  </View>
+            <View className="mb-6">
+              {isLoadingRental ? (
+                <View className="items-center justify-center rounded-xl border border-input bg-card p-6">
+                  <ActivityIndicator size="small" color="#644A40" />
+                  <Text className="mt-2 text-sm text-muted-foreground">
+                    Loading current rental...
+                  </Text>
                 </View>
-              </View>
-
-              {/* Room Preference Radio Group */}
-              <RadioGroup
-                label="Room Preference"
-                options={['Bedspace', 'Room', 'Apartment']}
-                value={roomPreference}
-                onChange={setRoomPreference}
-                error={formErrors.roomPreference}
-              />
-
-              {/* Occupation Radio Group */}
-              <RadioGroup
-                label="Occupation"
-                options={['Student', 'Employee']}
-                value={occupation}
-                onChange={setOccupation}
-                error={formErrors.occupation}
-              />
-
-              {/* Place of Work/Study - Map Picker */}
-              <LocationPicker
-                label="Place of Work/Study"
-                value={placeOfWorkStudy}
-                onChange={setPlaceOfWorkStudy}
-                placeholder="Select location on map"
-                error={formErrors.placeOfWorkStudy}
-              />
+              ) : currentRental && currentRental.property ? (
+                <CurrentRentalCard
+                  currentRental={currentRental}
+                  isEndingRental={isEndingRental}
+                  onEndRental={() => setShowEndRentalModal(true)}
+                />
+              ) : null}
             </View>
           )}
 
-          {/* Action Buttons */}
-          <View className="mt-2 gap-2">
-            <Button onPress={handleSaveDetails} variant="primary">
-              Save Details
-            </Button>
+          <View className="w-full max-w-sm self-center">
+            {/* Profile Picture Picker - All roles */}
+            <ProfilePicturePicker
+              value={profilePicture}
+              onChange={handleProfilePictureChange}
+              authId={userProfile?.auth_id || ''}
+            />
 
+            {/* Basic Information - All roles */}
+            <View className="gap-4">
+              <View>
+                <Text className="mb-2 text-base font-medium text-foreground">First Name</Text>
+                <Input
+                  placeholder="Enter your first name"
+                  autoCapitalize="words"
+                  value={firstName}
+                  onChangeText={setFirstName}
+                  error={formErrors.firstName}
+                />
+              </View>
+              <View>
+                <Text className="mb-2 text-base font-medium text-foreground">Last Name</Text>
+                <Input
+                  placeholder="Enter your last name"
+                  autoCapitalize="words"
+                  value={lastName}
+                  onChangeText={setLastName}
+                  error={formErrors.lastName}
+                />
+              </View>
+              <View>
+                <Text className="mb-2 text-base font-medium text-foreground">Phone Number</Text>
+                <Input
+                  placeholder="Enter your phone number"
+                  keyboardType="phone-pad"
+                  autoCapitalize="none"
+                  value={phoneNumber}
+                  onChangeText={setPhoneNumber}
+                  error={formErrors.phoneNumber}
+                />
+              </View>
+            </View>
+
+            {/* Birth Date - All roles */}
+            <DatePicker
+              label="Birth Date"
+              placeholder="Select your birth date"
+              value={birthDate}
+              onChange={setBirthDate}
+              error={formErrors.birthDate}
+            />
+
+            {/* Renter-specific fields */}
             {userRole === 'renter' && (
-              <Button
-                onPress={() => navigation.navigate('Preferences', { fromProfile: true })}
-                variant="secondary">
-                Edit Preferences
-              </Button>
+              <View className="flex-1 gap-4">
+                <View>
+                  <Text className="mb-2 text-base font-medium text-foreground">
+                    Monthly Budget Range
+                  </Text>
+                  <View className="flex-row gap-2">
+                    <View className="flex-1">
+                      <Input
+                        placeholder="Min. Budget"
+                        keyboardType="numeric"
+                        autoCapitalize="none"
+                        value={minBudget}
+                        onChangeText={setMinBudget}
+                        error={formErrors.minBudget}
+                      />
+                    </View>
+                    <View className="flex-1">
+                      <Input
+                        placeholder="Max. Budget"
+                        keyboardType="numeric"
+                        autoCapitalize="none"
+                        value={maxBudget}
+                        onChangeText={setMaxBudget}
+                        error={formErrors.maxBudget}
+                      />
+                    </View>
+                  </View>
+                </View>
+
+                {/* Room Preference Radio Group */}
+                <RadioGroup
+                  label="Room Preference"
+                  options={['Bedspace', 'Room', 'Apartment']}
+                  value={roomPreference}
+                  onChange={setRoomPreference}
+                  error={formErrors.roomPreference}
+                />
+
+                {/* Occupation Radio Group */}
+                <RadioGroup
+                  label="Occupation"
+                  options={['Student', 'Employee']}
+                  value={occupation}
+                  onChange={setOccupation}
+                  error={formErrors.occupation}
+                />
+
+                {/* Place of Work/Study - Map Picker */}
+                <LocationPicker
+                  label="Place of Work/Study"
+                  value={placeOfWorkStudy}
+                  onChange={setPlaceOfWorkStudy}
+                  placeholder="Select location on map"
+                  error={formErrors.placeOfWorkStudy}
+                />
+              </View>
             )}
 
-            <Button onPress={handleLogout} variant="destructive">
-              Log Out
-            </Button>
+            {/* Action Buttons */}
+            <View className="mt-2 gap-2">
+              <Button onPress={handleSaveDetails} variant="primary">
+                Save Details
+              </Button>
+
+              {userRole === 'renter' && (
+                <Button
+                  onPress={() => {
+                    try {
+                      const parent = navigation.getParent();
+                      if (parent && typeof parent.navigate === 'function') {
+                        parent.navigate('Preferences', { fromProfile: true });
+                      } else {
+                        console.warn('[ProfileScreen] Parent navigator not available');
+                        Alert.alert(
+                          'Navigation Error',
+                          'Unable to navigate to preferences. Please try again.'
+                        );
+                      }
+                    } catch (error) {
+                      console.error('[ProfileScreen] Navigation error:', error);
+                      Alert.alert('Navigation Error', 'Unable to navigate to preferences.');
+                    }
+                  }}
+                  variant="secondary">
+                  Edit Preferences
+                </Button>
+              )}
+
+              <Button onPress={handleLogout} variant="destructive">
+                Log Out
+              </Button>
+            </View>
           </View>
         </View>
-      </View>
+      </ScrollView>
 
       {/* End Rental Confirmation Modal */}
       <ConfirmationModal
@@ -776,6 +947,6 @@ export default function ProfileScreen() {
         onConfirm={handleEndRental}
         onCancel={() => setShowEndRentalModal(false)}
       />
-    </ScrollView>
+    </View>
   );
 }

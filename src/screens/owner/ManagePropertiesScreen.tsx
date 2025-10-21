@@ -14,11 +14,20 @@ import { Home } from 'lucide-react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
+import { CompositeNavigationProp } from '@react-navigation/native';
+import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
+import { StackNavigationProp } from '@react-navigation/stack';
+import { RootStackParamList, RootTabParamList } from '../../utils/navigation';
 import { supabase } from '../../utils/supabase';
 import { useLoggedIn } from '../../store/useLoggedIn';
 import { usePropertyEdit } from '../../store/usePropertyEdit';
 import { usePropertyUpload } from '../../store/usePropertyUpload';
 import PropertyListItem from '../../components/PropertyListItem';
+
+type ManagePropertiesNavigationProp = CompositeNavigationProp<
+  BottomTabNavigationProp<RootTabParamList, 'ManageProperties'>,
+  StackNavigationProp<RootStackParamList>
+>;
 
 interface Property {
   property_id: number;
@@ -53,7 +62,7 @@ interface PropertyWithRenters extends Property {
 
 export default function ManagePropertiesScreen() {
   const insets = useSafeAreaInsets();
-  const navigation = useNavigation();
+  const navigation = useNavigation<ManagePropertiesNavigationProp>();
   const { userProfile } = useLoggedIn();
   const { startEdit } = usePropertyEdit();
   const { isUploading } = usePropertyUpload();
@@ -213,14 +222,14 @@ export default function ManagePropertiesScreen() {
 
   const handleViewReviews = useCallback(
     (propertyId: number) => {
-      navigation.navigate('ViewReviews' as never, { propertyId } as never);
+      navigation.navigate('ViewReviews', { propertyId });
     },
     [navigation]
   );
 
   const handleViewApplications = useCallback(
     (propertyId: number) => {
-      navigation.navigate('ApplicationsList' as never, { propertyId } as never);
+      navigation.navigate('ApplicationsList', { propertyId });
     },
     [navigation]
   );

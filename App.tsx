@@ -7,7 +7,7 @@ import {
 } from '@react-navigation/bottom-tabs';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
-import { Platform, Alert, ActivityIndicator } from 'react-native';
+import { Platform, Alert, ActivityIndicator, View, Text, TouchableOpacity } from 'react-native';
 
 import ProfileScreen from './src/screens/ProfileScreen';
 import NotificationsScreen from './src/screens/NotificationsScreen';
@@ -35,8 +35,10 @@ import PropertyDetailsScreen from './src/screens/renter/PropertyDetailsScreen';
 import AddPropertyScreen from './src/screens/owner/AddPropertyScreen';
 import ManagePropertiesScreen from './src/screens/owner/ManagePropertiesScreen';
 import ViewReviewsScreen from './src/screens/owner/ViewReviewsScreen';
+import ApplicationsListScreen from './src/screens/owner/ApplicationsListScreen';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useEffect, useState } from 'react';
+import ErrorBoundary from './src/components/ErrorBoundary';
 
 const Tab = createBottomTabNavigator<RootTabParamList>();
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -300,8 +302,11 @@ function MainApp() {
 
 export default function App() {
   const { isLoggedIn } = useLoggedIn();
-  const [initialRoute, setInitialRoute] = useState<'Introduction' | 'Auth'>('Introduction');
+  const [initialRoute, setInitialRoute] = useState<'Introduction' | 'Auth' | 'Home'>(
+    'Introduction'
+  );
   const [isCheckingOnboarding, setIsCheckingOnboarding] = useState(true);
+  const [navigationError, setNavigationError] = useState<string | null>(null);
 
   useEffect(() => {
     const checkOnboarding = async () => {
@@ -310,9 +315,11 @@ export default function App() {
         const deviceOnboarded = await AsyncStorage.getItem('DeviceOnboarded');
         if (deviceOnboarded === 'true') {
           // Device has seen onboarding before, go to Auth
+          console.log('[App] Device onboarded, setting initialRoute to Auth');
           setInitialRoute('Auth');
         } else {
           // First time on this device, show Introduction
+          console.log('[App] First time device, setting initialRoute to Introduction');
           setInitialRoute('Introduction');
         }
       } catch (error) {
@@ -324,54 +331,117 @@ export default function App() {
     };
 
     if (!isLoggedIn) {
+      console.log('[App] User not logged in, checking onboarding');
       checkOnboarding();
     } else {
+      console.log('[App] User logged in, setting initialRoute to Home');
+      setInitialRoute('Home');
       setIsCheckingOnboarding(false);
     }
   }, [isLoggedIn]);
 
-  if (isCheckingOnboarding && !isLoggedIn) {
-    return null; // Or a loading screen
+  if (isCheckingOnboarding) {
+    return (
+      <View className="flex-1 items-center justify-center bg-background">
+        <ActivityIndicator size="large" color="rgb(100, 74, 64)" />
+        <Text className="mt-4 text-muted-foreground">Loading...</Text>
+      </View>
+    );
   }
 
+  // Handle navigation errors gracefully
+  if (navigationError) {
+    return (
+      <View className="flex-1 items-center justify-center bg-background px-6">
+        <Text className="mb-4 text-xl font-bold text-destructive">Navigation Error</Text>
+        <Text className="mb-6 text-center text-muted-foreground">{navigationError}</Text>
+        <TouchableOpacity
+          onPress={() => setNavigationError(null)}
+          className="rounded-lg bg-primary px-6 py-3">
+          <Text className="font-semibold text-white">Try Again</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  // Determine the correct initial route based on login state
+  const getInitialRouteName = (): keyof RootStackParamList => {
+    console.log('[App] getInitialRouteName called:', { isLoggedIn, initialRoute });
+    if (isLoggedIn) {
+      return 'Home';
+    }
+    // When logged out, ensure we return a valid route from the logged-out screens
+    // The initialRoute should be 'Introduction' or 'Auth' based on onboarding status
+    if (initialRoute === 'Home') {
+      // If somehow initialRoute is 'Home' but we're logged out, go to Auth
+      return 'Auth';
+    }
+    return initialRoute as keyof RootStackParamList;
+  };
+
+  console.log('[App] Current state:', {
+    isLoggedIn,
+    initialRoute,
+    routeName: getInitialRouteName(),
+    isCheckingOnboarding,
+  });
+
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
+    <ErrorBoundary>
       <MainScaffold>
-        <NavigationContainer>
-          <Stack.Navigator initialRouteName={initialRoute} screenOptions={{ headerShown: false }}>
-            {isLoggedIn ? (
-              <>
-                <Stack.Screen name="Home" component={MainApp} />
-                <Stack.Screen name="Preferences" component={PreferencesScreen} />
-                <Stack.Screen name="PropertyDetails" component={PropertyDetailsScreen} />
-              </>
-            ) : (
-              <>
-                <Stack.Screen
-                  name="Introduction"
-                  component={IntroductionScreen}
-                  options={{
-                    animationTypeForReplace: 'pop',
-                  }}
-                />
-                <Stack.Screen name="RoleSelection" component={RoleSelectionScreen} />
-                <Stack.Screen
-                  name="Auth"
-                  component={AuthScreen}
-                  options={{
-                    animation: 'slide_from_left',
-                  }}
-                />
-                <Stack.Screen name="Register" component={RegisterScreen} />
-                <Stack.Screen name="Welcome" component={WelcomeScreen} />
-                <Stack.Screen name="Details" component={DetailsScreen} />
-                <Stack.Screen name="Preferences" component={PreferencesScreen} />
-              </>
-            )}
-          </Stack.Navigator>
-          <StatusBar style="auto" />
-        </NavigationContainer>
+        <GestureHandlerRootView style={{ flex: 1 }}>
+          <NavigationContainer
+            key={isLoggedIn ? 'logged-in' : 'logged-out'}
+            onStateChange={() => {
+              // Clear navigation errors when state changes successfully
+              if (navigationError) {
+                setNavigationError(null);
+              }
+            }}
+            onUnhandledAction={(action) => {
+              console.warn('[Navigation] Unhandled action:', action);
+              setNavigationError(
+                `Navigation error: Could not perform action "${action.type}". Please try again.`
+              );
+            }}>
+            <Stack.Navigator
+              initialRouteName={getInitialRouteName()}
+              screenOptions={{ headerShown: false }}>
+              {isLoggedIn ? (
+                <>
+                  <Stack.Screen name="Home" component={MainApp} />
+                  <Stack.Screen name="Preferences" component={PreferencesScreen} />
+                  <Stack.Screen name="PropertyDetails" component={PropertyDetailsScreen} />
+                  <Stack.Screen name="ApplicationsList" component={ApplicationsListScreen} />
+                </>
+              ) : (
+                <>
+                  <Stack.Screen
+                    name="Introduction"
+                    component={IntroductionScreen}
+                    options={{
+                      animationTypeForReplace: 'pop',
+                    }}
+                  />
+                  <Stack.Screen name="RoleSelection" component={RoleSelectionScreen} />
+                  <Stack.Screen
+                    name="Auth"
+                    component={AuthScreen}
+                    options={{
+                      animation: 'slide_from_left',
+                    }}
+                  />
+                  <Stack.Screen name="Register" component={RegisterScreen} />
+                  <Stack.Screen name="Welcome" component={WelcomeScreen} />
+                  <Stack.Screen name="Details" component={DetailsScreen} />
+                  <Stack.Screen name="Preferences" component={PreferencesScreen} />
+                </>
+              )}
+            </Stack.Navigator>
+            <StatusBar style="auto" />
+          </NavigationContainer>
+        </GestureHandlerRootView>
       </MainScaffold>
-    </GestureHandlerRootView>
+    </ErrorBoundary>
   );
 }
