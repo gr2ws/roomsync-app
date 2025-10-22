@@ -69,7 +69,7 @@ export default function AdminReportsScreen() {
 
   return (
     <View
-      className="flex-1 bg-white"
+      className="flex-1 bg-[rgb(249, 249, 249)]"
       style={{
         flex: 1,
         paddingTop: Platform.OS === 'android' ? insets.top + 12 : insets.top,

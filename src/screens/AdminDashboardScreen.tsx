@@ -24,7 +24,7 @@ export default function AdminDashboard() {
 
   return (
     <View
-      className="flex-1 bg-[#f9f8f4]"
+      className="flex-1 bg-[rgb(249, 249, 249)]"
       style={{
         flex: 1,
         paddingTop: Platform.OS === 'android' ? insets.top + 12 : insets.top, // use insets.top for both platforms to handle safe area via flexbox
@@ -78,7 +78,7 @@ function OverviewTab() {
   // [TEST NOTE] disable here when debugging
   useEffect(() => {
     const fetchCounts = async () => {
-      //setLoading(true);
+      setLoading(true);
       const results: any = await fetchAllCounts();
 
       // Artificial delay for smooth UI (1.5 seconds)

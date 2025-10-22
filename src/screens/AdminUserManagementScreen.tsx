@@ -329,7 +329,7 @@ Should you find reason for us to consider an appeal from you, please send us an 
         </View>
 
         {/* User Statistics Cards */}
-        <View className="mb-1 flex-row flex-wrap justify-evenly gap-2">
+        <View className="mb-1 flex-row flex-wrap justify-evenly gap-2 ">
           <StatCard
             title="Total Users"
             value={userStats.totalUsers.toString()}
@@ -357,8 +357,8 @@ Should you find reason for us to consider an appeal from you, please send us an 
         </View>
 
         {/* Search and Filter Section */}
-        <View className="mb-4 rounded-2xl bg-white p-5 shadow-sm">
-          <View className="mb-4 flex-row items-center rounded-xl bg-gray-50 px-4 py-3">
+        <View className="mb-4 rounded-2xl p-5 shadow-sm">
+          <View className="mb-4 flex-row items-center rounded-full bg-white px-4 py-2 border border-gray-200">
             <Ionicons name="search" size={20} color="#6B7280" className="mr-3" />
             <TextInput
               className="flex-1 text-base text-gray-900"
@@ -486,6 +486,7 @@ Should you find reason for us to consider an appeal from you, please send us an 
           ))}
         </View>
       </ScrollView>
+      
       {verifyConfirmVisible && userToVerify && (
         <View className="absolute inset-0 z-50 flex items-center justify-center bg-black/50">
           <View className="w-80 rounded-2xl bg-white p-6 shadow-lg">
@@ -548,30 +549,35 @@ Should you find reason for us to consider an appeal from you, please send us an 
               </View>
 
               <View className="mb-3">
-                <Text className="text-sm text-gray-700">
-                  📱 Phone: {userToView.phoneNumber || 'N/A'}
+                <Text className="text-sm text-gray-700 mb-1">
+                  Phone: {userToView.phoneNumber || 'N/A'}
                 </Text>
-                <Text className="text-sm text-gray-700">🏠 Role: {userToView.role}</Text>
-                <Text className="text-sm text-gray-700">
-                  ✅ Verified: {userToView.isVerified ? 'Yes' : 'No'}
+                <Text className="text-sm text-gray-700 mb-1"> 
+                  Role: {userToView.role === 'renter' ? "Renter" : "Owner"}
+                  </Text>
+                <Text className="text-sm text-gray-700 mb-1">
+                  Verified: {userToView.isVerified ? 'Yes' : 'No'}
                 </Text>
-                <Text className="text-sm text-gray-700">
-                  ⚠️ Warned: {userToView.isWarned ? 'Yes' : 'No'}
+                <Text className="text-sm text-gray-700 mb-1">
+                  Received Warning/s? {userToView.isWarned ? 'Yes' : 'No'}
                 </Text>
-                <Text className="text-sm text-gray-700">
-                  🚫 Banned: {userToView.isBanned ? 'Yes' : 'No'}
+                <Text className="text-sm text-gray-700 mb-1">
+                  Is Banned: {userToView.isBanned ? 'Yes' : 'No'}
                 </Text>
-                <Text className="text-sm text-gray-700">
-                  🕒 Last Active: {userToView.last_login_date || 'Unknown'}
+                <Text className="text-sm text-gray-700 mb-1">
+                  Last Active:{' '}
+                  {userToView.last_login_date
+                    ? new Date(userToView.last_login_date).toLocaleDateString()
+                    : 'Unknown'}
                 </Text>
                 {userToView.role === 'owner' && (
-                  <Text className="text-sm text-gray-700">
-                    📋 Properties Listed: {userToView.propertiesListed}
+                  <Text className="text-sm text-gray-700 mb-1">
+                    Properties Listed: {userToView.propertiesListed}
                   </Text>
                 )}
                 {userToView.role === 'renter' && (
-                  <Text className="text-sm text-gray-700">
-                    📝 Applications: {userToView.applications}
+                  <Text className="text-sm text-gray-700 mb-1">
+                    Applications: {userToView.applications}
                   </Text>
                 )}
               </View>
@@ -650,7 +656,7 @@ function StatCard({
   color: string;
 }) {
   return (
-    <View className="mb-3 w-44 rounded-xl border border-gray-200 bg-gray-50 p-4">
+    <View className="mb-3 w-44 rounded-2xl border border-gray-200 bg-white p-4">
       <View className="mb-2 flex-row items-center">
         <Ionicons name={icon as any} size={20} color={color} />
         <Text className="ml-1.5 mr-1.5 text-xs font-medium text-gray-600">{title}</Text>
