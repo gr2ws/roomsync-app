@@ -43,7 +43,7 @@ export default function AdminReportsScreen() {
         reported_user,
         users_reported_by:reported_by(first_name, last_name),
         users_reported_user:reported_user(first_name, last_name)
-      `
+        `
       )
       .order('date_created', { ascending: false });
 
@@ -69,10 +69,10 @@ export default function AdminReportsScreen() {
 
   return (
     <View
-      className="flex-1 bg-white"
+      className="flex-1 bg-[rgb(249, 249, 249)]"
       style={{
         flex: 1,
-        paddingTop: Platform.OS === 'android' ? insets.top + 8 : insets.top,
+        paddingTop: Platform.OS === 'android' ? insets.top + 12 : insets.top,
       }}>
       <ScrollView
         className="px-4 pb-4 pt-0"
@@ -191,7 +191,6 @@ function ReportCard({
           }`}
           onPress={() => {
             setProofVisible(true);
-            onViewProof(); // mark as "under investigation"
           }}
           disabled={isInactive}>
           <Ionicons
@@ -244,7 +243,10 @@ function ReportCard({
         visible={proofVisible}
         transparent
         animationType="slide"
-        onRequestClose={() => setProofVisible(false)}>
+         onRequestClose={() => {
+           setProofVisible(false);
+           if (report.status === 'pending') onViewProof();
+         }}>
         <View className="flex-1 items-center justify-center bg-black/90 px-4">
           {proofUrl ? (
             <Image
@@ -294,7 +296,7 @@ function ReportsSafetyTab({ reports, refresh }: { reports: any[]; refresh: () =>
     <View className="mx-1 mt-1">
       <View className="mb-4 flex-row items-center justify-between">
         <Text className="ml-2 text-xl font-bold text-gray-900">Manage Reports</Text>
-        <View className="min-w-6 items-center rounded-xl bg-red-600 px-2 py-1">
+        <View className="min-w-6 items-center rounded-full bg-red-600 px-2 py-1">
           <Text className="text-xs font-semibold text-white">{pendingCount}</Text>
         </View>
       </View>

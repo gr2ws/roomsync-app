@@ -1,4 +1,3 @@
-// ...existing code...
 import * as React from 'react';
 import { useState, useMemo, useEffect } from 'react';
 import { useAdminData } from '../store/useAdminData';
@@ -151,7 +150,7 @@ export default function AdminUserManagementScreen() {
       const user = users.find((u) => u.id === userId);
       if (!user) return;
 
-      // Update the Supabase record
+      // Update the user verification status at the users table
       const { error } = await supabase
         .from('users')
         .update({ is_verified: true })
@@ -164,11 +163,29 @@ export default function AdminUserManagementScreen() {
         return;
       }
 
+      // Update notification table
+      const { error: notifError } = await supabase.from('notifications').insert([
+      {
+        user_auth_id: user.auth_id,
+        notif_type: 'user_account_verified',
+      },
+    ]);
+
+    if (notifError) {
+      console.error('Failed to insert verification notification:', notifError);
+      setToastMessage('Failed to notify user @ verification');
+      setTimeout(() => setToastMessage(null), 2000);
+      return;
+    }
+
       // Locally update state for instant UI feedback
       setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, isVerified: true } : u)));
 
       setToastMessage('User verified successfully!');
       setTimeout(() => setToastMessage(null), 2000);
+
+      await fetchUsers();
+
     } catch (err) {
       console.error('Unexpected error verifying user:', err);
       setToastMessage('Error verifying user');
@@ -210,15 +227,14 @@ export default function AdminUserManagementScreen() {
     const subject = `[WARNING] From Roomsync`;
     const body = `Hi ${user.first_name ?? ''},
 
-    We have been made aware of activity on your account that violates our community guidelines.
+We have been made aware of activity on your account that violates our community guidelines.
 
-    Please consider this as a formal warning. We are continuing to monitor your account for suspicious behavior; should this persist, you may lose access to your account entirely.
+Please consider this as a formal warning. We are continuing to monitor your account for suspicious behavior; should this persist, you may lose access to your account entirely.
 
-    At Roomsync, we are committed to keeping the community safe, and our clients happy. We take complaints like these seriously to ensure we meet that goal.
+At Roomsync, we are committed to keeping the community safe, and our clients happy. We take complaints like these seriously to ensure we meet that goal.
 
-    Should you find reason for us to consider an appeal from you, please send us an email at roomsync@gmail.com.
-        
-    -Roomsync Team`;
+Should you find reason for us to consider an appeal from you, please send us an email at roomsync@gmail.com.
+-Roomsync Team`;
 
     const mailto = buildMailTo(user.email, subject, body);
 
@@ -232,7 +248,7 @@ export default function AdminUserManagementScreen() {
 
       await Linking.openURL(mailto);
 
-      // ✅ Update user’s isWarned to true in Supabase
+      // Update user’s isWarned to true in Supabase
       const { error } = await supabase
         .from('users')
         .update({ is_warned: true })
@@ -245,11 +261,27 @@ export default function AdminUserManagementScreen() {
         return;
       }
 
-      // ✅ Update local UI state instantly
+      const { error: notifError } = await supabase.from('notifications').insert([
+      {
+        user_auth_id: user.auth_id,
+        notif_type: 'user_account_warned',
+      },
+    ]);
+
+    if (notifError) {
+     console.error('Failed to insert warning notification:', notifError);
+     setToastMessage('Failed to notify user @ verification');
+     setTimeout(() => setToastMessage(null), 2000);
+    }
+
+      // Update local UI state instantly
       setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, isWarned: true } : u)));
 
       setToastMessage('Warning issued and status updated');
       setTimeout(() => setToastMessage(null), 2000);
+
+      await fetchUsers();
+      
     } catch (err) {
       console.error('Error sending warning:', err);
       setToastMessage('Unable to open mail app');
@@ -261,21 +293,17 @@ export default function AdminUserManagementScreen() {
     try {
       const user = users.find((u) => u.id === userId);
       if (!user) return;
-
       const { error } = await supabase
         .from('users')
         .update({ is_banned: true })
         .eq('auth_id', user.auth_id);
-
       if (error) {
         console.error('Ban update failed:', error);
         setToastMessage('Failed to ban user');
         setTimeout(() => setToastMessage(null), 2000);
         return;
       }
-
       setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, isBanned: true } : u)));
-
       setToastMessage('User has been banned');
       setTimeout(() => setToastMessage(null), 2000);
     } catch (err) {
@@ -290,7 +318,7 @@ export default function AdminUserManagementScreen() {
       className="flex-1 bg-white"
       style={{
         flex: 1,
-        paddingTop: Platform.OS === 'android' ? insets.top + 8 : insets.top, // use insets.top for both platforms to handle safe area via flexbox
+        paddingTop: Platform.OS === 'android' ? insets.top + 12 : insets.top, // use insets.top for both platforms to handle safe area via flexbox
       }}>
       <ScrollView
         className="px-4 pb-4 pt-0"
@@ -301,7 +329,7 @@ export default function AdminUserManagementScreen() {
         </View>
 
         {/* User Statistics Cards */}
-        <View className="mb-1 flex-row flex-wrap justify-evenly gap-2">
+        <View className="mb-1 flex-row flex-wrap justify-evenly gap-2 ">
           <StatCard
             title="Total Users"
             value={userStats.totalUsers.toString()}
@@ -329,8 +357,8 @@ export default function AdminUserManagementScreen() {
         </View>
 
         {/* Search and Filter Section */}
-        <View className="mb-4 rounded-2xl bg-white p-5 shadow-sm">
-          <View className="mb-4 flex-row items-center rounded-xl bg-gray-50 px-4 py-3">
+        <View className="mb-4 rounded-2xl p-5 shadow-sm">
+          <View className="mb-4 flex-row items-center rounded-full bg-white px-4 py-2 border border-gray-200">
             <Ionicons name="search" size={20} color="#6B7280" className="mr-3" />
             <TextInput
               className="flex-1 text-base text-gray-900"
@@ -458,7 +486,7 @@ export default function AdminUserManagementScreen() {
           ))}
         </View>
       </ScrollView>
-
+      
       {verifyConfirmVisible && userToVerify && (
         <View className="absolute inset-0 z-50 flex items-center justify-center bg-black/50">
           <View className="w-80 rounded-2xl bg-white p-6 shadow-lg">
@@ -521,30 +549,35 @@ export default function AdminUserManagementScreen() {
               </View>
 
               <View className="mb-3">
-                <Text className="text-sm text-gray-700">
-                  📱 Phone: {userToView.phoneNumber || 'N/A'}
+                <Text className="text-sm text-gray-700 mb-1">
+                  Phone: {userToView.phoneNumber || 'N/A'}
                 </Text>
-                <Text className="text-sm text-gray-700">🏠 Role: {userToView.role}</Text>
-                <Text className="text-sm text-gray-700">
-                  ✅ Verified: {userToView.isVerified ? 'Yes' : 'No'}
+                <Text className="text-sm text-gray-700 mb-1"> 
+                  Role: {userToView.role === 'renter' ? "Renter" : "Owner"}
+                  </Text>
+                <Text className="text-sm text-gray-700 mb-1">
+                  Verified: {userToView.isVerified ? 'Yes' : 'No'}
                 </Text>
-                <Text className="text-sm text-gray-700">
-                  ⚠️ Warned: {userToView.isWarned ? 'Yes' : 'No'}
+                <Text className="text-sm text-gray-700 mb-1">
+                  Received Warning/s? {userToView.isWarned ? 'Yes' : 'No'}
                 </Text>
-                <Text className="text-sm text-gray-700">
-                  🚫 Banned: {userToView.isBanned ? 'Yes' : 'No'}
+                <Text className="text-sm text-gray-700 mb-1">
+                  Is Banned: {userToView.isBanned ? 'Yes' : 'No'}
                 </Text>
-                <Text className="text-sm text-gray-700">
-                  🕒 Last Active: {userToView.last_login_date || 'Unknown'}
+                <Text className="text-sm text-gray-700 mb-1">
+                  Last Active:{' '}
+                  {userToView.last_login_date
+                    ? new Date(userToView.last_login_date).toLocaleDateString()
+                    : 'Unknown'}
                 </Text>
                 {userToView.role === 'owner' && (
-                  <Text className="text-sm text-gray-700">
-                    📋 Properties Listed: {userToView.propertiesListed}
+                  <Text className="text-sm text-gray-700 mb-1">
+                    Properties Listed: {userToView.propertiesListed}
                   </Text>
                 )}
                 {userToView.role === 'renter' && (
-                  <Text className="text-sm text-gray-700">
-                    📝 Applications: {userToView.applications}
+                  <Text className="text-sm text-gray-700 mb-1">
+                    Applications: {userToView.applications}
                   </Text>
                 )}
               </View>
@@ -623,7 +656,7 @@ function StatCard({
   color: string;
 }) {
   return (
-    <View className="mb-3 w-44 rounded-xl border border-gray-200 bg-gray-50 p-4">
+    <View className="mb-3 w-44 rounded-2xl border border-gray-200 bg-white p-4">
       <View className="mb-2 flex-row items-center">
         <Ionicons name={icon as any} size={20} color={color} />
         <Text className="ml-1.5 mr-1.5 text-xs font-medium text-gray-600">{title}</Text>
@@ -665,15 +698,12 @@ function UserCard({
 
   const lastActiveDate = new Date(user.last_login_date);
   const now = new Date();
-
   // If invalid date, fallback to "a long time ago"
   let isActive = false;
   let lastActiveLabel = 'a long time ago';
-
   if (!isNaN(lastActiveDate.getTime())) {
     const diffMs = now.getTime() - lastActiveDate.getTime();
     const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-
     if (diffDays <= 0) {
       // Same day
       isActive = true;

@@ -51,14 +51,14 @@ const RoleSelectionScreen: React.FC<Props> = ({ navigation }) => {
               What brings you here?
             </Text>
             <Text className="mb-10 text-center text-base text-muted-foreground">
-              Tell us how we can help you...
+              Tell us how we can help you.
             </Text>
 
-            <View className="mb-6">
+            <View className="mb-8">
               <Button variant="primary" onPress={() => handleSelectRole('renter')}>
                 I&apos;m looking for somewhere to stay
               </Button>
-              <Text className="mt-3 text-center text-sm text-muted-foreground">
+              <Text className="text-italic mt-3 text-center italic text-muted-foreground">
                 For individuals searching for a place to rent, such as students or professionals.
               </Text>
             </View>
@@ -67,15 +67,21 @@ const RoleSelectionScreen: React.FC<Props> = ({ navigation }) => {
               <Button variant="primary" onPress={() => handleSelectRole('owner')}>
                 I have property for rent
               </Button>
-              <Text className="mt-3 text-center text-sm text-muted-foreground">
+              <Text className="mt-3 text-center text-sm italic text-muted-foreground">
                 For property owners or managers who want to list and manage rentals.
               </Text>
             </View>
 
             <View className="mt-8 items-center">
-              <View className="flex-row">
+              <View className="flex-row justify-center align-middle">
                 <Text className="text-muted-foreground">Already have an account? </Text>
-                <Button onPress={handleLogin} variant="text">
+                <Button
+                  onPress={handleLogin}
+                  variant="text"
+                  style={{
+                    borderBottomWidth: 1,
+                    borderBottomColor: '#000', // or any color
+                  }}>
                   Log in
                 </Button>
               </View>
