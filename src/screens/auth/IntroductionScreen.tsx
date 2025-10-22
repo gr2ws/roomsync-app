@@ -43,13 +43,16 @@ const IntroductionScreen: React.FC<Props> = ({ navigation, route }) => {
       style={{ paddingTop: Platform.OS === 'ios' ? 45 : insets.top + 8 }}>
       <View className="flex-1 items-center justify-center px-6">
         {fromAuth && <BackButton className="z-10 mt-8" onPress={handleBackToAuth} />}
-        <View className="h-full w-full max-w-sm justify-center gap-6">
+        <View className="h-full w-full max-w-sm items-center justify-center gap-6">
           <Text className="text-center text-5xl font-bold text-primary">Welcome to RoomSync</Text>
-          <Text className="mt-2 text-center text-lg text-foreground">
+          <Text className="mt-2 px-6 text-center text-lg leading-relaxed text-foreground">
             Find safe, affordable living spaces in Dumaguete City with AI-powered recommendations.
             Discover your perfect place today.
           </Text>
-          <Button variant="primary" onPress={() => navigation.navigate('RoleSelection')}>
+          <Button
+            variant="primary"
+            onPress={() => navigation.navigate('RoleSelection')}
+            className="w-100">
             Get Started
           </Button>
         </View>

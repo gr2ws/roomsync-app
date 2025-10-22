@@ -257,8 +257,8 @@ export default function RegisterScreen({ navigation }: Props) {
         <Text className="mb-2 mt-6 text-center text-4xl font-bold text-primary">
           Create your account
         </Text>
-        <Text className="mb-8 text-center text-base text-muted-foreground">
-          Your perfect place awaits
+        <Text className="mb-8 text-center text-base italic text-muted-foreground">
+          Your perfect place awaits!
         </Text>
 
         <View className="w-full max-w-sm gap-4 self-center">
@@ -317,7 +317,13 @@ export default function RegisterScreen({ navigation }: Props) {
           <View className="mt-6 items-center">
             <View className="flex-row">
               <Text className="text-sm text-muted-foreground">Already have an account? </Text>
-              <Button onPress={handleLogin} variant="text">
+              <Button
+                onPress={handleLogin}
+                variant="text"
+                style={{
+                  borderBottomWidth: 1,
+                  borderBottomColor: '#000', // or any color
+                }}>
                 Log in
               </Button>
             </View>
