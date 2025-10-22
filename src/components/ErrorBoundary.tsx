@@ -57,7 +57,12 @@ class ErrorBoundary extends Component<Props, State> {
         <View className="flex-1 bg-background">
           <ScrollView
             className="flex-1"
-            contentContainerClassName="flex-1 items-center justify-center px-6">
+            contentContainerStyle={{
+              flex: 1,
+              alignItems: 'center',
+              justifyContent: 'center',
+              paddingHorizontal: 24
+            }}>
             <View className="max-w-md items-center">
               <AlertTriangle size={64} color="rgb(229, 77, 46)" className="mb-6" />
 

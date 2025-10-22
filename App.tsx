@@ -17,6 +17,7 @@ import { MainScaffold } from '~/components/layout/MainScaffold';
 import { useLoggedIn } from './src/store/useLoggedIn';
 import { usePropertyUpload } from './src/store/usePropertyUpload';
 import { usePropertyEdit } from './src/store/usePropertyEdit';
+import { useNotificationCount } from './src/store/useNotificationCount';
 import AuthScreen from './src/screens/auth/AuthScreen';
 import RegisterScreen from './src/screens/auth/RegisterScreen';
 import AdminDashboardScreen from './src/screens/AdminDashboardScreen';
@@ -39,6 +40,7 @@ import ApplicationsListScreen from './src/screens/owner/ApplicationsListScreen';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useEffect, useState } from 'react';
 import ErrorBoundary from './src/components/ErrorBoundary';
+import { supabase } from './src/utils/supabase';
 
 const Tab = createBottomTabNavigator<RootTabParamList>();
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -46,9 +48,39 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 // refer to https://reactnavigation.org/docs/bottom-tab-navigator?config=static for styling tabs and tab states
 
 function MainApp() {
-  const { userRole } = useLoggedIn();
+  const { userRole, userProfile } = useLoggedIn();
   const { isUploading } = usePropertyUpload();
   const { isEditing, cancelEdit } = usePropertyEdit();
+  const { count: notificationCount, showBadge, showBadgeWithCount } = useNotificationCount();
+
+  // Fetch notification count on login and show badge
+  useEffect(() => {
+    const fetchNotificationCount = async () => {
+      if (!userProfile?.auth_id) {
+        return;
+      }
+
+      try {
+        console.log('[App] Fetching notification count for user_auth_id:', userProfile.auth_id);
+
+        const { count, error } = await supabase
+          .from('notifications')
+          .select('*', { count: 'exact', head: true })
+          .eq('user_auth_id', userProfile.auth_id);
+
+        if (error) throw error;
+
+        console.log('[App] Notification count fetched:', count);
+
+        // Show badge with count after login
+        showBadgeWithCount(count || 0);
+      } catch (error) {
+        console.error('[App] Error fetching notification count:', error);
+      }
+    };
+
+    fetchNotificationCount();
+  }, [userProfile?.auth_id, showBadgeWithCount]);
 
   const commonScreenOptions: BottomTabNavigationOptions = {
     headerShown: false,
@@ -77,6 +109,16 @@ function MainApp() {
     },
   };
 
+  // Function to get notification badge
+  const getNotificationBadge = () => {
+    console.log('[App] getNotificationBadge called, showBadge:', showBadge, 'count:', notificationCount);
+    if (!showBadge || notificationCount === 0) return undefined;
+    if (notificationCount > 99) return '99+';
+    return notificationCount;
+  };
+
+  console.log('[App] MainApp render, showBadge:', showBadge, 'notificationCount:', notificationCount);
+
   const notificationsScreen = (
     <Tab.Screen
       name="Notifications"
@@ -89,7 +131,7 @@ function MainApp() {
             color={color}
           />
         ),
-        tabBarBadge: 1,
+        tabBarBadge: getNotificationBadge(),
       }}
     />
   );

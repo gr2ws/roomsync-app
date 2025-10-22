@@ -202,6 +202,16 @@ export default function ApplicationsScreen() {
       return;
     }
 
+    // Check if user has 5 or more pending applications
+    const pendingCount = applications.filter((app) => app.status === 'pending').length;
+    if (pendingCount >= 5) {
+      Alert.alert(
+        'Cannot Reapply',
+        'You have reached the maximum of 5 pending applications. Please wait for a response or cancel an existing application before applying to another property.'
+      );
+      return;
+    }
+
     try {
       console.log('[ApplicationsScreen] Reapplying to property_id:', propertyId);
 
@@ -346,6 +356,7 @@ export default function ApplicationsScreen() {
 
     if (item.type === 'item' && item.application) {
       const app = item.application;
+      const pendingCount = applications.filter((a) => a.status === 'pending').length;
       return (
         <ApplicationCard
           application={app}
@@ -353,7 +364,9 @@ export default function ApplicationsScreen() {
           onReapply={app.status === 'cancelled' ? handleReapplyToProperty : undefined}
           onContactOwner={app.status === 'pending' ? handleContactOwner : undefined}
           canReapply={
-            app.status === 'cancelled' && !applications.some((a) => a.status === 'approved')
+            app.status === 'cancelled' &&
+            !applications.some((a) => a.status === 'approved') &&
+            pendingCount < 5
           }
         />
       );
