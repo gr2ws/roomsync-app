@@ -158,23 +158,14 @@ const ApplicationCard: React.FC<ApplicationCardProps> = ({
         <View className="mt-2 flex-row gap-2">
           {onCancel && (
             <View className="flex-1">
-              <SmallButton
-                variant="destructive"
-                onPress={handleCancel}
-                disabled={isActionLoading}>
-                {isActionLoading ? (
-                  <ActivityIndicator size="small" color="#fff" />
-                ) : (
-                  'Cancel'
-                )}
+              <SmallButton variant="destructive" onPress={handleCancel} disabled={isActionLoading}>
+                {isActionLoading ? <ActivityIndicator size="small" color="#fff" /> : 'Cancel'}
               </SmallButton>
             </View>
           )}
           {onContactOwner && (
             <View className="flex-1">
-              <SmallButton
-                variant="secondary"
-                onPress={() => onContactOwner(application.owner_id)}>
+              <SmallButton variant="secondary" onPress={() => onContactOwner(application.owner_id)}>
                 Contact Owner
               </SmallButton>
             </View>
@@ -183,14 +174,13 @@ const ApplicationCard: React.FC<ApplicationCardProps> = ({
       )}
 
       {application.status === 'cancelled' && canReapply && onReapply && (
-        <Button
-          variant="primary"
-          size="sm"
-          onPress={handleReapply}
-          disabled={isActionLoading}
-          className="mt-2">
-          {isActionLoading ? <ActivityIndicator size="small" color="#fff" /> : 'Reapply'}
-        </Button>
+        <View className="mt-2 flex-row justify-end">
+          <View style={{ width: '25%' }}>
+            <SmallButton variant="primary" onPress={handleReapply} disabled={isActionLoading}>
+              {isActionLoading ? 'Reapplying...' : 'Reapply'}
+            </SmallButton>
+          </View>
+        </View>
       )}
     </Pressable>
   );

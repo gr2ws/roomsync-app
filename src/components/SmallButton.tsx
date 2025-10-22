@@ -68,17 +68,21 @@ export default function SmallButton({
       activeOpacity={0.7}>
       {Icon && <Icon size={iconSize} color={finalIconColor} />}
       {text && (
-        <Text className={`text-xs font-semibold ${textColorStyles[variant]} ${Icon ? 'ml-1.5' : ''}`}>
+        <Text
+          className={`text-xs font-semibold ${textColorStyles[variant]} ${Icon ? 'ml-1.5' : ''}`}>
           {text}
         </Text>
       )}
-      {children && !text && (
-        typeof children === 'string' ? (
-          <Text className={`text-xs font-semibold ${textColorStyles[variant]} ${Icon ? 'ml-1.5' : ''}`}>
+      {children &&
+        !text &&
+        (typeof children === 'string' ? (
+          <Text
+            className={`text-xs font-semibold ${textColorStyles[variant]} ${Icon ? 'ml-1.5' : ''}`}>
             {children}
           </Text>
-        ) : children
-      )}
+        ) : (
+          children
+        ))}
     </TouchableOpacity>
   );
 }

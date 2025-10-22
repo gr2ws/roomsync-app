@@ -16,15 +16,17 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { createClient } from '@supabase/supabase-js'; 
-import {supabase} from '../utils/supabase';
+import { createClient } from '@supabase/supabase-js';
+import { supabase } from '../utils/supabase';
 import { is } from 'zod/v4/locales';
 
 export default function AdminUserManagementScreen() {
   const insets = useSafeAreaInsets();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedRole, setSelectedRole] = useState<string>('all');
-  const [selectedVerification, setSelectedVerification] = useState<'all' | 'verified' | 'unverified'>('all');
+  const [selectedVerification, setSelectedVerification] = useState<
+    'all' | 'verified' | 'unverified'
+  >('all');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   const [verifyConfirmVisible, setVerifyConfirmVisible] = useState(false);
@@ -45,48 +47,48 @@ export default function AdminUserManagementScreen() {
   const [totalCount, setTotalCount] = useState<number>(0);
 
   // Reset pagination when filters or search change
-useEffect(() => {
-  setPage(0);
-}, [selectedRole, selectedVerification, searchQuery]);
+  useEffect(() => {
+    setPage(0);
+  }, [selectedRole, selectedVerification, searchQuery]);
 
-const fetchUsers = async () => {
-  try {
-    const { data, error } = await supabase
-      .from('users')
-      .select('*')
-      .order('user_id', { ascending: true });
+  const fetchUsers = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        .order('user_id', { ascending: true });
 
-    if (error) {
-      console.error('Supabase fetch error:', error);
-      return;
+      if (error) {
+        console.error('Supabase fetch error:', error);
+        return;
+      }
+
+      const normalized = (data ?? []).map((u: any, index: number) => ({
+        id: index,
+        user_id: u.user_id ?? '',
+        auth_id: u.auth_id ?? '',
+        first_name: u.first_name ?? '',
+        last_name: u.last_name ?? '',
+        email: u.email ?? '',
+        phoneNumber: u.phone_number ?? '',
+        profile_picture:
+          u.profile_picture ??
+          'https://thumbs.dreamstime.com/b/default-avatar-profile-icon-vector-social-media-user-portrait-176256935.jpg',
+        isWarned: !!u.is_warned,
+        isBanned: !!u.is_banned,
+        isVerified: !!(u.is_verified ?? u.isVerified),
+        role: u.user_type || '',
+        propertiesListed: u.properties_listed ?? u.propertiesListed ?? 0,
+        applications: u.applications ?? 0,
+        last_login_date: u.last_login_date ?? '',
+      }));
+
+      setUsers(normalized);
+      setTotalCount(normalized.length);
+    } catch (err) {
+      console.error('Unexpected fetch error:', err);
     }
-
-    const normalized = (data ?? []).map((u: any, index: number) => ({
-      id: index,
-      user_id: u.user_id ?? '',
-      auth_id: u.auth_id ?? '',
-      first_name: u.first_name ?? '',
-      last_name: u.last_name ?? '',
-      email: u.email ?? '',
-      phoneNumber: u.phone_number ?? '',
-      profile_picture:
-        u.profile_picture ??
-        'https://thumbs.dreamstime.com/b/default-avatar-profile-icon-vector-social-media-user-portrait-176256935.jpg',
-      isWarned: !!u.is_warned,
-      isBanned: !!u.is_banned,
-      isVerified: !!(u.is_verified ?? u.isVerified),
-      role: u.user_type || '',
-      propertiesListed: u.properties_listed ?? u.propertiesListed ?? 0,
-      applications: u.applications ?? 0,
-      last_login_date: u.last_login_date ?? '',
-    }));
-
-    setUsers(normalized);
-    setTotalCount(normalized.length);
-  } catch (err) {
-    console.error('Unexpected fetch error:', err);
-  }
-};
+  };
 
   useEffect(() => {
     fetchUsers();
@@ -100,78 +102,79 @@ const fetchUsers = async () => {
     const verificationPending = users.filter((user) => !user.isVerified).length;
     const verifiedUsers = users.filter((user) => user.isVerified).length;
     const unverifiedUsers = users.filter((user) => !user.isVerified).length;
-    return { totalUsers, renters, propertyOwners, verificationPending, verifiedUsers, unverifiedUsers };
+    return {
+      totalUsers,
+      renters,
+      propertyOwners,
+      verificationPending,
+      verifiedUsers,
+      unverifiedUsers,
+    };
   }, [users, totalCount]);
 
-// For filtering
-const filteredUsers = useMemo(() => {
-  return users
-    .filter((user) => !user.isBanned) // hide banned users
-    .filter((user) => user.role === 'renter' || user.role === 'owner') // show only renters/owners (hide admins)
-    .filter((user) => {
-    const first_name = user.first_name?.toLowerCase() ?? '';
-    const last_name = user.last_name?.toLowerCase() ?? '';
-    const name = `${first_name} ${last_name}`.trim();
-    const email = user.email?.toLowerCase() ?? '';
-    const matchesSearch =
-      name.includes(searchQuery.toLowerCase()) ||
-      email.includes(searchQuery.toLowerCase());
+  // For filtering
+  const filteredUsers = useMemo(() => {
+    return users
+      .filter((user) => !user.isBanned) // hide banned users
+      .filter((user) => user.role === 'renter' || user.role === 'owner') // show only renters/owners (hide admins)
+      .filter((user) => {
+        const first_name = user.first_name?.toLowerCase() ?? '';
+        const last_name = user.last_name?.toLowerCase() ?? '';
+        const name = `${first_name} ${last_name}`.trim();
+        const email = user.email?.toLowerCase() ?? '';
+        const matchesSearch =
+          name.includes(searchQuery.toLowerCase()) || email.includes(searchQuery.toLowerCase());
 
-    const matchesRole =
-      selectedRole === 'all' || user.role === selectedRole;
+        const matchesRole = selectedRole === 'all' || user.role === selectedRole;
 
-    const matchesVerification =
-      selectedVerification === 'all' ||
-      (selectedVerification === 'verified' && user.isVerified) ||
-      (selectedVerification === 'unverified' && !user.isVerified);
+        const matchesVerification =
+          selectedVerification === 'all' ||
+          (selectedVerification === 'verified' && user.isVerified) ||
+          (selectedVerification === 'unverified' && !user.isVerified);
 
-    return matchesSearch && matchesRole && matchesVerification;
-  });
-}, [users, searchQuery, selectedRole, selectedVerification]);
+        return matchesSearch && matchesRole && matchesVerification;
+      });
+  }, [users, searchQuery, selectedRole, selectedVerification]);
 
-// Apply pagination *after filtering*
-const paginatedUsers = useMemo(() => {
-  const from = page * pageSize;
-  const to = from + pageSize;
-  return filteredUsers.slice(from, to);
-}, [filteredUsers, page, pageSize]);
+  // Apply pagination *after filtering*
+  const paginatedUsers = useMemo(() => {
+    const from = page * pageSize;
+    const to = from + pageSize;
+    return filteredUsers.slice(from, to);
+  }, [filteredUsers, page, pageSize]);
 
-const totalPages = Math.max(1, Math.ceil(filteredUsers.length / pageSize));
+  const totalPages = Math.max(1, Math.ceil(filteredUsers.length / pageSize));
 
-const handleVerifyUser = async (userId: number) => {
-  try {
-    // Find the user record
-    const user = users.find((u) => u.id === userId);
-    if (!user) return;
+  const handleVerifyUser = async (userId: number) => {
+    try {
+      // Find the user record
+      const user = users.find((u) => u.id === userId);
+      if (!user) return;
 
-    // Update the Supabase record
-    const { error } = await supabase
-      .from('users')
-      .update({ is_verified: true })
-      .eq('auth_id', user.auth_id);
+      // Update the Supabase record
+      const { error } = await supabase
+        .from('users')
+        .update({ is_verified: true })
+        .eq('auth_id', user.auth_id);
 
-    if (error) {
-      console.error('Verification update failed:', error);
-      setToastMessage('Failed to verify user');
+      if (error) {
+        console.error('Verification update failed:', error);
+        setToastMessage('Failed to verify user');
+        setTimeout(() => setToastMessage(null), 2000);
+        return;
+      }
+
+      // Locally update state for instant UI feedback
+      setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, isVerified: true } : u)));
+
+      setToastMessage('User verified successfully!');
       setTimeout(() => setToastMessage(null), 2000);
-      return;
+    } catch (err) {
+      console.error('Unexpected error verifying user:', err);
+      setToastMessage('Error verifying user');
+      setTimeout(() => setToastMessage(null), 2000);
     }
-
-    // Locally update state for instant UI feedback
-    setUsers((prev) =>
-      prev.map((u) =>
-        u.id === userId ? { ...u, isVerified: true } : u
-      )
-    );
-
-    setToastMessage('User verified successfully!');
-    setTimeout(() => setToastMessage(null), 2000);
-  } catch (err) {
-    console.error('Unexpected error verifying user:', err);
-    setToastMessage('Error verifying user');
-    setTimeout(() => setToastMessage(null), 2000);
-  }
-};
+  };
 
   const handleViewUser = (userId: number) => {
     console.log(`Viewing user ${userId}`);
@@ -188,24 +191,24 @@ const handleVerifyUser = async (userId: number) => {
     });
   };
 
-    // helper to build an encoded mailto URL
-    const buildMailTo = (to: string, subject = '', body = '') => {
-      const params = new URLSearchParams();
-      if (subject) params.append('subject', subject);
-      if (body) params.append('body', body);
-      return `mailto:${encodeURIComponent(to)}?${params.toString().replace(/\+/g, '%20')}`;
-    };
+  // helper to build an encoded mailto URL
+  const buildMailTo = (to: string, subject = '', body = '') => {
+    const params = new URLSearchParams();
+    if (subject) params.append('subject', subject);
+    if (body) params.append('body', body);
+    return `mailto:${encodeURIComponent(to)}?${params.toString().replace(/\+/g, '%20')}`;
+  };
 
-    const handleWarnUser = async (userId: number) => {
-      const user = users.find(u => u.id === userId);
-      if (!user || !user.email) {
-        setToastMessage('User has no email address');
-        setTimeout(() => setToastMessage(null), 2000);
-        return;
-      }
+  const handleWarnUser = async (userId: number) => {
+    const user = users.find((u) => u.id === userId);
+    if (!user || !user.email) {
+      setToastMessage('User has no email address');
+      setTimeout(() => setToastMessage(null), 2000);
+      return;
+    }
 
-      const subject = `[WARNING] From Roomsync`;
-      const body = `Hi ${user.first_name ?? ''},
+    const subject = `[WARNING] From Roomsync`;
+    const body = `Hi ${user.first_name ?? ''},
 
     We have been made aware of activity on your account that violates our community guidelines.
 
@@ -217,79 +220,70 @@ const handleVerifyUser = async (userId: number) => {
         
     -Roomsync Team`;
 
-      const mailto = buildMailTo(user.email, subject, body);
+    const mailto = buildMailTo(user.email, subject, body);
 
-      try {
-        const supported = await Linking.canOpenURL(mailto);
-        if (!supported) {
-          setToastMessage('No mail app available on this device.');
-          setTimeout(() => setToastMessage(null), 2000);
-          return;
-        }
-
-        await Linking.openURL(mailto);
-
-        // ✅ Update user’s isWarned to true in Supabase
-        const { error } = await supabase
-          .from('users')
-          .update({ is_warned: true })
-          .eq('auth_id', user.auth_id);
-
-        if (error) {
-          console.error('Failed to update warning status:', error);
-          setToastMessage('Failed to update warning status');
-          setTimeout(() => setToastMessage(null), 2000);
-          return;
-        }
-
-        // ✅ Update local UI state instantly
-        setUsers(prev =>
-          prev.map(u =>
-            u.id === userId ? { ...u, isWarned: true } : u
-          )
-        );
-
-        setToastMessage('Warning issued and status updated');
+    try {
+      const supported = await Linking.canOpenURL(mailto);
+      if (!supported) {
+        setToastMessage('No mail app available on this device.');
         setTimeout(() => setToastMessage(null), 2000);
-      } catch (err) {
-        console.error('Error sending warning:', err);
-        setToastMessage('Unable to open mail app');
-        setTimeout(() => setToastMessage(null), 2000);
+        return;
       }
-    };
 
-    const handleBanUser = async (userId: number) => {
-      try {
-        const user = users.find((u) => u.id === userId);
-        if (!user) return;
-    
-        const { error } = await supabase
-          .from('users')
-          .update({ is_banned: true })
-          .eq('auth_id', user.auth_id);
-    
-        if (error) {
-          console.error('Ban update failed:', error);
-          setToastMessage('Failed to ban user');
-          setTimeout(() => setToastMessage(null), 2000);
-          return;
-        }
-    
-        setUsers((prev) =>
-          prev.map((u) =>
-            u.id === userId ? { ...u, isBanned: true } : u
-          )
-        );
-    
-        setToastMessage('User has been banned');
+      await Linking.openURL(mailto);
+
+      // ✅ Update user’s isWarned to true in Supabase
+      const { error } = await supabase
+        .from('users')
+        .update({ is_warned: true })
+        .eq('auth_id', user.auth_id);
+
+      if (error) {
+        console.error('Failed to update warning status:', error);
+        setToastMessage('Failed to update warning status');
         setTimeout(() => setToastMessage(null), 2000);
-      } catch (err) {
-        console.error('Unexpected error banning user:', err);
-        setToastMessage('Error banning user');
-        setTimeout(() => setToastMessage(null), 2000);
+        return;
       }
-    };
-    
+
+      // ✅ Update local UI state instantly
+      setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, isWarned: true } : u)));
+
+      setToastMessage('Warning issued and status updated');
+      setTimeout(() => setToastMessage(null), 2000);
+    } catch (err) {
+      console.error('Error sending warning:', err);
+      setToastMessage('Unable to open mail app');
+      setTimeout(() => setToastMessage(null), 2000);
+    }
+  };
+
+  const handleBanUser = async (userId: number) => {
+    try {
+      const user = users.find((u) => u.id === userId);
+      if (!user) return;
+
+      const { error } = await supabase
+        .from('users')
+        .update({ is_banned: true })
+        .eq('auth_id', user.auth_id);
+
+      if (error) {
+        console.error('Ban update failed:', error);
+        setToastMessage('Failed to ban user');
+        setTimeout(() => setToastMessage(null), 2000);
+        return;
+      }
+
+      setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, isBanned: true } : u)));
+
+      setToastMessage('User has been banned');
+      setTimeout(() => setToastMessage(null), 2000);
+    } catch (err) {
+      console.error('Unexpected error banning user:', err);
+      setToastMessage('Error banning user');
+      setTimeout(() => setToastMessage(null), 2000);
+    }
+  };
 
   return (
     <View
@@ -399,14 +393,14 @@ const handleVerifyUser = async (userId: number) => {
 
         {/* Pagination Controls */}
         <View className="mb-4 flex-row items-center justify-between px-2">
-        <Text className="text-sm text-gray-600">
-            Page {page + 1} of {totalPages} — Showing{" "}
+          <Text className="text-sm text-gray-600">
+            Page {page + 1} of {totalPages} — Showing{' '}
             {filteredUsers.length === 0
               ? 0
               : `${page * pageSize + 1} to ${Math.min(
                   (page + 1) * pageSize,
                   filteredUsers.length
-                )}`}{" "}
+                )}`}{' '}
             of {filteredUsers.length}
           </Text>
           <View className="flex-row">
@@ -424,7 +418,8 @@ const handleVerifyUser = async (userId: number) => {
               }`}
               onPress={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
               disabled={page + 1 >= totalPages}>
-              <Text className={`text-sm ${page + 1 >= totalPages ? 'text-gray-400' : 'text-blue-600'}`}>
+              <Text
+                className={`text-sm ${page + 1 >= totalPages ? 'text-gray-400' : 'text-blue-600'}`}>
                 Next
               </Text>
             </TouchableOpacity>
@@ -433,143 +428,146 @@ const handleVerifyUser = async (userId: number) => {
 
         {/* Users List Section */}
         <View className="px-4 pt-4">
-        <Text className="mb-4 text-lg font-semibold text-gray-900">
-          {selectedVerification === 'all' ? 'All ' : selectedVerification === 'verified' ? 'Verified ' : 'Unverified '}
-          {selectedRole === 'all' ? 'Users' : selectedRole === 'renter' ? 'Renters' : 'Owners'}
-
-        </Text>
-        {paginatedUsers.map((user) => (
-          <UserCard
-            key={user.auth_id}
-            user={user}
-            onVerify={() => {
-              setUserToVerify(user);
-              setVerifyConfirmVisible(true);
-            }}
-            onView={() => {
-              setUserToView(user);
-              setViewUserVisible(true);
-            }}
-            onMessage={() => handleMessageUser(user.id)}
-            onWarn={() => handleWarnUser(user.id)}
-            onBan={() => {
-              setUserToBan(user);
-              setBanConfirmVisible(true);
-            }}
+          <Text className="mb-4 text-lg font-semibold text-gray-900">
+            {selectedVerification === 'all'
+              ? 'All '
+              : selectedVerification === 'verified'
+                ? 'Verified '
+                : 'Unverified '}
+            {selectedRole === 'all' ? 'Users' : selectedRole === 'renter' ? 'Renters' : 'Owners'}
+          </Text>
+          {paginatedUsers.map((user) => (
+            <UserCard
+              key={user.auth_id}
+              user={user}
+              onVerify={() => {
+                setUserToVerify(user);
+                setVerifyConfirmVisible(true);
+              }}
+              onView={() => {
+                setUserToView(user);
+                setViewUserVisible(true);
+              }}
+              onMessage={() => handleMessageUser(user.id)}
+              onWarn={() => handleWarnUser(user.id)}
+              onBan={() => {
+                setUserToBan(user);
+                setBanConfirmVisible(true);
+              }}
             />
           ))}
         </View>
       </ScrollView>
-        
-  {verifyConfirmVisible && userToVerify && (
-    <View className="absolute inset-0 z-50 flex items-center justify-center bg-black/50">
-      <View className="w-80 rounded-2xl bg-white p-6 shadow-lg">
-        <Text className="mb-3 text-lg font-semibold text-gray-900">Confirm Verification</Text>
-        <View className="items-center mb-4">
-          <Image
-            source={{ uri: userToVerify.profile_picture }}
-            className="h-20 w-20 rounded-full mb-3"
-            resizeMode="cover"
-          />
-          <Text className="text-lg font-semibold text-gray-900">
-            {userToVerify.first_name} {userToVerify.last_name}
-          </Text>
-          <Text className="text-sm text-gray-600">{userToVerify.email}</Text>
-          <Text className="text-sm text-gray-600">Role: {userToVerify.role}</Text>
-        </View>
-        <Text className="mb-6 text-sm text-gray-700 text-center">
-          Verify this user’s identity and mark their account as verified?
-        </Text>
 
-        <View className="flex-row justify-end gap-3">
-          <TouchableOpacity
-            className="rounded-lg bg-gray-200 px-4 py-2"
-            onPress={() => {
-              setVerifyConfirmVisible(false);
-              setUserToVerify(null);
-            }}>
-            <Text className="text-sm font-medium text-gray-700">Cancel</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            className="rounded-lg bg-emerald-600 px-4 py-2"
-            onPress={async () => {
-              setVerifyConfirmVisible(false);
-              if (userToVerify) await handleVerifyUser(userToVerify.id);
-              setUserToVerify(null);
-            }}>
-            <Text className="text-sm font-medium text-white">Verify User</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    </View>
-  )}
-
-  {/* ----- NEW: View User Modal ----- */}
-  {viewUserVisible && userToView && (
-    <View className="absolute inset-0 z-50 flex items-center justify-center bg-black/50">
-      <View className="w-96 rounded-2xl bg-white p-6 shadow-lg max-h-[80%]">
-        <ScrollView showsVerticalScrollIndicator={false}>
-          <View className="items-center mb-4">
-            <Image
-              source={{ uri: userToView.profile_picture }}
-              className="h-24 w-24 rounded-full mb-3"
-              resizeMode="cover"
-            />
-            <Text className="text-xl font-semibold text-gray-900">
-              {userToView.first_name} {userToView.last_name}
-            </Text>
-            <Text className="text-sm text-gray-600 mb-2">{userToView.email}</Text>
-          </View>
-
-          <View className="mb-3">
-            <Text className="text-sm text-gray-700">📱 Phone: {userToView.phoneNumber || 'N/A'}</Text>
-            <Text className="text-sm text-gray-700">🏠 Role: {userToView.role}</Text>
-            <Text className="text-sm text-gray-700">
-              ✅ Verified: {userToView.isVerified ? 'Yes' : 'No'}
-            </Text>
-            <Text className="text-sm text-gray-700">
-              ⚠️ Warned: {userToView.isWarned ? 'Yes' : 'No'}
-            </Text>
-            <Text className="text-sm text-gray-700">
-              🚫 Banned: {userToView.isBanned ? 'Yes' : 'No'}
-            </Text>
-            <Text className="text-sm text-gray-700">
-              🕒 Last Active: {userToView.last_login_date || 'Unknown'}
-            </Text>
-            {userToView.role === 'owner' && (
-              <Text className="text-sm text-gray-700">
-                📋 Properties Listed: {userToView.propertiesListed}
+      {verifyConfirmVisible && userToVerify && (
+        <View className="absolute inset-0 z-50 flex items-center justify-center bg-black/50">
+          <View className="w-80 rounded-2xl bg-white p-6 shadow-lg">
+            <Text className="mb-3 text-lg font-semibold text-gray-900">Confirm Verification</Text>
+            <View className="mb-4 items-center">
+              <Image
+                source={{ uri: userToVerify.profile_picture }}
+                className="mb-3 h-20 w-20 rounded-full"
+                resizeMode="cover"
+              />
+              <Text className="text-lg font-semibold text-gray-900">
+                {userToVerify.first_name} {userToVerify.last_name}
               </Text>
-            )}
-            {userToView.role === 'renter' && (
-              <Text className="text-sm text-gray-700">
-                📝 Applications: {userToView.applications}
-              </Text>
-            )}
+              <Text className="text-sm text-gray-600">{userToVerify.email}</Text>
+              <Text className="text-sm text-gray-600">Role: {userToVerify.role}</Text>
+            </View>
+            <Text className="mb-6 text-center text-sm text-gray-700">
+              Verify this user’s identity and mark their account as verified?
+            </Text>
+
+            <View className="flex-row justify-end gap-3">
+              <TouchableOpacity
+                className="rounded-lg bg-gray-200 px-4 py-2"
+                onPress={() => {
+                  setVerifyConfirmVisible(false);
+                  setUserToVerify(null);
+                }}>
+                <Text className="text-sm font-medium text-gray-700">Cancel</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                className="rounded-lg bg-emerald-600 px-4 py-2"
+                onPress={async () => {
+                  setVerifyConfirmVisible(false);
+                  if (userToVerify) await handleVerifyUser(userToVerify.id);
+                  setUserToVerify(null);
+                }}>
+                <Text className="text-sm font-medium text-white">Verify User</Text>
+              </TouchableOpacity>
+            </View>
           </View>
-        </ScrollView>
+        </View>
+      )}
 
-        <TouchableOpacity
-          className="mt-4 rounded-lg bg-gray-200 px-4 py-2 self-end"
-          onPress={() => {
-            setViewUserVisible(false);
-            setUserToView(null);
-          }}>
-          <Text className="text-sm font-medium text-gray-700">Close</Text>
-        </TouchableOpacity>
-      </View>
-    </View>
-  )}
+      {/* ----- NEW: View User Modal ----- */}
+      {viewUserVisible && userToView && (
+        <View className="absolute inset-0 z-50 flex items-center justify-center bg-black/50">
+          <View className="max-h-[80%] w-96 rounded-2xl bg-white p-6 shadow-lg">
+            <ScrollView showsVerticalScrollIndicator={false}>
+              <View className="mb-4 items-center">
+                <Image
+                  source={{ uri: userToView.profile_picture }}
+                  className="mb-3 h-24 w-24 rounded-full"
+                  resizeMode="cover"
+                />
+                <Text className="text-xl font-semibold text-gray-900">
+                  {userToView.first_name} {userToView.last_name}
+                </Text>
+                <Text className="mb-2 text-sm text-gray-600">{userToView.email}</Text>
+              </View>
 
+              <View className="mb-3">
+                <Text className="text-sm text-gray-700">
+                  📱 Phone: {userToView.phoneNumber || 'N/A'}
+                </Text>
+                <Text className="text-sm text-gray-700">🏠 Role: {userToView.role}</Text>
+                <Text className="text-sm text-gray-700">
+                  ✅ Verified: {userToView.isVerified ? 'Yes' : 'No'}
+                </Text>
+                <Text className="text-sm text-gray-700">
+                  ⚠️ Warned: {userToView.isWarned ? 'Yes' : 'No'}
+                </Text>
+                <Text className="text-sm text-gray-700">
+                  🚫 Banned: {userToView.isBanned ? 'Yes' : 'No'}
+                </Text>
+                <Text className="text-sm text-gray-700">
+                  🕒 Last Active: {userToView.last_login_date || 'Unknown'}
+                </Text>
+                {userToView.role === 'owner' && (
+                  <Text className="text-sm text-gray-700">
+                    📋 Properties Listed: {userToView.propertiesListed}
+                  </Text>
+                )}
+                {userToView.role === 'renter' && (
+                  <Text className="text-sm text-gray-700">
+                    📝 Applications: {userToView.applications}
+                  </Text>
+                )}
+              </View>
+            </ScrollView>
 
+            <TouchableOpacity
+              className="mt-4 self-end rounded-lg bg-gray-200 px-4 py-2"
+              onPress={() => {
+                setViewUserVisible(false);
+                setUserToView(null);
+              }}>
+              <Text className="text-sm font-medium text-gray-700">Close</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
 
-       {banConfirmVisible && userToBan && (
+      {banConfirmVisible && userToBan && (
         <View className="absolute inset-0 z-50 flex items-center justify-center bg-black/50">
           <View className="w-80 rounded-2xl bg-white p-6 shadow-lg">
             <Text className="mb-3 text-lg font-semibold text-gray-900">Confirm Ban</Text>
             <Text className="mb-6 text-sm text-gray-700">
-              Are you sure you want to ban{" "}
+              Are you sure you want to ban{' '}
               <Text className="font-bold">
                 {userToBan.first_name} {userToBan.last_name}
               </Text>
@@ -625,8 +623,7 @@ function StatCard({
   color: string;
 }) {
   return (
-    <View
-      className="mb-3 rounded-xl border border-gray-200 bg-gray-50 p-4 w-44">
+    <View className="mb-3 w-44 rounded-xl border border-gray-200 bg-gray-50 p-4">
       <View className="mb-2 flex-row items-center">
         <Ionicons name={icon as any} size={20} color={color} />
         <Text className="ml-1.5 mr-1.5 text-xs font-medium text-gray-600">{title}</Text>
@@ -668,15 +665,15 @@ function UserCard({
 
   const lastActiveDate = new Date(user.last_login_date);
   const now = new Date();
-  
+
   // If invalid date, fallback to "a long time ago"
   let isActive = false;
   let lastActiveLabel = 'a long time ago';
-  
+
   if (!isNaN(lastActiveDate.getTime())) {
     const diffMs = now.getTime() - lastActiveDate.getTime();
     const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-  
+
     if (diffDays <= 0) {
       // Same day
       isActive = true;
@@ -729,8 +726,7 @@ function UserCard({
               style={{ flexShrink: 1 }}>
               {`${user.first_name ?? ''} ${user.last_name ?? ''}`}
             </Text>
-            {user.isVerified ? 
-            (
+            {user.isVerified ? (
               <View className="rounded-full bg-green-100 px-2 py-1">
                 <Text className="text-xs font-medium text-green-700">Verified</Text>
               </View>
@@ -765,8 +761,8 @@ function UserCard({
             <View
               className={`mr-1.5 h-2 w-2 rounded-full ${isActive ? 'bg-green-500' : 'bg-gray-400'}`}
             />
-          <Text className="text-lg font-bold text-gray-900">{lastActiveLabel}</Text>
-      </View>
+            <Text className="text-lg font-bold text-gray-900">{lastActiveLabel}</Text>
+          </View>
           <Text className="text-center text-xs text-gray-600">Last Active</Text>
         </View>
       </View>
@@ -802,16 +798,15 @@ function UserCard({
           <Text className="ml-2 text-sm font-medium text-slate-800">Warn</Text>
         </TouchableOpacity>
         <TouchableOpacity
-            className="flex-row items-center rounded-lg bg-red-100 px-4 py-2"
-            onPress={onBan}
-            disabled={user.isBanned}
-            style={{ opacity: user.isBanned ? 0.4 : 1 }}
-          >
-            <Ionicons name="close-circle-outline" size={16} color="#dc2626" />
-            <Text className="ml-2 text-sm font-medium text-red-700">
-              {user.isBanned ? 'Banned' : 'Ban'}
-            </Text>
-          </TouchableOpacity>
+          className="flex-row items-center rounded-lg bg-red-100 px-4 py-2"
+          onPress={onBan}
+          disabled={user.isBanned}
+          style={{ opacity: user.isBanned ? 0.4 : 1 }}>
+          <Ionicons name="close-circle-outline" size={16} color="#dc2626" />
+          <Text className="ml-2 text-sm font-medium text-red-700">
+            {user.isBanned ? 'Banned' : 'Ban'}
+          </Text>
+        </TouchableOpacity>
       </View>
     </View>
   );

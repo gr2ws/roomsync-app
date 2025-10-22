@@ -205,6 +205,24 @@ export default function ApplicationsScreen() {
     try {
       console.log('[ApplicationsScreen] Reapplying to property_id:', propertyId);
 
+      // Find the cancelled application for this property
+      const cancelledApp = applications.find(
+        (app) => app.property_id === propertyId && app.status === 'cancelled'
+      );
+
+      if (cancelledApp) {
+        console.log('[ApplicationsScreen] Deleting cancelled application_id:', cancelledApp.application_id);
+
+        const { error: deleteError } = await supabase
+          .from('applications')
+          .delete()
+          .eq('application_id', cancelledApp.application_id);
+
+        if (deleteError) throw deleteError;
+
+        console.log('[ApplicationsScreen] Cancelled application deleted successfully');
+      }
+
       // Fetch property to check availability and verification
       const { data: property, error: propertyError } = await supabase
         .from('properties')
@@ -266,11 +284,11 @@ export default function ApplicationsScreen() {
   const completedApplications = applications.filter((app) => app.status === 'completed');
 
   // Flatten all applications in order for FlatList
-  const flattenedApplications: Array<{
+  const flattenedApplications: {
     type: 'header' | 'item';
     title?: string;
     application?: ApplicationWithProperty;
-  }> = [];
+  }[] = [];
 
   // Determine which section goes first
   const topApplications =

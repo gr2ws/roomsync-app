@@ -13,8 +13,8 @@ import { useState, useCallback, useEffect } from 'react';
 import { Home } from 'lucide-react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
-import { CompositeNavigationProp } from '@react-navigation/native';
+import { useNavigation, CompositeNavigationProp } from '@react-navigation/native';
+
 import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList, RootTabParamList } from '../../utils/navigation';
@@ -128,11 +128,12 @@ export default function ManagePropertiesScreen() {
             );
           }
 
-          // Count applications
+          // Count applications (only pending and approved)
           const { count: appsCount, error: appsError } = await supabase
             .from('applications')
             .select('*', { count: 'exact', head: true })
-            .eq('property_id', property.property_id);
+            .eq('property_id', property.property_id)
+            .in('status', ['pending', 'approved']);
 
           if (appsError) {
             console.error(
@@ -194,7 +195,17 @@ export default function ManagePropertiesScreen() {
   );
 
   const handleDelete = useCallback(
-    (propertyId: number, propertyTitle: string) => {
+    (propertyId: number, propertyTitle: string, currentRenters: number) => {
+      // Check if property is occupied
+      if (currentRenters > 0) {
+        Alert.alert(
+          'Cannot Delete Property',
+          `This property cannot be deleted because it currently has ${currentRenters} active renter${currentRenters > 1 ? 's' : ''}. Please wait until all renters have moved out before deleting.`,
+          [{ text: 'OK' }]
+        );
+        return;
+      }
+
       Alert.alert(
         'Delete Property',
         `Are you sure you want to delete "${propertyTitle}"? This action cannot be undone.`,
@@ -307,7 +318,7 @@ export default function ManagePropertiesScreen() {
       applicationsCount={item.applicationsCount}
       isUploading={isUploading}
       onEdit={() => handleEdit(item)}
-      onDelete={() => handleDelete(item.property_id, item.title)}
+      onDelete={() => handleDelete(item.property_id, item.title, item.currentRenters)}
       onViewReviews={() => handleViewReviews(item.property_id)}
       onViewApplications={() => handleViewApplications(item.property_id)}
     />

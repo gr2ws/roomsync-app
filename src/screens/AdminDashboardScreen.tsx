@@ -16,9 +16,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 
-const TABS = [
-  { key: 'overview', label: 'Overview', icon: 'grid-outline' },
-];
+const TABS = [{ key: 'overview', label: 'Overview', icon: 'grid-outline' }];
 
 type TabKey = (typeof TABS)[number]['key'];
 
@@ -55,15 +53,14 @@ export default function AdminDashboard() {
         flex: 1,
         paddingTop: Platform.OS === 'android' ? insets.top + 8 : insets.top, // use insets.top for both platforms to handle safe area via flexbox
       }}>
-
       {/* Content */}
       <ScrollView
         className="px-4 pb-4 pt-0"
         contentContainerStyle={{ paddingBottom: insets.bottom + 16 }}>
-          {/* Header */}
-      <View className="mb-6 pt-1">
+        {/* Header */}
+        <View className="mb-6 pt-1">
           <Text className="mb-2 text-3xl font-bold text-gray-900">Admin Dashboard</Text>
-      </View>
+        </View>
         {active === 'overview' && <OverviewTab />}
       </ScrollView>
     </View>
@@ -121,7 +118,6 @@ function UserManagementTab() {
       u.name.toLowerCase().includes(query.toLowerCase()) ||
       u.email.toLowerCase().includes(query.toLowerCase())
   );
-
 }
 
 /* ------------------- Overview Tab ------------------- */

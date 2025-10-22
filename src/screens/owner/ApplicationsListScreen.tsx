@@ -22,11 +22,11 @@ import {
   parseCoordinates,
 } from '../../utils/distance';
 import * as Location from 'expo-location';
-import Button from '../../components/Button';
 import SmallButton from '../../components/SmallButton';
 import BackButton from '../../components/BackButton';
 import ApplicationActionModal from '../../components/ApplicationActionModal';
-import { User, MapPin, Banknote, Home, MessageCircle, X, Check } from 'lucide-react-native';
+import ConfirmationModal from '../../components/ConfirmationModal';
+import { User, MapPin, Banknote, Home, MessageCircle, X, Check, Ban } from 'lucide-react-native';
 
 type ApplicationsListScreenRouteProp = RouteProp<RootStackParamList, 'ApplicationsList'>;
 type ApplicationsListScreenNavigationProp = StackNavigationProp<
@@ -46,6 +46,8 @@ export default function ApplicationsListScreen({ route, navigation }: Applicatio
   const [applications, setApplications] = useState<ApplicationWithRenter[]>([]);
   const [propertyTitle, setPropertyTitle] = useState<string>('');
   const [propertyCoordinates, setPropertyCoordinates] = useState<string | null>(null);
+  const [maxRenters, setMaxRenters] = useState<number>(0);
+  const [currentRenters, setCurrentRenters] = useState<number>(0);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [showActionModal, setShowActionModal] = useState(false);
@@ -55,6 +57,10 @@ export default function ApplicationsListScreen({ route, navigation }: Applicatio
   const [modalAction, setModalAction] = useState<'approve' | 'reject'>('approve');
   const [locationNames, setLocationNames] = useState<Record<string, string>>({});
   const [isGeocodingLocations, setIsGeocodingLocations] = useState(false);
+  const [showEndRentalModal, setShowEndRentalModal] = useState(false);
+  const [selectedRenterForEndRental, setSelectedRenterForEndRental] =
+    useState<ApplicationWithRenter | null>(null);
+  const [isEndingRental, setIsEndingRental] = useState(false);
 
   useEffect(() => {
     fetchApplications();
@@ -86,10 +92,10 @@ export default function ApplicationsListScreen({ route, navigation }: Applicatio
     try {
       console.log('[ApplicationsListScreen] Fetching applications for property_id:', propertyId);
 
-      // Fetch property title and coordinates
+      // Fetch property title, coordinates, and max_renters
       const { data: propertyData, error: propertyError } = await supabase
         .from('properties')
-        .select('title, coordinates')
+        .select('title, coordinates, max_renters')
         .eq('property_id', propertyId)
         .single();
 
@@ -97,8 +103,23 @@ export default function ApplicationsListScreen({ route, navigation }: Applicatio
       if (propertyData) {
         setPropertyTitle(propertyData.title);
         setPropertyCoordinates(propertyData.coordinates);
+        setMaxRenters(propertyData.max_renters);
         console.log('[ApplicationsListScreen] Property:', propertyData.title);
         console.log('[ApplicationsListScreen] Property coordinates:', propertyData.coordinates);
+        console.log('[ApplicationsListScreen] Max renters:', propertyData.max_renters);
+      }
+
+      // Count current renters for this property
+      const { count: rentersCount, error: countError } = await supabase
+        .from('users')
+        .select('*', { count: 'exact', head: true })
+        .eq('rented_property', propertyId);
+
+      if (countError) {
+        console.error('[ApplicationsListScreen] Error counting renters:', countError);
+      } else {
+        setCurrentRenters(rentersCount || 0);
+        console.log('[ApplicationsListScreen] Current renters:', rentersCount || 0);
       }
 
       // Fetch applications with renter details
@@ -189,6 +210,16 @@ export default function ApplicationsListScreen({ route, navigation }: Applicatio
   };
 
   const handleApprovePress = (application: ApplicationWithRenter) => {
+    // Check if property is at full capacity
+    if (currentRenters >= maxRenters) {
+      Alert.alert(
+        'Cannot Approve Application',
+        `This property is at full capacity (${currentRenters}/${maxRenters} renters). No additional applications can be approved at this time.`,
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+
     setSelectedApplication(application);
     setModalAction('approve');
     setShowActionModal(true);
@@ -218,6 +249,105 @@ export default function ApplicationsListScreen({ route, navigation }: Applicatio
     } catch (error) {
       console.error('Error opening SMS:', error);
       Alert.alert('Error', 'Failed to open messaging app');
+    }
+  };
+
+  const handleEndRentalPress = (application: ApplicationWithRenter) => {
+    setSelectedRenterForEndRental(application);
+    setShowEndRentalModal(true);
+  };
+
+  const handleEndRental = async (optionalMessage?: string) => {
+    if (!selectedRenterForEndRental) {
+      Alert.alert('Error', 'Unable to end rental. Please try again.');
+      return;
+    }
+
+    setIsEndingRental(true);
+    setShowEndRentalModal(false);
+
+    try {
+      const endDate = new Date().toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+      });
+      const message = `Rental ended by owner on ${endDate}.${optionalMessage ? ' ' + optionalMessage : ''}`;
+
+      console.log('[ApplicationsListScreen] Ending rental:', {
+        application_id: selectedRenterForEndRental.application_id,
+        property_id: selectedRenterForEndRental.property_id,
+        renter_id: selectedRenterForEndRental.renter_id,
+        message: message,
+      });
+
+      // Update application status to completed
+      const { error: appError } = await supabase
+        .from('applications')
+        .update({
+          status: 'completed',
+          message: message,
+          date_updated: new Date().toISOString(),
+        })
+        .eq('application_id', selectedRenterForEndRental.application_id);
+
+      if (appError) throw appError;
+      console.log('[ApplicationsListScreen] Application status updated to completed');
+
+      // Remove rented_property FK from users table
+      const { error: userError } = await supabase
+        .from('users')
+        .update({ rented_property: null })
+        .eq('user_id', selectedRenterForEndRental.renter_id);
+
+      if (userError) throw userError;
+      console.log('[ApplicationsListScreen] User rented_property FK removed');
+
+      // Query current renters count for the property (after removal)
+      const { count: currentRentersCount, error: countError } = await supabase
+        .from('users')
+        .select('*', { count: 'exact', head: true })
+        .eq('rented_property', propertyId);
+
+      if (countError) throw countError;
+
+      console.log(
+        '[ApplicationsListScreen] Current renters count after removal:',
+        currentRentersCount
+      );
+
+      // Update current renters count in state
+      setCurrentRenters(currentRentersCount || 0);
+
+      // If current renters < max_renters, set property to available
+      if (currentRentersCount !== null && maxRenters && currentRentersCount < maxRenters) {
+        const { error: propError } = await supabase
+          .from('properties')
+          .update({ is_available: true })
+          .eq('property_id', propertyId);
+
+        if (propError) {
+          console.error(
+            '[ApplicationsListScreen] Error updating property availability:',
+            propError
+          );
+          // Don't throw - rental ending was successful even if this fails
+        } else {
+          console.log('[ApplicationsListScreen] Property set to available');
+        }
+      }
+
+      console.log('[ApplicationsListScreen] Rental ended successfully');
+      Alert.alert('Success', 'Rental has been ended successfully.');
+
+      // Refresh applications list
+      await fetchApplications();
+      setSelectedRenterForEndRental(null);
+    } catch (error) {
+      console.error('[ApplicationsListScreen] Error ending rental:', error);
+      Alert.alert('Error', 'Failed to end rental. Please try again.');
+    } finally {
+      setIsEndingRental(false);
     }
   };
 
@@ -283,7 +413,7 @@ export default function ApplicationsListScreen({ route, navigation }: Applicatio
           .update({
             status: 'cancelled',
             message:
-              'Your other applications have been automatically cancelled because one of your applications was approved.',
+              'Other applications have been automatically cancelled as one application was approved.',
             date_updated: new Date().toISOString(),
           })
           .eq('renter_id', selectedApplication.renter_id)
@@ -302,6 +432,9 @@ export default function ApplicationsListScreen({ route, navigation }: Applicatio
 
         console.log('[ApplicationsListScreen] Application approved successfully');
         Alert.alert('Success', 'Application approved successfully.');
+
+        // Update current renters count
+        setCurrentRenters((prev) => prev + 1);
       } else {
         console.log(
           '[ApplicationsListScreen] Rejecting application_id:',
@@ -523,9 +656,22 @@ export default function ApplicationsListScreen({ route, navigation }: Applicatio
                 Icon={Check}
                 variant="primary"
                 onPress={() => handleApprovePress(item)}
+                disabled={currentRenters >= maxRenters}
                 className="flex-1"
               />
             </>
+          )}
+
+          {/* Cancel Rent - Only for approved applications */}
+          {item.status === 'approved' && (
+            <SmallButton
+              text="Cancel Rent"
+              Icon={Ban}
+              variant="destructive"
+              onPress={() => handleEndRentalPress(item)}
+              disabled={isEndingRental}
+              className="flex-1"
+            />
           )}
         </View>
       </View>
@@ -565,6 +711,32 @@ export default function ApplicationsListScreen({ route, navigation }: Applicatio
             {propertyTitle}
           </Text>
         </View>
+
+        {/* Capacity Indicator */}
+        {maxRenters > 0 && (
+          <View className="items-end">
+            <Text
+              className={`text-2xl font-bold ${
+                currentRenters >= maxRenters
+                  ? 'text-destructive'
+                  : currentRenters >= maxRenters * 0.8
+                    ? 'text-amber-600'
+                    : 'text-green-600'
+              }`}>
+              {currentRenters}/{maxRenters}
+            </Text>
+            <Text
+              className={`text-sm font-semibold ${
+                currentRenters >= maxRenters
+                  ? 'text-destructive'
+                  : currentRenters >= maxRenters * 0.8
+                    ? 'text-amber-600'
+                    : 'text-green-600'
+              }`}>
+              {currentRenters >= maxRenters ? 'Full' : 'Available'}
+            </Text>
+          </View>
+        )}
       </View>
 
       {/* Applications List */}
@@ -600,6 +772,26 @@ export default function ApplicationsListScreen({ route, navigation }: Applicatio
           onCancel={() => {
             setShowActionModal(false);
             setSelectedApplication(null);
+          }}
+        />
+      )}
+
+      {/* End Rental Confirmation Modal */}
+      {selectedRenterForEndRental && (
+        <ConfirmationModal
+          visible={showEndRentalModal}
+          title="Cancel Rent"
+          message={`Are you sure you want to end the rental for ${selectedRenterForEndRental.renter.first_name} ${selectedRenterForEndRental.renter.last_name}? This will cancel their approved application and free up a spot in the property.`}
+          confirmText="End Rental"
+          cancelText="Cancel"
+          showMessageInput
+          messageInputPlaceholder="Add an optional message (e.g., reason for ending rental)"
+          messageInputLabel="Optional Message"
+          confirmVariant="destructive"
+          onConfirm={handleEndRental}
+          onCancel={() => {
+            setShowEndRentalModal(false);
+            setSelectedRenterForEndRental(null);
           }}
         />
       )}

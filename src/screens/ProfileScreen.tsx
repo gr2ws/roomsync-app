@@ -12,6 +12,7 @@ import RadioGroup from '../components/RadioGroup';
 import LocationPicker from '../components/LocationPicker';
 import DatePicker from '../components/DatePicker';
 import ConfirmationModal from '../components/ConfirmationModal';
+import ReviewModal from '../components/ReviewModal';
 import { useNavigation, CompositeNavigationProp } from '@react-navigation/native';
 import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -162,6 +163,10 @@ export default function ProfileScreen() {
 
   // Logout modal state
   const [showLogoutModal, setShowLogoutModal] = useState(false);
+
+  // Review modal state
+  const [showReviewModal, setShowReviewModal] = useState(false);
+  const [endedRental, setEndedRental] = useState<ApplicationWithProperty | null>(null);
 
   // Initialize budget fields from price_range and reset fields when userProfile changes
   useEffect(() => {
@@ -677,8 +682,79 @@ export default function ProfileScreen() {
       return;
     }
 
-    // TODO: Navigate to review screen
-    Alert.alert('Review Property', 'Review feature coming soon!');
+    setShowReviewModal(true);
+  };
+
+  const submitReview = async (rating: number, comment: string) => {
+    // Use endedRental if available (for post-rental reviews), otherwise use currentRental
+    const rentalToReview = endedRental || currentRental;
+
+    if (!rentalToReview || !userProfile?.user_id) {
+      throw new Error('Unable to submit review. Please try again.');
+    }
+
+    console.log('[ProfileScreen] Submitting review:', {
+      property_id: rentalToReview.property_id,
+      user_id: userProfile.user_id,
+      rating,
+      comment,
+    });
+
+    try {
+      // Insert review into database
+      const { error: reviewError } = await supabase.from('reviews').insert({
+        user_id: userProfile.user_id,
+        property_id: rentalToReview.property_id,
+        rating: rating,
+        comment: comment || null,
+        date_created: new Date().toISOString(),
+      });
+
+      if (reviewError) throw reviewError;
+      console.log('[ProfileScreen] Review inserted successfully');
+
+      // Recalculate property average rating
+      const { data: reviews, error: fetchError } = await supabase
+        .from('reviews')
+        .select('rating')
+        .eq('property_id', rentalToReview.property_id);
+
+      if (fetchError) {
+        console.error('[ProfileScreen] Error fetching reviews for average:', fetchError);
+        // Don't throw - review was submitted successfully
+      } else if (reviews && reviews.length > 0) {
+        const totalRating = reviews.reduce((sum, review) => sum + review.rating, 0);
+        const averageRating = totalRating / reviews.length;
+
+        // Update property rating
+        const { error: updateError } = await supabase
+          .from('properties')
+          .update({
+            rating: averageRating,
+            number_reviews: reviews.length,
+          })
+          .eq('property_id', rentalToReview.property_id);
+
+        if (updateError) {
+          console.error('[ProfileScreen] Error updating property rating:', updateError);
+          // Don't throw - review was submitted successfully
+        } else {
+          console.log('[ProfileScreen] Property rating updated:', {
+            rating: averageRating,
+            number_reviews: reviews.length,
+          });
+        }
+      }
+
+      // Update local state
+      setHasExistingReview(true);
+      setShowReviewModal(false);
+      setEndedRental(null); // Clear the ended rental after review is submitted
+      Alert.alert('Success', 'Your review has been submitted successfully.');
+    } catch (error) {
+      console.error('[ProfileScreen] Error submitting review:', error);
+      throw error; // Re-throw to let modal handle the error
+    }
   };
 
   const handleEndRental = async (optionalMessage?: string) => {
@@ -765,12 +841,24 @@ export default function ProfileScreen() {
       console.log('[ProfileScreen] Rental ended successfully');
       Alert.alert('Success', 'Your rental has been ended successfully.');
 
+      // Store the rental info before clearing state
+      const rentalToReview = currentRental;
+
       // Update local state
       setCurrentRental(null);
       setUserProfile({
         ...userProfile,
         rented_property: null,
       });
+
+      // Prompt user to leave a review if they haven't already
+      if (!hasExistingReview) {
+        setEndedRental(rentalToReview);
+        // Show review modal after a short delay
+        setTimeout(() => {
+          setShowReviewModal(true);
+        }, 500);
+      }
     } catch (error) {
       console.error('[ProfileScreen] Error ending rental:', error);
       Alert.alert('Error', 'Failed to end rental. Please try again.');
@@ -1019,6 +1107,7 @@ export default function ProfileScreen() {
         messageInputPlaceholder="Add an optional message (e.g., reason for ending rental)"
         messageInputLabel="Optional Message"
         confirmVariant="destructive"
+        isLoading={isEndingRental}
         onConfirm={handleEndRental}
         onCancel={() => setShowEndRentalModal(false)}
       />
@@ -1034,6 +1123,21 @@ export default function ProfileScreen() {
         onConfirm={confirmLogout}
         onCancel={() => setShowLogoutModal(false)}
       />
+
+      {/* Review Modal */}
+      {((currentRental && currentRental.property) || (endedRental && endedRental.property)) && (
+        <ReviewModal
+          visible={showReviewModal}
+          propertyTitle={
+            (endedRental?.property?.title || currentRental?.property?.title) || 'this property'
+          }
+          onConfirm={submitReview}
+          onCancel={() => {
+            setShowReviewModal(false);
+            setEndedRental(null); // Clear ended rental if user cancels review
+          }}
+        />
+      )}
     </View>
   );
 }

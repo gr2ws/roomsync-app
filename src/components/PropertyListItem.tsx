@@ -43,6 +43,7 @@ export default function PropertyListItem({
   };
 
   const isAtFullCapacity = currentRenters >= property.max_renters;
+  const isOccupied = currentRenters > 0;
 
   return (
     <View className="mx-4 mb-2 overflow-hidden rounded-2xl border border-input bg-card">
@@ -136,7 +137,6 @@ export default function PropertyListItem({
           text={`Applications (${applicationsCount})`}
           Icon={FileText}
           variant="secondary"
-          disabled={isAtFullCapacity}
           onPress={onViewApplications}
           className="flex-1"
         />
@@ -149,7 +149,7 @@ export default function PropertyListItem({
           className="flex-1"
         />
 
-        <SmallButton Icon={Trash2} variant="destructive" onPress={onDelete} />
+        <SmallButton Icon={Trash2} variant="destructive" onPress={onDelete} disabled={isOccupied} />
       </View>
     </View>
   );

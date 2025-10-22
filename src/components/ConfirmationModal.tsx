@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Modal, View, Text, Pressable } from 'react-native';
+import { Modal, View, Text, Pressable, ActivityIndicator } from 'react-native';
 import Button from './Button';
 import Input from './Input';
 
@@ -15,6 +15,7 @@ interface ConfirmationModalProps {
   messageInputPlaceholder?: string;
   messageInputLabel?: string;
   confirmVariant?: 'primary' | 'destructive';
+  isLoading?: boolean;
 }
 
 const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
@@ -29,6 +30,7 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
   messageInputPlaceholder = 'Enter message (optional)',
   messageInputLabel,
   confirmVariant = 'primary',
+  isLoading = false,
 }) => {
   const [inputMessage, setInputMessage] = useState('');
 
@@ -64,11 +66,11 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
           )}
 
           <View className="mt-4 flex-row justify-end gap-3">
-            <Button variant="secondary" onPress={handleCancel} className="flex-1">
+            <Button variant="secondary" onPress={handleCancel} className="flex-1" disabled={isLoading}>
               {cancelText}
             </Button>
-            <Button variant={confirmVariant} onPress={handleConfirm} className="flex-1">
-              {confirmText}
+            <Button variant={confirmVariant} onPress={handleConfirm} className="flex-1" disabled={isLoading}>
+              {isLoading ? <ActivityIndicator size="small" color="#fff" /> : confirmText}
             </Button>
           </View>
         </Pressable>
