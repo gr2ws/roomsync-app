@@ -387,8 +387,6 @@ export default function ProfileScreen() {
       setIsLoadingRental(false);
       console.log('[ProfileScreen - fetchCurrentRental] END');
     }
-    // userRole is only used for logging, not in actual logic
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userProfile]);
 
   useEffect(() => {
@@ -413,7 +411,6 @@ export default function ProfileScreen() {
       );
       setIsLoadingRental(false);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userRole, fetchCurrentRental]);
 
   // Store initial values to detect changes
@@ -1129,7 +1126,7 @@ export default function ProfileScreen() {
         <ReviewModal
           visible={showReviewModal}
           propertyTitle={
-            (endedRental?.property?.title || currentRental?.property?.title) || 'this property'
+            endedRental?.property?.title || currentRental?.property?.title || 'this property'
           }
           onConfirm={submitReview}
           onCancel={() => {

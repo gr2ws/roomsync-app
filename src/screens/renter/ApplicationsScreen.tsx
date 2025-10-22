@@ -186,106 +186,6 @@ export default function ApplicationsScreen() {
     }
   };
 
-  const handleReapplyToProperty = async (propertyId: number) => {
-    if (!userProfile?.user_id) {
-      Alert.alert('Error', 'Unable to reapply. Please try again.');
-      return;
-    }
-
-    // Check if user has an approved application
-    const hasApproved = applications.some((app) => app.status === 'approved');
-    if (hasApproved) {
-      Alert.alert(
-        'Cannot Reapply',
-        'You already have an approved application. Please end your current rental before applying to another property.'
-      );
-      return;
-    }
-
-    // Check if user has 5 or more pending applications
-    const pendingCount = applications.filter((app) => app.status === 'pending').length;
-    if (pendingCount >= 5) {
-      Alert.alert(
-        'Cannot Reapply',
-        'You have reached the maximum of 5 pending applications. Please wait for a response or cancel an existing application before applying to another property.'
-      );
-      return;
-    }
-
-    try {
-      console.log('[ApplicationsScreen] Reapplying to property_id:', propertyId);
-
-      // Find the cancelled application for this property
-      const cancelledApp = applications.find(
-        (app) => app.property_id === propertyId && app.status === 'cancelled'
-      );
-
-      if (cancelledApp) {
-        console.log('[ApplicationsScreen] Deleting cancelled application_id:', cancelledApp.application_id);
-
-        const { error: deleteError } = await supabase
-          .from('applications')
-          .delete()
-          .eq('application_id', cancelledApp.application_id);
-
-        if (deleteError) throw deleteError;
-
-        console.log('[ApplicationsScreen] Cancelled application deleted successfully');
-      }
-
-      // Fetch property to check availability and verification
-      const { data: property, error: propertyError } = await supabase
-        .from('properties')
-        .select('is_available, is_verified, owner_id')
-        .eq('property_id', propertyId)
-        .single();
-
-      if (propertyError) throw propertyError;
-
-      console.log('[ApplicationsScreen] Property status:', {
-        property_id: propertyId,
-        is_available: property.is_available,
-        is_verified: property.is_verified,
-      });
-
-      if (!property.is_available) {
-        Alert.alert('Property Unavailable', 'This property is no longer available for rent.');
-        return;
-      }
-
-      if (!property.is_verified) {
-        Alert.alert(
-          'Property Not Verified',
-          'This property has not been verified yet. Please wait for admin approval.'
-        );
-        return;
-      }
-
-      // Insert new application
-      console.log('[ApplicationsScreen] Inserting new application for property_id:', propertyId);
-
-      const { error: insertError } = await supabase.from('applications').insert({
-        property_id: propertyId,
-        renter_id: userProfile.user_id,
-        owner_id: property.owner_id,
-        status: 'pending',
-        message: null,
-        date_applied: new Date().toISOString(),
-        date_updated: null,
-      });
-
-      if (insertError) throw insertError;
-
-      console.log('[ApplicationsScreen] Reapplication submitted successfully');
-      Alert.alert('Success', 'Your application has been submitted successfully!');
-      await fetchApplications();
-    } catch (error) {
-      console.error('[ApplicationsScreen] Error reapplying:', error);
-      Alert.alert('Error', 'Failed to submit application. Please try again.');
-      throw error;
-    }
-  };
-
   // Organize applications into sections
   const approvedApplications = applications.filter((app) => app.status === 'approved');
   const pendingApplications = applications.filter((app) => app.status === 'pending');
@@ -347,27 +247,24 @@ export default function ApplicationsScreen() {
 
   const renderItem = ({ item }: { item: (typeof flattenedApplications)[number] }) => {
     if (item.type === 'header') {
+      const isMuted = item.title === 'Past Applications';
       return (
         <View className="mb-3 mt-6 first:mt-0">
-          <Text className="text-xl font-bold text-foreground">{item.title}</Text>
+          <Text
+            className={`text-xl font-bold ${isMuted ? 'text-muted-foreground' : 'text-foreground'}`}>
+            {item.title}
+          </Text>
         </View>
       );
     }
 
     if (item.type === 'item' && item.application) {
       const app = item.application;
-      const pendingCount = applications.filter((a) => a.status === 'pending').length;
       return (
         <ApplicationCard
           application={app}
           onCancel={app.status === 'pending' ? handleCancelApplication : undefined}
-          onReapply={app.status === 'cancelled' ? handleReapplyToProperty : undefined}
           onContactOwner={app.status === 'pending' ? handleContactOwner : undefined}
-          canReapply={
-            app.status === 'cancelled' &&
-            !applications.some((a) => a.status === 'approved') &&
-            pendingCount < 5
-          }
         />
       );
     }

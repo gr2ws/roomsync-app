@@ -53,7 +53,10 @@ export default function NotificationsScreen() {
     }
 
     try {
-      console.log('[NotificationsScreen] Fetching notifications for user_auth_id:', userProfile.auth_id);
+      console.log(
+        '[NotificationsScreen] Fetching notifications for user_auth_id:',
+        userProfile.auth_id
+      );
 
       const { data, error } = await supabase
         .from('notifications')
@@ -85,7 +88,10 @@ export default function NotificationsScreen() {
     }
 
     try {
-      console.log('[NotificationsScreen] Refreshing notifications for user_auth_id:', userProfile.auth_id);
+      console.log(
+        '[NotificationsScreen] Refreshing notifications for user_auth_id:',
+        userProfile.auth_id
+      );
 
       const { data, error } = await supabase
         .from('notifications')
@@ -113,10 +119,7 @@ export default function NotificationsScreen() {
     try {
       console.log('[NotificationsScreen] Deleting notification_id:', notifId);
 
-      const { error } = await supabase
-        .from('notifications')
-        .delete()
-        .eq('notif_id', notifId);
+      const { error } = await supabase.from('notifications').delete().eq('notif_id', notifId);
 
       if (error) throw error;
 

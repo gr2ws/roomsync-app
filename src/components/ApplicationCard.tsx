@@ -11,9 +11,7 @@ import { RootStackParamList } from '../utils/navigation';
 interface ApplicationCardProps {
   application: ApplicationWithProperty;
   onCancel?: (applicationId: number) => Promise<void>;
-  onReapply?: (propertyId: number) => Promise<void>;
   onContactOwner?: (ownerId: number) => void;
-  canReapply?: boolean;
 }
 
 type NavigationProp = StackNavigationProp<RootStackParamList>;
@@ -21,9 +19,7 @@ type NavigationProp = StackNavigationProp<RootStackParamList>;
 const ApplicationCard: React.FC<ApplicationCardProps> = ({
   application,
   onCancel,
-  onReapply,
   onContactOwner,
-  canReapply = false,
 }) => {
   const [isActionLoading, setIsActionLoading] = useState(false);
   const navigation = useNavigation<NavigationProp>();
@@ -93,26 +89,13 @@ const ApplicationCard: React.FC<ApplicationCardProps> = ({
     }
   };
 
-  const handleReapply = async () => {
-    if (!onReapply) return;
-
-    setIsActionLoading(true);
-    try {
-      await onReapply(application.property_id);
-    } catch (error) {
-      // Error already handled in onReapply
-    } finally {
-      setIsActionLoading(false);
-    }
-  };
-
   return (
     <Pressable
       className="mb-3 overflow-hidden rounded-lg border border-input bg-card p-4 shadow-sm"
       onPress={handleCardPress}>
       {/* Header with Title and Status */}
       <View className="mb-2 flex-row items-start justify-between gap-2">
-        <Text className="flex-1 text-lg font-bold text-card-foreground" numberOfLines={2}>
+        <Text className="flex-1 text-lg font-bold text-primary" numberOfLines={2}>
           {application.property.title}
         </Text>
         <View
@@ -135,7 +118,7 @@ const ApplicationCard: React.FC<ApplicationCardProps> = ({
 
       {/* Rent and Date */}
       <View className="mb-2 flex-row items-center justify-between">
-        <Text className="text-base font-semibold text-primary">
+        <Text className="text-base font-semibold text-black">
           ₱{application.property.rent.toLocaleString()}/mo
         </Text>
         <Text className="text-xs text-muted-foreground">
@@ -170,16 +153,6 @@ const ApplicationCard: React.FC<ApplicationCardProps> = ({
               </SmallButton>
             </View>
           )}
-        </View>
-      )}
-
-      {application.status === 'cancelled' && canReapply && onReapply && (
-        <View className="mt-2 flex-row justify-end">
-          <View style={{ width: '25%' }}>
-            <SmallButton variant="primary" onPress={handleReapply} disabled={isActionLoading}>
-              {isActionLoading ? 'Reapplying...' : 'Reapply'}
-            </SmallButton>
-          </View>
         </View>
       )}
     </Pressable>

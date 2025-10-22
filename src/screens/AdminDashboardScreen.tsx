@@ -23,7 +23,7 @@ export default function AdminDashboard() {
 
   return (
     <View
-      className="flex-1 bg-[rgb(249, 249, 249)]"
+      className="bg-[rgb(249, 249, 249)] flex-1"
       style={{
         flex: 1,
         paddingTop: Platform.OS === 'android' ? insets.top + 12 : insets.top, // use insets.top for both platforms to handle safe area via flexbox
@@ -100,7 +100,6 @@ function OverviewTab() {
     loadCityDistribution();
   }, []);
 
-
   const [userGrowthData, setUserGrowthData] = useState<{ month: string; users: number }[]>([]);
 
   useEffect(() => {
@@ -150,17 +149,16 @@ function OverviewTab() {
         />
       </StatSection>
 
-     <StatSection title="Monthly User Growth (2025)">
+      <StatSection title="Monthly User Growth (2025)">
         {userGrowthData.length === 0 ? (
           <Text className="text-gray-500">No data available</Text>
         ) : (
           <View
-            className="border border-gray-200 rounded-2xl bg-white pr-2"
+            className="rounded-2xl border border-gray-200 bg-white pr-2"
             style={{
               alignItems: 'center', // 👈 centers children horizontally
               justifyContent: 'center', // 👈 centers vertically (optional)
-            }}
-          >
+            }}>
             <BarChart
               data={{
                 labels: userGrowthData.map((d) => d.month),
@@ -189,8 +187,6 @@ function OverviewTab() {
           </View>
         )}
       </StatSection>
-
-
 
       {/* PROPERTIES SECTION */}
       <StatSection title="Properties">
@@ -221,27 +217,27 @@ function OverviewTab() {
         ) : (
           <>
             {/* PIE CHART */}
-            <View className="flex-row justify-center items-center w-full border border-gray-200 rounded-2xl mb-4 bg-white">
-                <PieChart
-                  data={propertyCityData.map((d) => ({
-                    name: d.key,
-                    population: d.value,
-                    color: d.svg.fill,
-                  }))}
-                  width={Dimensions.get('window').width} // 60% of screen width
-                  height={220}
-                  accessor="population"
-                  center={[0, 0]}
-                  backgroundColor="transparent"
-                  paddingLeft="100"
-                  chartConfig={{
-                    backgroundGradientFrom: '#ffffff',
-                    backgroundGradientTo: '#ffffff',
-                    color: () => '#000',
-                  }}
-                  hasLegend={false}  
-                  absolute
-                />
+            <View className="mb-4 w-full flex-row items-center justify-center rounded-2xl border border-gray-200 bg-white">
+              <PieChart
+                data={propertyCityData.map((d) => ({
+                  name: d.key,
+                  population: d.value,
+                  color: d.svg.fill,
+                }))}
+                width={Dimensions.get('window').width} // 60% of screen width
+                height={220}
+                accessor="population"
+                center={[0, 0]}
+                backgroundColor="transparent"
+                paddingLeft="100"
+                chartConfig={{
+                  backgroundGradientFrom: '#ffffff',
+                  backgroundGradientTo: '#ffffff',
+                  color: () => '#000',
+                }}
+                hasLegend={false}
+                absolute
+              />
             </View>
 
             {/* PROPERTY COUNT PER CITY */}
@@ -260,7 +256,6 @@ function OverviewTab() {
           </>
         )}
       </StatSection>
-
 
       {/* REPORTS SECTION */}
       <StatSection title="Reports">
@@ -431,9 +426,7 @@ async function fetchMonthlyUserGrowth() {
 }
 
 async function fetchPropertyDistributionByCity() {
-  const { data, error } = await supabase
-    .from('properties')
-    .select('city');
+  const { data, error } = await supabase.from('properties').select('city');
 
   if (error) {
     console.error('Error fetching property distribution:', error);
@@ -463,7 +456,6 @@ function getRandomColor(key: string) {
   return colors[Math.abs(hash) % colors.length];
 }
 
-
 /* ------------------- Reusable Section Component ------------------- */
 function StatSection({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -487,7 +479,7 @@ function StatCard({ icon, label, value, color, fullWidth }: StatCardProps) {
   return (
     <View
       className={`mb-2 min-w-40 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm 
-        ${fullWidth ? 'w-[98%] text-center' : 'flex-1 mr-2 '}`}>
+        ${fullWidth ? 'w-[98%] text-center' : 'mr-2 flex-1 '}`}>
       <View className={`mb-2 flex-row items-center`}>
         <Ionicons name={icon} size={18} color={color || '#6B7280'} />
         <Text className="ml-2 mr-3 text-sm font-medium text-gray-600">{label}</Text>

@@ -61,7 +61,7 @@ class ErrorBoundary extends Component<Props, State> {
               flex: 1,
               alignItems: 'center',
               justifyContent: 'center',
-              paddingHorizontal: 24
+              paddingHorizontal: 24,
             }}>
             <View className="max-w-md items-center">
               <AlertTriangle size={64} color="rgb(229, 77, 46)" className="mb-6" />

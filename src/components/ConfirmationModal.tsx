@@ -66,10 +66,18 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
           )}
 
           <View className="mt-4 flex-row justify-end gap-3">
-            <Button variant="secondary" onPress={handleCancel} className="flex-1" disabled={isLoading}>
+            <Button
+              variant="secondary"
+              onPress={handleCancel}
+              className="flex-1"
+              disabled={isLoading}>
               {cancelText}
             </Button>
-            <Button variant={confirmVariant} onPress={handleConfirm} className="flex-1" disabled={isLoading}>
+            <Button
+              variant={confirmVariant}
+              onPress={handleConfirm}
+              className="flex-1"
+              disabled={isLoading}>
               {isLoading ? <ActivityIndicator size="small" color="#fff" /> : confirmText}
             </Button>
           </View>

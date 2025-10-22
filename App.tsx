@@ -111,13 +111,23 @@ function MainApp() {
 
   // Function to get notification badge
   const getNotificationBadge = () => {
-    console.log('[App] getNotificationBadge called, showBadge:', showBadge, 'count:', notificationCount);
+    console.log(
+      '[App] getNotificationBadge called, showBadge:',
+      showBadge,
+      'count:',
+      notificationCount
+    );
     if (!showBadge || notificationCount === 0) return undefined;
     if (notificationCount > 99) return '99+';
     return notificationCount;
   };
 
-  console.log('[App] MainApp render, showBadge:', showBadge, 'notificationCount:', notificationCount);
+  console.log(
+    '[App] MainApp render, showBadge:',
+    showBadge,
+    'notificationCount:',
+    notificationCount
+  );
 
   const notificationsScreen = (
     <Tab.Screen

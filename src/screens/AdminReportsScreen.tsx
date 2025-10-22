@@ -69,7 +69,7 @@ export default function AdminReportsScreen() {
 
   return (
     <View
-      className="flex-1 bg-[rgb(249, 249, 249)]"
+      className="bg-[rgb(249, 249, 249)] flex-1"
       style={{
         flex: 1,
         paddingTop: Platform.OS === 'android' ? insets.top + 12 : insets.top,
@@ -243,10 +243,10 @@ function ReportCard({
         visible={proofVisible}
         transparent
         animationType="slide"
-         onRequestClose={() => {
-           setProofVisible(false);
-           if (report.status === 'pending') onViewProof();
-         }}>
+        onRequestClose={() => {
+          setProofVisible(false);
+          if (report.status === 'pending') onViewProof();
+        }}>
         <View className="flex-1 items-center justify-center bg-black/90 px-4">
           {proofUrl ? (
             <Image
