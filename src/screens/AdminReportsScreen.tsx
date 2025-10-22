@@ -191,7 +191,6 @@ function ReportCard({
           }`}
           onPress={() => {
             setProofVisible(true);
-            onViewProof(); // mark as "under investigation"
           }}
           disabled={isInactive}>
           <Ionicons
@@ -244,7 +243,10 @@ function ReportCard({
         visible={proofVisible}
         transparent
         animationType="slide"
-        onRequestClose={() => setProofVisible(false)}>
+         onRequestClose={() => {
+           setProofVisible(false);
+           if (report.status === 'pending') onViewProof();
+         }}>
         <View className="flex-1 items-center justify-center bg-black/90 px-4">
           {proofUrl ? (
             <Image

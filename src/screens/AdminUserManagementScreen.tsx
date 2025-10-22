@@ -150,7 +150,7 @@ export default function AdminUserManagementScreen() {
       const user = users.find((u) => u.id === userId);
       if (!user) return;
 
-      // Update the Supabase record
+      // Update the user verification status at the users table
       const { error } = await supabase
         .from('users')
         .update({ is_verified: true })
@@ -163,11 +163,29 @@ export default function AdminUserManagementScreen() {
         return;
       }
 
+      // Update notification table
+      const { error: notifError } = await supabase.from('notifications').insert([
+      {
+        user_auth_id: user.auth_id,
+        notif_type: 'user_account_verified',
+      },
+    ]);
+
+    if (notifError) {
+      console.error('Failed to insert verification notification:', notifError);
+      setToastMessage('Failed to notify user @ verification');
+      setTimeout(() => setToastMessage(null), 2000);
+      return;
+    }
+
       // Locally update state for instant UI feedback
       setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, isVerified: true } : u)));
 
       setToastMessage('User verified successfully!');
       setTimeout(() => setToastMessage(null), 2000);
+
+      await fetchUsers();
+
     } catch (err) {
       console.error('Unexpected error verifying user:', err);
       setToastMessage('Error verifying user');
@@ -243,11 +261,27 @@ Should you find reason for us to consider an appeal from you, please send us an 
         return;
       }
 
+      const { error: notifError } = await supabase.from('notifications').insert([
+      {
+        user_auth_id: user.auth_id,
+        notif_type: 'user_account_warned',
+      },
+    ]);
+
+    if (notifError) {
+     console.error('Failed to insert warning notification:', notifError);
+     setToastMessage('Failed to notify user @ verification');
+     setTimeout(() => setToastMessage(null), 2000);
+    }
+
       // Update local UI state instantly
       setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, isWarned: true } : u)));
 
       setToastMessage('Warning issued and status updated');
       setTimeout(() => setToastMessage(null), 2000);
+
+      await fetchUsers();
+      
     } catch (err) {
       console.error('Error sending warning:', err);
       setToastMessage('Unable to open mail app');
