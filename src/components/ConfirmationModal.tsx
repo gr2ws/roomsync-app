@@ -43,18 +43,12 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
   };
 
   return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="fade"
-      onRequestClose={handleCancel}>
-      <Pressable
-        className="flex-1 items-center justify-center bg-black/50"
-        onPress={handleCancel}>
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={handleCancel}>
+      <Pressable className="flex-1 items-center justify-center bg-black/50" onPress={handleCancel}>
         <Pressable
-          className="mx-6 w-full max-w-md rounded-xl bg-card p-6 shadow-xl"
+          className="mx-6 w-full max-w-md rounded-lg border border-primary bg-card p-6 shadow-xl"
           onPress={(e) => e.stopPropagation()}>
-          <Text className="mb-3 text-xl font-bold text-card-foreground">{title}</Text>
+          <Text className="mb-3 text-xl font-bold text-primary">{title}</Text>
           <Text className="mb-4 text-base leading-6 text-muted-foreground">{message}</Text>
 
           {showMessageInput && (

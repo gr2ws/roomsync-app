@@ -1,14 +1,6 @@
-import { View, Text, Image, TouchableOpacity } from 'react-native';
-import {
-  MapPin,
-  Edit,
-  Trash2,
-  Star,
-  CheckCircle,
-  Clock,
-  Users,
-  FileText,
-} from 'lucide-react-native';
+import { View, Text, Image } from 'react-native';
+import { MapPin, Edit, Trash2, Star, Users, FileText } from 'lucide-react-native';
+import SmallButton from './SmallButton';
 
 interface PropertyListItemProps {
   property: {
@@ -50,7 +42,7 @@ export default function PropertyListItem({
     return [property.street, property.barangay, property.city].filter(Boolean).join(', ');
   };
 
-  const isAvailable = property.is_available && currentRenters < property.max_renters;
+  const isAtFullCapacity = currentRenters >= property.max_renters;
 
   return (
     <View className="mx-4 mb-2 overflow-hidden rounded-2xl border border-input bg-card">
@@ -78,40 +70,37 @@ export default function PropertyListItem({
             <Text className="ml-1 text-xs text-muted-foreground">/month</Text>
           </View>
 
-          {/* Status Indicators */}
+          {/* Status Badge and Renter Count */}
           <View className="mt-3 flex-row items-center justify-between">
-            {/* Availability */}
-            <View className="flex-row items-center">
-              <CheckCircle size={16} color={isAvailable ? 'rgb(76, 175, 80)' : 'rgb(229, 77, 46)'} />
-              <Text
-                className={`ml-1 text-sm font-medium ${
-                  isAvailable ? 'text-success' : 'text-destructive'
-                }`}>
-                {isAvailable ? 'Available' : 'Full'}
-              </Text>
-            </View>
-
-            {/* Verification */}
-            <View className="flex-row items-center">
-              {property.is_verified ? (
-                <CheckCircle size={16} color="rgb(76, 175, 80)" />
-              ) : (
-                <Clock size={16} color="rgb(251, 191, 36)" />
-              )}
-              <Text
-                className={`ml-1 text-sm font-medium ${
-                  property.is_verified ? 'text-success' : 'text-warning'
-                }`}>
-                {property.is_verified ? 'Verified' : 'Pending'}
-              </Text>
-            </View>
+            {/* Verification Status Badge */}
+            {property.is_verified ? (
+              <View
+                className="rounded-full px-3 py-1"
+                style={{ backgroundColor: 'rgba(76, 175, 80, 0.1)' }}>
+                <Text className="text-xs font-semibold" style={{ color: 'rgb(76, 175, 80)' }}>
+                  Verified
+                </Text>
+              </View>
+            ) : (
+              <View
+                className="rounded-full px-3 py-1"
+                style={{ backgroundColor: 'rgba(251, 191, 36, 0.1)' }}>
+                <Text className="text-xs font-semibold" style={{ color: 'rgb(251, 191, 36)' }}>
+                  Pending
+                </Text>
+              </View>
+            )}
 
             {/* Renter Count */}
             <View className="flex-row items-center">
-              <Users size={16} color="#644A40" />
-              <Text className="ml-1 text-sm font-medium text-primary">
+              <Users size={16} color={isAtFullCapacity ? 'rgb(229, 77, 46)' : '#644A40'} />
+              <Text
+                className={`ml-1 text-sm font-medium ${isAtFullCapacity ? 'text-destructive' : 'text-primary'}`}>
                 {currentRenters}/{property.max_renters}
               </Text>
+              {isAtFullCapacity && (
+                <Text className="ml-2 text-xs font-semibold text-destructive">(Full)</Text>
+              )}
             </View>
           </View>
         </View>
@@ -134,45 +123,33 @@ export default function PropertyListItem({
 
       {/* Action Buttons Row - Below the main card */}
       <View className="flex-row gap-2 border-t border-input p-3">
-        <TouchableOpacity
-          className={`flex-1 flex-row items-center justify-center rounded-lg bg-primary px-3 py-2 shadow-sm ${
-            isUploading ? 'opacity-50' : ''
-          }`}
-          onPress={onEdit}
+        <SmallButton
+          text={isUploading ? 'Uploading...' : 'Edit'}
+          Icon={Edit}
+          variant="primary"
           disabled={isUploading}
-          activeOpacity={0.7}>
-          <Edit size={14} color="white" />
-          <Text className="ml-1.5 text-xs font-semibold text-primary-foreground">
-            {isUploading ? 'Uploading...' : 'Edit'}
-          </Text>
-        </TouchableOpacity>
+          onPress={onEdit}
+          className="flex-1"
+        />
 
-        <TouchableOpacity
-          className="flex-1 flex-row items-center justify-center rounded-lg border border-primary bg-secondary px-3 py-2"
+        <SmallButton
+          text={`Applications (${applicationsCount})`}
+          Icon={FileText}
+          variant="secondary"
+          disabled={isAtFullCapacity}
           onPress={onViewApplications}
-          activeOpacity={0.7}>
-          <FileText size={14} color="#582D1D" />
-          <Text className="ml-1.5 text-xs font-semibold text-secondary-foreground">
-            Applications ({applicationsCount})
-          </Text>
-        </TouchableOpacity>
+          className="flex-1"
+        />
 
-        <TouchableOpacity
-          className="flex-1 flex-row items-center justify-center rounded-lg border border-primary bg-secondary px-3 py-2"
+        <SmallButton
+          text={`Reviews (${property.number_reviews || 0})`}
+          Icon={Star}
+          variant="secondary"
           onPress={onViewReviews}
-          activeOpacity={0.7}>
-          <Star size={14} color="#582D1D" />
-          <Text className="ml-1.5 text-xs font-semibold text-secondary-foreground">
-            Reviews ({property.number_reviews || 0})
-          </Text>
-        </TouchableOpacity>
+          className="flex-1"
+        />
 
-        <TouchableOpacity
-          className="flex-row items-center justify-center rounded-lg border border-destructive bg-secondary px-3 py-2"
-          onPress={onDelete}
-          activeOpacity={0.7}>
-          <Trash2 size={14} color="#E54D2E" />
-        </TouchableOpacity>
+        <SmallButton Icon={Trash2} variant="destructive" onPress={onDelete} />
       </View>
     </View>
   );

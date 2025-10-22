@@ -6,18 +6,27 @@ import {
   Platform,
   RefreshControl,
   Image,
+  FlatList,
+  Linking,
 } from 'react-native';
 import { useState, useEffect } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import { RouteProp } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../../utils/navigation';
 import { supabase } from '../../utils/supabase';
 import { ApplicationWithRenter } from '../../types/property';
+import {
+  calculateDistanceFromStrings,
+  formatDistance,
+  parseCoordinates,
+} from '../../utils/distance';
+import * as Location from 'expo-location';
 import Button from '../../components/Button';
+import SmallButton from '../../components/SmallButton';
+import BackButton from '../../components/BackButton';
 import ApplicationActionModal from '../../components/ApplicationActionModal';
-import { User, MapPin, Briefcase, DollarSign, Home } from 'lucide-react-native';
+import { User, MapPin, Banknote, Home, MessageCircle, X, Check } from 'lucide-react-native';
 
 type ApplicationsListScreenRouteProp = RouteProp<RootStackParamList, 'ApplicationsList'>;
 type ApplicationsListScreenNavigationProp = StackNavigationProp<
@@ -30,12 +39,13 @@ interface ApplicationsListScreenProps {
   navigation: ApplicationsListScreenNavigationProp;
 }
 
-export default function ApplicationsListScreen({ route }: ApplicationsListScreenProps) {
+export default function ApplicationsListScreen({ route, navigation }: ApplicationsListScreenProps) {
   const insets = useSafeAreaInsets();
   const { propertyId } = route.params;
 
   const [applications, setApplications] = useState<ApplicationWithRenter[]>([]);
   const [propertyTitle, setPropertyTitle] = useState<string>('');
+  const [propertyCoordinates, setPropertyCoordinates] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [showActionModal, setShowActionModal] = useState(false);
@@ -43,26 +53,52 @@ export default function ApplicationsListScreen({ route }: ApplicationsListScreen
     null
   );
   const [modalAction, setModalAction] = useState<'approve' | 'reject'>('approve');
+  const [locationNames, setLocationNames] = useState<Record<string, string>>({});
+  const [isGeocodingLocations, setIsGeocodingLocations] = useState(false);
 
   useEffect(() => {
     fetchApplications();
   }, []);
 
+  const reverseGeocode = async (coordinates: string): Promise<string> => {
+    try {
+      const coords = parseCoordinates(coordinates);
+      if (!coords) return coordinates;
+
+      const results = await Location.reverseGeocodeAsync({
+        latitude: coords.lat,
+        longitude: coords.lon,
+      });
+
+      if (results && results.length > 0) {
+        const address = results[0];
+        const name = [address.street, address.city, address.region].filter(Boolean).join(', ');
+        return name || coordinates;
+      }
+      return coordinates;
+    } catch (error) {
+      console.error('Error reverse geocoding:', error);
+      return coordinates;
+    }
+  };
+
   const fetchApplications = async () => {
     try {
       console.log('[ApplicationsListScreen] Fetching applications for property_id:', propertyId);
 
-      // Fetch property title
+      // Fetch property title and coordinates
       const { data: propertyData, error: propertyError } = await supabase
         .from('properties')
-        .select('title')
+        .select('title, coordinates')
         .eq('property_id', propertyId)
         .single();
 
       if (propertyError) throw propertyError;
       if (propertyData) {
         setPropertyTitle(propertyData.title);
+        setPropertyCoordinates(propertyData.coordinates);
         console.log('[ApplicationsListScreen] Property:', propertyData.title);
+        console.log('[ApplicationsListScreen] Property coordinates:', propertyData.coordinates);
       }
 
       // Fetch applications with renter details
@@ -121,6 +157,23 @@ export default function ApplicationsListScreen({ route }: ApplicationsListScreen
       });
 
       setApplications(transformedData);
+
+      // Reverse geocode all locations
+      setIsGeocodingLocations(true);
+      const geocodePromises = transformedData
+        .filter((app) => app.renter.place_of_work_study)
+        .map(async (app) => {
+          const locationName = await reverseGeocode(app.renter.place_of_work_study!);
+          return { key: app.renter.place_of_work_study!, value: locationName };
+        });
+
+      const geocodedResults = await Promise.all(geocodePromises);
+      const newLocationNames: Record<string, string> = {};
+      geocodedResults.forEach((result) => {
+        newLocationNames[result.key] = result.value;
+      });
+      setLocationNames(newLocationNames);
+      setIsGeocodingLocations(false);
     } catch (error) {
       console.error('[ApplicationsListScreen] Error fetching applications:', error);
       Alert.alert('Error', 'Failed to load applications. Please try again.');
@@ -147,12 +200,36 @@ export default function ApplicationsListScreen({ route }: ApplicationsListScreen
     setShowActionModal(true);
   };
 
+  const handleContactApplicant = async (phoneNumber: string | null) => {
+    if (!phoneNumber) {
+      Alert.alert('Error', 'Applicant phone number not available');
+      return;
+    }
+
+    try {
+      const url = `sms:${phoneNumber}`;
+      const canOpen = await Linking.canOpenURL(url);
+
+      if (canOpen) {
+        await Linking.openURL(url);
+      } else {
+        Alert.alert('Error', 'Cannot open messaging app');
+      }
+    } catch (error) {
+      console.error('Error opening SMS:', error);
+      Alert.alert('Error', 'Failed to open messaging app');
+    }
+  };
+
   const handleConfirmAction = async (message: string) => {
     if (!selectedApplication) return;
 
     try {
       if (modalAction === 'approve') {
-        console.log('[ApplicationsListScreen] Approving application_id:', selectedApplication.application_id);
+        console.log(
+          '[ApplicationsListScreen] Approving application_id:',
+          selectedApplication.application_id
+        );
 
         // Check if renter already has an approved application (race condition prevention)
         const { data: existingApproved, error: checkError } = await supabase
@@ -165,7 +242,10 @@ export default function ApplicationsListScreen({ route }: ApplicationsListScreen
         if (checkError) throw checkError;
 
         if (existingApproved && existingApproved.length > 0) {
-          console.log('[ApplicationsListScreen] Renter already has approved application:', existingApproved[0].application_id);
+          console.log(
+            '[ApplicationsListScreen] Renter already has approved application:',
+            existingApproved[0].application_id
+          );
           Alert.alert(
             'Cannot Approve',
             'This renter already has an approved application for another property.'
@@ -211,7 +291,10 @@ export default function ApplicationsListScreen({ route }: ApplicationsListScreen
           .neq('application_id', selectedApplication.application_id);
 
         if (cancelError) {
-          console.error('[ApplicationsListScreen] Error auto-cancelling applications:', cancelError);
+          console.error(
+            '[ApplicationsListScreen] Error auto-cancelling applications:',
+            cancelError
+          );
           // Don't throw - approval was successful
         } else {
           console.log('[ApplicationsListScreen] Other pending applications auto-cancelled');
@@ -220,7 +303,10 @@ export default function ApplicationsListScreen({ route }: ApplicationsListScreen
         console.log('[ApplicationsListScreen] Application approved successfully');
         Alert.alert('Success', 'Application approved successfully.');
       } else {
-        console.log('[ApplicationsListScreen] Rejecting application_id:', selectedApplication.application_id);
+        console.log(
+          '[ApplicationsListScreen] Rejecting application_id:',
+          selectedApplication.application_id
+        );
 
         // Reject application
         const { error } = await supabase
@@ -257,20 +343,38 @@ export default function ApplicationsListScreen({ route }: ApplicationsListScreen
     });
   };
 
-  const getStatusColor = (status: string) => {
+  const getStatusColors = (status: string) => {
     switch (status) {
       case 'pending':
-        return 'bg-yellow-500';
+        return {
+          backgroundColor: 'rgba(251, 191, 36, 0.1)',
+          textColor: 'rgb(90, 70, 0)',
+        };
       case 'approved':
-        return 'bg-green-500';
+        return {
+          backgroundColor: 'rgba(76, 175, 80, 0.1)',
+          textColor: 'rgb(76, 175, 80)',
+        };
       case 'rejected':
-        return 'bg-red-500';
+        return {
+          backgroundColor: 'rgba(229, 77, 46, 0.1)',
+          textColor: 'rgb(229, 77, 46)',
+        };
       case 'cancelled':
-        return 'bg-gray-500';
+        return {
+          backgroundColor: 'rgb(239, 239, 239)',
+          textColor: 'rgb(100, 100, 100)',
+        };
       case 'completed':
-        return 'bg-blue-500';
+        return {
+          backgroundColor: 'rgba(59, 130, 246, 0.1)',
+          textColor: 'rgb(59, 130, 246)',
+        };
       default:
-        return 'bg-gray-500';
+        return {
+          backgroundColor: 'rgb(239, 239, 239)',
+          textColor: 'rgb(100, 100, 100)',
+        };
     }
   };
 
@@ -278,23 +382,203 @@ export default function ApplicationsListScreen({ route }: ApplicationsListScreen
     return status.charAt(0).toUpperCase() + status.slice(1);
   };
 
-  if (isLoading) {
+  const getRoomPreferenceLabel = (preference: string | null) => {
+    if (!preference) return null;
+    if (preference === 'bedspace') return 'Bed Spaces';
+    if (preference === 'room') return 'Rooms';
+    if (preference === 'apartment') return 'Apartments';
+    return preference.charAt(0).toUpperCase() + preference.slice(1);
+  };
+
+  const renderApplicationItem = ({ item }: { item: ApplicationWithRenter }) => (
+    <View className="mb-4 overflow-hidden rounded-lg border border-input bg-card shadow-sm">
+      {/* Status Badge and Date */}
+      <View className="flex-row items-center justify-between border-b border-input px-4 py-3">
+        <View
+          className="rounded-full px-3 py-1"
+          style={{ backgroundColor: getStatusColors(item.status).backgroundColor }}>
+          <Text
+            className="text-xs font-semibold"
+            style={{ color: getStatusColors(item.status).textColor }}>
+            {getStatusText(item.status)}
+          </Text>
+        </View>
+        <Text className="text-xs text-muted-foreground">
+          Applied: {formatDate(item.date_applied)}
+        </Text>
+      </View>
+
+      {/* Renter Information */}
+      <View className="p-4">
+        {/* Profile Picture and Name */}
+        <View className="mb-3 flex-row items-center">
+          {item.renter.profile_picture ? (
+            <Image
+              source={{ uri: item.renter.profile_picture }}
+              className="mr-3 h-12 w-12 rounded-full"
+            />
+          ) : (
+            <View className="mr-3 h-12 w-12 items-center justify-center rounded-full bg-secondary">
+              <User size={24} color="#644A40" />
+            </View>
+          )}
+          <View className="flex-1">
+            <View className="flex-row items-center gap-1">
+              <Text className="text-lg font-bold text-card-foreground">
+                {item.renter.first_name} {item.renter.last_name}
+              </Text>
+              {item.renter.occupation && (
+                <>
+                  <Text className="text-sm capitalize text-muted-foreground">
+                    {', ' + item.renter.occupation}
+                  </Text>
+                </>
+              )}
+            </View>
+            <Text className="text-sm text-muted-foreground">{'<' + item.renter.email + '>'}</Text>
+            {item.renter.phone_number && (
+              <Text className="text-sm text-muted-foreground">{item.renter.phone_number}</Text>
+            )}
+          </View>
+        </View>
+
+        {/* Renter Details */}
+        <View className="mb-3 gap-2">
+          {item.renter.place_of_work_study && (
+            <View className="flex-row items-center">
+              <MapPin size={16} color="#000" />
+              <View className="ml-2 flex-1 flex-row items-center gap-2">
+                {isGeocodingLocations && !locationNames[item.renter.place_of_work_study] ? (
+                  <>
+                    <ActivityIndicator size="small" color="#888" />
+                    <Text className="text-sm text-muted-foreground">Loading location...</Text>
+                  </>
+                ) : (
+                  <Text className="flex-1 text-sm text-foreground">
+                    {locationNames[item.renter.place_of_work_study] ||
+                      item.renter.place_of_work_study}
+                    {(() => {
+                      if (!propertyCoordinates || !item.renter.place_of_work_study) return '';
+
+                      const distance = calculateDistanceFromStrings(
+                        propertyCoordinates,
+                        item.renter.place_of_work_study
+                      );
+                      return distance !== null ? ` (${formatDistance(distance)})` : '';
+                    })()}
+                  </Text>
+                )}
+              </View>
+            </View>
+          )}
+
+          {item.renter.price_range && (
+            <View className="flex-row items-center">
+              <Banknote size={16} color="#000" />
+              <Text className="ml-2 text-sm text-foreground">₱{item.renter.price_range}/month</Text>
+            </View>
+          )}
+
+          {item.renter.room_preference && (
+            <View className="flex-row items-center">
+              <Home size={16} color="#000" />
+              <Text className="ml-2 text-sm text-foreground">
+                Prefers {getRoomPreferenceLabel(item.renter.room_preference)}
+              </Text>
+            </View>
+          )}
+        </View>
+
+        {/* Message */}
+        {item.message && (
+          <View className="mb-3 rounded-lg bg-secondary p-3">
+            <Text className="text-xs font-semibold text-muted-foreground">Message:</Text>
+            <Text className="mt-1 text-sm leading-5 text-foreground">{item.message}</Text>
+          </View>
+        )}
+
+        {/* Action Buttons */}
+        <View className="flex-row gap-2">
+          {/* Contact Button - Always visible */}
+          <SmallButton
+            text="Contact"
+            Icon={MessageCircle}
+            variant="secondary"
+            onPress={() => handleContactApplicant(item.renter.phone_number)}
+            className="flex-1"
+          />
+
+          {/* Approve/Reject - Only for pending applications */}
+          {item.status === 'pending' && (
+            <>
+              <SmallButton
+                text="Reject"
+                Icon={X}
+                variant="destructive"
+                onPress={() => handleRejectPress(item)}
+                className="flex-1"
+              />
+              <SmallButton
+                text="Approve"
+                Icon={Check}
+                variant="primary"
+                onPress={() => handleApprovePress(item)}
+                className="flex-1"
+              />
+            </>
+          )}
+        </View>
+      </View>
+    </View>
+  );
+
+  const renderEmpty = () => {
+    if (isLoading || isRefreshing) {
+      return (
+        <View className="flex-1 items-center justify-center" style={{ minHeight: 300 }}>
+          <ActivityIndicator size="large" color="#644A40" />
+          <Text className="mt-4 text-muted-foreground">Loading applications...</Text>
+        </View>
+      );
+    }
     return (
-      <View className="flex-1 items-center justify-center bg-background">
-        <ActivityIndicator size="large" color="#644A40" />
-        <Text className="mt-4 text-base text-muted-foreground">Loading applications...</Text>
+      <View className="flex-1 items-center justify-center py-20">
+        <Text className="text-center text-base text-muted-foreground">
+          No one has applied to this property yet
+        </Text>
       </View>
     );
-  }
+  };
 
   return (
     <View
       className="flex-1 bg-background"
       style={{ paddingTop: Platform.OS === 'ios' ? 0 : insets.top + 8 }}>
-      <KeyboardAwareScrollView
-        className="flex-1"
-        style={{ paddingTop: Platform.OS === 'ios' ? 40 : 0 }}
-        contentContainerClassName="px-6 pb-8"
+      {/* Fixed Header Section */}
+      <View
+        className="flex-row items-center justify-between border-b border-border bg-background px-4 pb-4"
+        style={{ paddingTop: Platform.OS === 'ios' ? 50 : 0 }}>
+        <BackButton onPress={() => navigation.goBack()} label="" />
+        <View className="flex-1">
+          <Text className="text-3xl font-bold text-primary">Applications</Text>
+          <Text className="mt-1 text-sm text-muted-foreground" numberOfLines={2}>
+            {propertyTitle}
+          </Text>
+        </View>
+      </View>
+
+      {/* Applications List */}
+      <FlatList
+        data={applications}
+        renderItem={renderApplicationItem}
+        keyExtractor={(item) => item.application_id.toString()}
+        ListEmptyComponent={renderEmpty}
+        contentContainerStyle={{
+          paddingHorizontal: 16,
+          paddingTop: 16,
+          paddingBottom: 16,
+          flexGrow: 1,
+        }}
         refreshControl={
           <RefreshControl
             refreshing={isRefreshing}
@@ -302,137 +586,8 @@ export default function ApplicationsListScreen({ route }: ApplicationsListScreen
             colors={['#644A40']}
             tintColor="#644A40"
           />
-        }>
-        <View className="mb-6">
-          <Text className="text-3xl font-bold text-foreground">Applications</Text>
-          <Text className="text-base text-muted-foreground" numberOfLines={2}>
-            {propertyTitle}
-          </Text>
-        </View>
-
-        {applications.length === 0 ? (
-          <View className="mt-20 items-center justify-center">
-            <Text className="text-5xl">📝</Text>
-            <Text className="mt-4 text-lg font-semibold text-foreground">No Applications Yet</Text>
-            <Text className="mt-2 text-center text-base text-muted-foreground">
-              No one has applied to this property yet
-            </Text>
-          </View>
-        ) : (
-          applications.map((app) => (
-            <View
-              key={app.application_id}
-              className="mb-4 overflow-hidden rounded-xl border border-input bg-card shadow-sm">
-              {/* Status Badge and Date */}
-              <View className="flex-row items-center justify-between border-b border-input px-4 py-3">
-                <View className={`rounded-full px-3 py-1 ${getStatusColor(app.status)}`}>
-                  <Text className="text-xs font-semibold text-white">
-                    {getStatusText(app.status)}
-                  </Text>
-                </View>
-                <Text className="text-xs text-muted-foreground">
-                  Applied: {formatDate(app.date_applied)}
-                </Text>
-              </View>
-
-              {/* Renter Information */}
-              <View className="p-4">
-                {/* Profile Picture and Name */}
-                <View className="mb-3 flex-row items-center">
-                  {app.renter.profile_picture ? (
-                    <Image
-                      source={{ uri: app.renter.profile_picture }}
-                      className="mr-3 h-12 w-12 rounded-full"
-                    />
-                  ) : (
-                    <View className="mr-3 h-12 w-12 items-center justify-center rounded-full bg-secondary">
-                      <User size={24} color="#644A40" />
-                    </View>
-                  )}
-                  <View className="flex-1">
-                    <Text className="text-lg font-bold text-card-foreground">
-                      {app.renter.first_name} {app.renter.last_name}
-                    </Text>
-                    <Text className="text-sm text-muted-foreground">{app.renter.email}</Text>
-                    {app.renter.phone_number && (
-                      <Text className="text-sm text-muted-foreground">
-                        {app.renter.phone_number}
-                      </Text>
-                    )}
-                  </View>
-                </View>
-
-                {/* Renter Details */}
-                <View className="mb-3 gap-2">
-                  {app.renter.occupation && (
-                    <View className="flex-row items-center">
-                      <Briefcase size={16} color="#888" />
-                      <Text className="ml-2 text-sm text-foreground">
-                        {app.renter.occupation}
-                      </Text>
-                    </View>
-                  )}
-
-                  {app.renter.place_of_work_study && (
-                    <View className="flex-row items-center">
-                      <MapPin size={16} color="#888" />
-                      <Text className="ml-2 text-sm text-foreground">
-                        Works/Studies at: {app.renter.place_of_work_study}
-                      </Text>
-                    </View>
-                  )}
-
-                  {app.renter.price_range && (
-                    <View className="flex-row items-center">
-                      <DollarSign size={16} color="#888" />
-                      <Text className="ml-2 text-sm text-foreground">
-                        Budget: ₱{app.renter.price_range}/month
-                      </Text>
-                    </View>
-                  )}
-
-                  {app.renter.room_preference && (
-                    <View className="flex-row items-center">
-                      <Home size={16} color="#888" />
-                      <Text className="ml-2 text-sm text-foreground">
-                        Prefers: {app.renter.room_preference}
-                      </Text>
-                    </View>
-                  )}
-                </View>
-
-                {/* Message */}
-                {app.message && (
-                  <View className="mb-3 rounded-lg bg-secondary p-3">
-                    <Text className="text-xs font-semibold text-muted-foreground">Message:</Text>
-                    <Text className="mt-1 text-sm leading-5 text-foreground">{app.message}</Text>
-                  </View>
-                )}
-
-                {/* Action Buttons - Only for pending applications */}
-                {app.status === 'pending' && (
-                  <View className="flex-row gap-2">
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      onPress={() => handleRejectPress(app)}
-                      className="flex-1">
-                      Reject
-                    </Button>
-                    <Button
-                      variant="primary"
-                      size="sm"
-                      onPress={() => handleApprovePress(app)}
-                      className="flex-1">
-                      Approve
-                    </Button>
-                  </View>
-                )}
-              </View>
-            </View>
-          ))
-        )}
-      </KeyboardAwareScrollView>
+        }
+      />
 
       {/* Application Action Modal */}
       {selectedApplication && (

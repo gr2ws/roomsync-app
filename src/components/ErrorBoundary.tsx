@@ -58,25 +58,25 @@ class ErrorBoundary extends Component<Props, State> {
           <ScrollView
             className="flex-1"
             contentContainerClassName="flex-1 items-center justify-center px-6">
-            <View className="items-center max-w-md">
+            <View className="max-w-md items-center">
               <AlertTriangle size={64} color="rgb(229, 77, 46)" className="mb-6" />
 
-              <Text className="text-2xl font-bold text-foreground mb-2 text-center">
+              <Text className="mb-2 text-center text-2xl font-bold text-foreground">
                 Oops! Something went wrong
               </Text>
 
-              <Text className="text-base text-muted-foreground mb-6 text-center">
-                The app encountered an unexpected error. Don&apos;t worry, your data is safe.
+              <Text className="mb-6 text-center text-base text-muted-foreground">
+                The app encountered an unexpected error.
               </Text>
 
               {__DEV__ && this.state.error && (
-                <View className="w-full mb-6 p-4 bg-destructive/10 rounded-lg border border-destructive/20">
-                  <Text className="text-sm font-mono text-destructive mb-2">
+                <View className="mb-6 w-full rounded-lg border border-destructive/20 bg-destructive/10 p-4">
+                  <Text className="mb-2 font-mono text-sm text-destructive">
                     {this.state.error.toString()}
                   </Text>
                   {this.state.errorInfo && (
                     <ScrollView className="max-h-48">
-                      <Text className="text-xs font-mono text-muted-foreground">
+                      <Text className="font-mono text-xs text-muted-foreground">
                         {this.state.errorInfo.componentStack}
                       </Text>
                     </ScrollView>
@@ -86,12 +86,12 @@ class ErrorBoundary extends Component<Props, State> {
 
               <TouchableOpacity
                 onPress={this.handleReset}
-                className="flex-row items-center justify-center bg-primary px-6 py-3 rounded-lg active:opacity-80">
+                className="flex-row items-center justify-center rounded-lg bg-primary px-6 py-3 active:opacity-80">
                 <RefreshCw size={20} color="white" className="mr-2" />
-                <Text className="text-white font-semibold text-base">Try Again</Text>
+                <Text className="text-base font-semibold text-white">Back</Text>
               </TouchableOpacity>
 
-              <Text className="text-sm text-muted-foreground mt-6 text-center">
+              <Text className="mt-6 text-center text-sm text-muted-foreground">
                 If this problem persists, please try restarting the app.
               </Text>
             </View>

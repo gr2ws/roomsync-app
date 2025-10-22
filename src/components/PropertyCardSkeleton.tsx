@@ -1,6 +1,5 @@
-import { View , Animated } from 'react-native';
+import { View, Animated } from 'react-native';
 import { useEffect, useRef } from 'react';
-
 
 export default function PropertyCardSkeleton() {
   const pulseAnim = useRef(new Animated.Value(0)).current;
@@ -29,8 +28,8 @@ export default function PropertyCardSkeleton() {
 
   return (
     <View
-      className="my-1 h-40 flex-row border border-input bg-card shadow-sm"
-      style={{ borderRadius: 12, overflow: 'hidden' }}>
+      className="my-1 h-40 flex-row rounded-lg border border-input bg-card shadow-sm"
+      style={{ overflow: 'hidden' }}>
       {/* Image Skeleton (35%) */}
       <Animated.View
         className="w-[35%] bg-muted"
@@ -45,10 +44,7 @@ export default function PropertyCardSkeleton() {
       <View className="flex-1 justify-between p-2.5">
         {/* Title skeleton */}
         <View className="mb-1">
-          <Animated.View
-            className="mb-2 h-4 w-3/4 rounded bg-muted"
-            style={{ opacity }}
-          />
+          <Animated.View className="mb-2 h-4 w-3/4 rounded bg-muted" style={{ opacity }} />
           <Animated.View className="h-3 w-1/2 rounded bg-muted" style={{ opacity }} />
         </View>
 

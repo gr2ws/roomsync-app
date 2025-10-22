@@ -1,6 +1,6 @@
 import { View, Text, Image } from 'react-native';
 import { useState } from 'react';
-import { Star, User } from 'lucide-react-native';
+import { Star, User, MapPin } from 'lucide-react-native';
 import { Review } from '../types/property';
 import ImageSkeleton from './ImageSkeleton';
 
@@ -24,16 +24,21 @@ export default function ReviewCard({ review, showPropertyName, propertyName }: R
   };
 
   const renderStars = (rating: number) => {
+    const starColor = 'rgb(250, 204, 21)'; // star color from tailwind config
     return (
-      <View className="flex-row">
-        {[1, 2, 3, 4, 5].map((star) => (
-          <Star
-            key={star}
-            size={16}
-            color="#FFD700"
-            fill={star <= rating ? '#FFD700' : 'transparent'}
-          />
-        ))}
+      <View className="flex-row items-center gap-1">
+        <Text className="text-sm font-semibold text-foreground">{rating.toFixed(1)}</Text>
+        <View className="flex-row">
+          {[1, 2, 3, 4, 5].map((star) => (
+            <Star
+              key={star}
+              size={14}
+              color={starColor}
+              fill={star <= rating ? starColor : 'transparent'}
+              strokeWidth={2}
+            />
+          ))}
+        </View>
       </View>
     );
   };
@@ -86,9 +91,12 @@ export default function ReviewCard({ review, showPropertyName, propertyName }: R
               {review.user?.first_name || 'Unknown'} {review.user?.last_name || 'User'}
             </Text>
             {showPropertyName && propertyName && (
-              <Text className="text-xs text-muted-foreground" numberOfLines={1}>
-                {propertyName}
-              </Text>
+              <View className="flex-row items-center">
+                <MapPin size={12} color="#888" />
+                <Text className="ml-1 text-xs text-muted-foreground" numberOfLines={1}>
+                  {propertyName}
+                </Text>
+              </View>
             )}
           </View>
         </View>

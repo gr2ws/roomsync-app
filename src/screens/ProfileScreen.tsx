@@ -1,10 +1,11 @@
-import { View, Text, ScrollView, Alert, Platform, Image, ActivityIndicator } from 'react-native';
+import { View, Text, ScrollView, Alert, Platform, ActivityIndicator, Linking } from 'react-native';
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useLoggedIn } from '../store/useLoggedIn';
 import { supabase } from '../utils/supabase';
 import { z } from 'zod';
 import Button from '../components/Button';
+import SmallButton from '../components/SmallButton';
 import Input from '../components/Input';
 import ProfilePicturePicker from '../components/ProfilePicturePicker';
 import RadioGroup from '../components/RadioGroup';
@@ -30,10 +31,16 @@ function CurrentRentalCard({
   currentRental,
   isEndingRental,
   onEndRental,
+  onContactOwner,
+  onReview,
+  canReview,
 }: {
   currentRental: ApplicationWithProperty;
   isEndingRental: boolean;
   onEndRental: () => void;
+  onContactOwner: () => void;
+  onReview: () => void;
+  canReview: boolean;
 }) {
   console.log('[CurrentRentalCard] Rendering');
 
@@ -42,47 +49,39 @@ function CurrentRentalCard({
   }
 
   return (
-    <View className="overflow-hidden rounded-xl border border-input bg-card shadow-sm">
-      <View className="rounded-t-xl bg-primary px-4 py-3">
-        <Text className="text-lg font-bold text-primary-foreground">Current Rental</Text>
+    <View className="overflow-hidden rounded-lg border border-input bg-card p-4 shadow-sm">
+      {/* Property Details */}
+      <Text className="mb-2 text-lg font-bold text-card-foreground">
+        {currentRental.property.title || 'Untitled Property'}
+      </Text>
+
+      <View className="mb-2 flex-row items-center">
+        <MapPin size={14} color="#888" />
+        <Text className="ml-1 flex-1 text-sm text-muted-foreground">
+          {currentRental.property.street && `${currentRental.property.street}, `}
+          {currentRental.property.barangay}, {currentRental.property.city}
+        </Text>
       </View>
 
-      {/* Property Image */}
-      {currentRental.property.image_url &&
-      Array.isArray(currentRental.property.image_url) &&
-      currentRental.property.image_url.length > 0 ? (
-        <Image
-          source={{ uri: currentRental.property.image_url[0] }}
-          className="h-48 w-full"
-          resizeMode="cover"
-        />
-      ) : (
-        <View className="h-48 w-full items-center justify-center bg-secondary">
-          <Text className="text-muted-foreground">No Image</Text>
-        </View>
-      )}
+      <Text className="mb-3 text-base font-semibold text-primary">
+        ₱{(currentRental.property.rent || 0).toLocaleString()}/month
+      </Text>
 
-      {/* Property Details */}
-      <View className="p-4">
-        <Text className="mb-2 text-xl font-bold text-card-foreground">
-          {currentRental.property.title || 'Untitled Property'}
-        </Text>
-
-        <View className="mb-2 flex-row items-center">
-          <MapPin size={14} color="#888" />
-          <Text className="ml-1 text-sm text-muted-foreground">
-            {currentRental.property.street && `${currentRental.property.street}, `}
-            {currentRental.property.barangay}, {currentRental.property.city}
-          </Text>
-        </View>
-
-        <Text className="mb-3 text-lg font-semibold text-primary">
-          ₱{(currentRental.property.rent || 0).toLocaleString()}/month
-        </Text>
-
-        <Button variant="destructive" onPress={onEndRental} disabled={isEndingRental}>
+      {/* Action Buttons */}
+      <View className="flex-row flex-wrap gap-2">
+        <SmallButton
+          variant="destructive"
+          onPress={onEndRental}
+          disabled={isEndingRental}
+          className="flex-1">
           {isEndingRental ? <ActivityIndicator size="small" color="#fff" /> : 'End Rental'}
-        </Button>
+        </SmallButton>
+        <SmallButton variant="secondary" onPress={onContactOwner} className="flex-1">
+          Contact Owner
+        </SmallButton>
+        <SmallButton variant="primary" onPress={onReview} disabled={!canReview} className="flex-1">
+          Review
+        </SmallButton>
       </View>
     </View>
   );
@@ -158,6 +157,11 @@ export default function ProfileScreen() {
   const [isLoadingRental, setIsLoadingRental] = useState(true);
   const [showEndRentalModal, setShowEndRentalModal] = useState(false);
   const [isEndingRental, setIsEndingRental] = useState(false);
+  const [hasExistingReview, setHasExistingReview] = useState(false);
+  const [ownerPhoneNumber, setOwnerPhoneNumber] = useState<string | null>(null);
+
+  // Logout modal state
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
 
   // Initialize budget fields from price_range and reset fields when userProfile changes
   useEffect(() => {
@@ -321,6 +325,45 @@ export default function ProfileScreen() {
         console.log('[ProfileScreen - fetchCurrentRental] About to call setCurrentRental...');
         setCurrentRental(transformedData);
         console.log('[ProfileScreen - fetchCurrentRental] setCurrentRental called successfully');
+
+        // Check if user has already reviewed this property
+        const { data: reviewData, error: reviewError } = await supabase
+          .from('reviews')
+          .select('review_id')
+          .eq('user_id', userProfile.user_id)
+          .eq('property_id', data.property_id)
+          .maybeSingle();
+
+        if (reviewError) {
+          console.error(
+            '[ProfileScreen - fetchCurrentRental] Error checking for review:',
+            reviewError
+          );
+        } else {
+          setHasExistingReview(!!reviewData);
+          console.log(
+            '[ProfileScreen - fetchCurrentRental] User has existing review:',
+            !!reviewData
+          );
+        }
+
+        // Fetch owner's phone number
+        const { data: ownerData, error: ownerError } = await supabase
+          .from('users')
+          .select('phone_number')
+          .eq('user_id', data.owner_id)
+          .single();
+
+        if (ownerError) {
+          console.error(
+            '[ProfileScreen - fetchCurrentRental] Error fetching owner phone:',
+            ownerError
+          );
+          setOwnerPhoneNumber(null);
+        } else {
+          setOwnerPhoneNumber(ownerData?.phone_number || null);
+          console.log('[ProfileScreen - fetchCurrentRental] Owner phone fetched');
+        }
       } else {
         console.log('[ProfileScreen - fetchCurrentRental] No data and no error (unexpected state)');
         setCurrentRental(null);
@@ -435,25 +478,18 @@ export default function ProfileScreen() {
     });
   };
 
-  const handleLogout = async () => {
-    Alert.alert('Log Out', 'Are you sure you want to log out?', [
-      {
-        text: 'Cancel',
-        style: 'cancel',
-      },
-      {
-        text: 'Log Out',
-        style: 'destructive',
-        onPress: async () => {
-          const { error } = await supabase.auth.signOut();
-          if (error) {
-            Alert.alert('Error', 'Failed to log out: ' + error.message);
-            return;
-          }
-          setIsLoggedIn(false);
-        },
-      },
-    ]);
+  const handleLogout = () => {
+    setShowLogoutModal(true);
+  };
+
+  const confirmLogout = async () => {
+    setShowLogoutModal(false);
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      Alert.alert('Error', 'Failed to log out: ' + error.message);
+      return;
+    }
+    setIsLoggedIn(false);
   };
 
   const handleNameTap = () => {
@@ -612,6 +648,39 @@ export default function ProfileScreen() {
     Alert.alert('Success', 'Profile updated successfully');
   };
 
+  const handleContactOwner = async () => {
+    if (!ownerPhoneNumber) {
+      Alert.alert('Error', 'Owner phone number not available');
+      return;
+    }
+
+    try {
+      const url = `sms:${ownerPhoneNumber}`;
+      const canOpen = await Linking.canOpenURL(url);
+
+      if (canOpen) {
+        await Linking.openURL(url);
+      } else {
+        Alert.alert('Error', 'Cannot open messaging app');
+      }
+    } catch (error) {
+      console.error('[ProfileScreen] Error opening SMS:', error);
+      Alert.alert('Error', 'Failed to open messaging app');
+    }
+  };
+
+  const handleReview = () => {
+    if (!currentRental) return;
+
+    if (hasExistingReview) {
+      Alert.alert('Review Already Submitted', 'You have already reviewed this property.');
+      return;
+    }
+
+    // TODO: Navigate to review screen
+    Alert.alert('Review Property', 'Review feature coming soon!');
+  };
+
   const handleEndRental = async (optionalMessage?: string) => {
     if (!currentRental || !userProfile?.user_id) {
       Alert.alert('Error', 'Unable to end rental. Please try again.');
@@ -763,26 +832,6 @@ export default function ProfileScreen() {
             {userRole === 'renter' ? 'Renter' : 'Property Owner'}
           </Text>
 
-          {/* Current Rental Section - Renters only */}
-          {userRole === 'renter' && (
-            <View className="mb-6">
-              {isLoadingRental ? (
-                <View className="items-center justify-center rounded-xl border border-input bg-card p-6">
-                  <ActivityIndicator size="small" color="#644A40" />
-                  <Text className="mt-2 text-sm text-muted-foreground">
-                    Loading current rental...
-                  </Text>
-                </View>
-              ) : currentRental && currentRental.property ? (
-                <CurrentRentalCard
-                  currentRental={currentRental}
-                  isEndingRental={isEndingRental}
-                  onEndRental={() => setShowEndRentalModal(true)}
-                />
-              ) : null}
-            </View>
-          )}
-
           <View className="w-full max-w-sm self-center">
             {/* Profile Picture Picker - All roles */}
             <ProfilePicturePicker
@@ -892,6 +941,32 @@ export default function ProfileScreen() {
                   placeholder="Select location on map"
                   error={formErrors.placeOfWorkStudy}
                 />
+
+                {/* Current Rental Section - Below Place of Work/Study */}
+                {(isLoadingRental || currentRental) && (
+                  <View className="mb-4">
+                    <Text className="mb-2 text-base font-medium text-foreground">
+                      Current Rental
+                    </Text>
+                    {isLoadingRental ? (
+                      <View className="items-center justify-center rounded-lg border border-input bg-card p-6">
+                        <ActivityIndicator size="small" color="#644A40" />
+                        <Text className="mt-2 text-sm text-muted-foreground">
+                          Loading current rental...
+                        </Text>
+                      </View>
+                    ) : currentRental && currentRental.property ? (
+                      <CurrentRentalCard
+                        currentRental={currentRental}
+                        isEndingRental={isEndingRental}
+                        onEndRental={() => setShowEndRentalModal(true)}
+                        onContactOwner={handleContactOwner}
+                        onReview={handleReview}
+                        canReview={!hasExistingReview}
+                      />
+                    ) : null}
+                  </View>
+                )}
               </View>
             )}
 
@@ -946,6 +1021,18 @@ export default function ProfileScreen() {
         confirmVariant="destructive"
         onConfirm={handleEndRental}
         onCancel={() => setShowEndRentalModal(false)}
+      />
+
+      {/* Logout Confirmation Modal */}
+      <ConfirmationModal
+        visible={showLogoutModal}
+        title="Log Out"
+        message="Are you sure you want to log out?"
+        confirmText="Log Out"
+        cancelText="Cancel"
+        confirmVariant="destructive"
+        onConfirm={confirmLogout}
+        onCancel={() => setShowLogoutModal(false)}
       />
     </View>
   );

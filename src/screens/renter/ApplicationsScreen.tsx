@@ -5,10 +5,11 @@ import {
   Alert,
   Platform,
   RefreshControl,
+  FlatList,
+  Linking,
 } from 'react-native';
 import { useState, useEffect } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import { useLoggedIn } from '../../store/useLoggedIn';
 import { supabase } from '../../utils/supabase';
 import { ApplicationWithProperty } from '../../types/property';
@@ -152,6 +153,39 @@ export default function ApplicationsScreen() {
     }
   };
 
+  const handleContactOwner = async (ownerId: number) => {
+    try {
+      console.log('[ApplicationsScreen] Fetching owner phone for owner_id:', ownerId);
+
+      // Fetch owner's phone number
+      const { data: ownerData, error: ownerError } = await supabase
+        .from('users')
+        .select('phone_number')
+        .eq('user_id', ownerId)
+        .single();
+
+      if (ownerError) throw ownerError;
+
+      if (!ownerData?.phone_number) {
+        Alert.alert('Error', 'Owner phone number not available');
+        return;
+      }
+
+      console.log('[ApplicationsScreen] Opening SMS to owner');
+      const url = `sms:${ownerData.phone_number}`;
+      const canOpen = await Linking.canOpenURL(url);
+
+      if (canOpen) {
+        await Linking.openURL(url);
+      } else {
+        Alert.alert('Error', 'Cannot open messaging app');
+      }
+    } catch (error) {
+      console.error('[ApplicationsScreen] Error contacting owner:', error);
+      Alert.alert('Error', 'Failed to open messaging app');
+    }
+  };
+
   const handleReapplyToProperty = async (propertyId: number) => {
     if (!userProfile?.user_id) {
       Alert.alert('Error', 'Unable to reapply. Please try again.');
@@ -231,27 +265,134 @@ export default function ApplicationsScreen() {
   const rejectedApplications = applications.filter((app) => app.status === 'rejected');
   const completedApplications = applications.filter((app) => app.status === 'completed');
 
+  // Flatten all applications in order for FlatList
+  const flattenedApplications: Array<{
+    type: 'header' | 'item';
+    title?: string;
+    application?: ApplicationWithProperty;
+  }> = [];
+
   // Determine which section goes first
-  const topApplications = approvedApplications.length > 0 ? approvedApplications : pendingApplications;
+  const topApplications =
+    approvedApplications.length > 0 ? approvedApplications : pendingApplications;
   const showPendingBelow = approvedApplications.length > 0;
 
-  if (isLoading) {
+  // Top Section: Approved OR Pending
+  if (topApplications.length > 0) {
+    flattenedApplications.push({
+      type: 'header',
+      title: approvedApplications.length > 0 ? 'Approved' : 'Pending',
+    });
+    topApplications.forEach((app) => {
+      flattenedApplications.push({ type: 'item', application: app });
+    });
+  }
+
+  // Pending Section (if approved exists)
+  if (showPendingBelow && pendingApplications.length > 0) {
+    flattenedApplications.push({ type: 'header', title: 'Pending' });
+    pendingApplications.forEach((app) => {
+      flattenedApplications.push({ type: 'item', application: app });
+    });
+  }
+
+  // Bottom Section: Completed, Cancelled & Rejected
+  if (
+    completedApplications.length > 0 ||
+    cancelledApplications.length > 0 ||
+    rejectedApplications.length > 0
+  ) {
+    flattenedApplications.push({ type: 'header', title: 'Past Applications' });
+
+    completedApplications.forEach((app) => {
+      flattenedApplications.push({ type: 'item', application: app });
+    });
+
+    cancelledApplications.forEach((app) => {
+      flattenedApplications.push({ type: 'item', application: app });
+    });
+
+    rejectedApplications.forEach((app) => {
+      flattenedApplications.push({ type: 'item', application: app });
+    });
+  }
+
+  const renderItem = ({ item }: { item: (typeof flattenedApplications)[number] }) => {
+    if (item.type === 'header') {
+      return (
+        <View className="mb-3 mt-6 first:mt-0">
+          <Text className="text-xl font-bold text-foreground">{item.title}</Text>
+        </View>
+      );
+    }
+
+    if (item.type === 'item' && item.application) {
+      const app = item.application;
+      return (
+        <ApplicationCard
+          application={app}
+          onCancel={app.status === 'pending' ? handleCancelApplication : undefined}
+          onReapply={app.status === 'cancelled' ? handleReapplyToProperty : undefined}
+          onContactOwner={app.status === 'pending' ? handleContactOwner : undefined}
+          canReapply={
+            app.status === 'cancelled' && !applications.some((a) => a.status === 'approved')
+          }
+        />
+      );
+    }
+
+    return null;
+  };
+
+  const renderEmpty = () => {
+    if (isLoading || isRefreshing) {
+      return (
+        <View className="flex-1 items-center justify-center" style={{ minHeight: 300 }}>
+          <ActivityIndicator size="large" color="#644A40" />
+          <Text className="mt-4 text-muted-foreground">Loading applications...</Text>
+        </View>
+      );
+    }
     return (
-      <View className="flex-1 items-center justify-center bg-background">
-        <ActivityIndicator size="large" color="#644A40" />
-        <Text className="mt-4 text-base text-muted-foreground">Loading applications...</Text>
+      <View className="flex-1 items-center justify-center py-20">
+        <Text className="text-lg font-semibold text-foreground">No Applications Yet</Text>
+        <Text className="mt-2 text-center text-base text-muted-foreground">
+          Start browsing properties and apply to the ones you like!
+        </Text>
       </View>
     );
-  }
+  };
 
   return (
     <View
       className="flex-1 bg-background"
       style={{ paddingTop: Platform.OS === 'ios' ? 0 : insets.top + 8 }}>
-      <KeyboardAwareScrollView
-        className="flex-1"
-        style={{ paddingTop: Platform.OS === 'ios' ? 40 : 0 }}
-        contentContainerClassName="px-6 pb-8"
+      {/* Fixed Header Section */}
+      <View
+        className="border-b border-border bg-background px-4 pb-4"
+        style={{ paddingTop: Platform.OS === 'ios' ? 50 : 0 }}>
+        <Text className="text-3xl font-bold text-primary">My Applications</Text>
+        <Text className="mt-2.5 text-muted-foreground">
+          Track your property applications and their status
+        </Text>
+      </View>
+
+      {/* Applications List */}
+      <FlatList
+        data={flattenedApplications}
+        renderItem={renderItem}
+        keyExtractor={(item, index) =>
+          item.type === 'header'
+            ? `header-${item.title}`
+            : `app-${item.application?.application_id}-${index}`
+        }
+        ListEmptyComponent={renderEmpty}
+        contentContainerStyle={{
+          paddingHorizontal: 16,
+          paddingTop: 16,
+          paddingBottom: 16,
+          flexGrow: 1,
+        }}
         refreshControl={
           <RefreshControl
             refreshing={isRefreshing}
@@ -259,90 +400,16 @@ export default function ApplicationsScreen() {
             colors={['#644A40']}
             tintColor="#644A40"
           />
-        }>
-        <View className="mb-6">
-          <Text className="text-3xl font-bold text-foreground">My Applications</Text>
-          <Text className="text-base text-muted-foreground">
-            Track your property applications and their status
-          </Text>
-        </View>
-
-        {applications.length === 0 ? (
-          <View className="mt-20 items-center justify-center">
-            <Text className="text-5xl">📋</Text>
-            <Text className="mt-4 text-lg font-semibold text-foreground">No Applications Yet</Text>
-            <Text className="mt-2 text-center text-base text-muted-foreground">
-              Start browsing properties and apply to the ones you like!
-            </Text>
-          </View>
-        ) : (
-          <>
-            {/* Top Section: Approved OR Pending */}
-            {topApplications.length > 0 && (
-              <View className="mb-6">
-                <Text className="mb-3 text-xl font-bold text-foreground">
-                  {approvedApplications.length > 0 ? 'Approved' : 'Pending'}
-                </Text>
-                {topApplications.map((app) => (
-                  <ApplicationCard
-                    key={app.application_id}
-                    application={app}
-                    onCancel={app.status === 'pending' ? handleCancelApplication : undefined}
-                  />
-                ))}
-              </View>
-            )}
-
-            {/* Pending Section (if approved exists) */}
-            {showPendingBelow && pendingApplications.length > 0 && (
-              <View className="mb-6">
-                <Text className="mb-3 text-xl font-bold text-foreground">Pending</Text>
-                {pendingApplications.map((app) => (
-                  <ApplicationCard
-                    key={app.application_id}
-                    application={app}
-                    onCancel={handleCancelApplication}
-                  />
-                ))}
-              </View>
-            )}
-
-            {/* Bottom Section: Completed, Cancelled & Rejected */}
-            {(completedApplications.length > 0 ||
-              cancelledApplications.length > 0 ||
-              rejectedApplications.length > 0) && (
-              <View className="mb-6">
-                <Text className="mb-3 text-xl font-bold text-foreground">Past Applications</Text>
-
-                {completedApplications.map((app) => (
-                  <ApplicationCard key={app.application_id} application={app} />
-                ))}
-
-                {cancelledApplications.map((app) => (
-                  <ApplicationCard
-                    key={app.application_id}
-                    application={app}
-                    onReapply={handleReapplyToProperty}
-                    canReapply={!applications.some((a) => a.status === 'approved')}
-                  />
-                ))}
-
-                {rejectedApplications.map((app) => (
-                  <ApplicationCard key={app.application_id} application={app} />
-                ))}
-              </View>
-            )}
-          </>
-        )}
-      </KeyboardAwareScrollView>
+        }
+      />
 
       {/* Cancel Confirmation Modal */}
       <ConfirmationModal
         visible={showCancelModal}
         title="Cancel Application"
         message="Are you sure you want to cancel this application? This action cannot be undone."
-        confirmText="Cancel Application"
-        cancelText="Keep Application"
+        confirmText="Cancel"
+        cancelText="Keep"
         confirmVariant="destructive"
         onConfirm={confirmCancelApplication}
         onCancel={() => {

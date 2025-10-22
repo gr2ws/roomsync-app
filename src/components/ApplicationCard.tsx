@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
-import { View, Text, Image, Pressable, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, Pressable, ActivityIndicator, Alert } from 'react-native';
 import { ApplicationWithProperty } from '../types/property';
 import { MapPin } from 'lucide-react-native';
-import ImageSkeleton from './ImageSkeleton';
 import Button from './Button';
+import SmallButton from './SmallButton';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../utils/navigation';
@@ -12,6 +12,7 @@ interface ApplicationCardProps {
   application: ApplicationWithProperty;
   onCancel?: (applicationId: number) => Promise<void>;
   onReapply?: (propertyId: number) => Promise<void>;
+  onContactOwner?: (ownerId: number) => void;
   canReapply?: boolean;
 }
 
@@ -21,10 +22,9 @@ const ApplicationCard: React.FC<ApplicationCardProps> = ({
   application,
   onCancel,
   onReapply,
+  onContactOwner,
   canReapply = false,
 }) => {
-  const [isImageLoading, setIsImageLoading] = useState(true);
-  const [imageError, setImageError] = useState(false);
   const [isActionLoading, setIsActionLoading] = useState(false);
   const navigation = useNavigation<NavigationProp>();
 
@@ -37,20 +37,38 @@ const ApplicationCard: React.FC<ApplicationCardProps> = ({
     });
   };
 
-  const getStatusColor = () => {
+  const getStatusColors = () => {
     switch (application.status) {
       case 'pending':
-        return 'bg-yellow-500';
+        return {
+          backgroundColor: 'rgba(251, 191, 36, 0.1)',
+          textColor: 'rgb(120, 90, 20)',
+        };
       case 'approved':
-        return 'bg-green-500';
+        return {
+          backgroundColor: 'rgba(76, 175, 80, 0.1)',
+          textColor: 'rgb(76, 175, 80)',
+        };
       case 'rejected':
-        return 'bg-red-500';
+        return {
+          backgroundColor: 'rgba(229, 77, 46, 0.1)',
+          textColor: 'rgb(229, 77, 46)',
+        };
       case 'cancelled':
-        return 'bg-gray-500';
+        return {
+          backgroundColor: 'rgb(239, 239, 239)',
+          textColor: 'rgb(100, 100, 100)',
+        };
       case 'completed':
-        return 'bg-blue-500';
+        return {
+          backgroundColor: 'rgba(59, 130, 246, 0.1)',
+          textColor: 'rgb(59, 130, 246)',
+        };
       default:
-        return 'bg-gray-500';
+        return {
+          backgroundColor: 'rgb(239, 239, 239)',
+          textColor: 'rgb(100, 100, 100)',
+        };
     }
   };
 
@@ -90,101 +108,90 @@ const ApplicationCard: React.FC<ApplicationCardProps> = ({
 
   return (
     <Pressable
-      className="mb-3 overflow-hidden rounded-xl border border-input bg-card shadow-sm"
+      className="mb-3 overflow-hidden rounded-lg border border-input bg-card p-4 shadow-sm"
       onPress={handleCardPress}>
-      {/* Property Image */}
-      <View className="relative h-48 w-full">
-        {application.property.image_url && application.property.image_url.length > 0 && !imageError ? (
-          <>
-            {isImageLoading && (
-              <View className="absolute inset-0">
-                <ImageSkeleton width="100%" height={192} borderRadius={0} />
-              </View>
-            )}
-            <Image
-              source={{ uri: application.property.image_url[0] }}
-              className="h-full w-full"
-              resizeMode="cover"
-              onLoadStart={() => setIsImageLoading(true)}
-              onLoadEnd={() => setIsImageLoading(false)}
-              onError={() => {
-                setIsImageLoading(false);
-                setImageError(true);
-              }}
-            />
-          </>
-        ) : (
-          <View className="h-full w-full items-center justify-center bg-secondary">
-            <Text className="text-muted-foreground">No Image</Text>
-          </View>
-        )}
-
-        {/* Status Badge */}
-        <View className="absolute right-3 top-3">
-          <View className={`rounded-full px-3 py-1 ${getStatusColor()}`}>
-            <Text className="text-xs font-semibold text-white">{getStatusText()}</Text>
-          </View>
-        </View>
-      </View>
-
-      {/* Property Details */}
-      <View className="p-4">
-        <Text className="mb-1 text-lg font-bold text-card-foreground" numberOfLines={1}>
+      {/* Header with Title and Status */}
+      <View className="mb-2 flex-row items-start justify-between gap-2">
+        <Text className="flex-1 text-lg font-bold text-card-foreground" numberOfLines={2}>
           {application.property.title}
         </Text>
-
-        <View className="mb-2 flex-row items-center">
-          <MapPin size={14} color="#888" />
-          <Text className="ml-1 text-sm text-muted-foreground" numberOfLines={1}>
-            {application.property.street && `${application.property.street}, `}
-            {application.property.barangay}, {application.property.city}
+        <View
+          className="rounded-full px-3 py-1"
+          style={{ backgroundColor: getStatusColors().backgroundColor, flexShrink: 0 }}>
+          <Text className="text-xs font-semibold" style={{ color: getStatusColors().textColor }}>
+            {getStatusText()}
           </Text>
         </View>
-
-        <View className="mb-2 flex-row items-center justify-between">
-          <Text className="text-base font-semibold text-primary">
-            ₱{application.property.rent.toLocaleString()}/month
-          </Text>
-          <Text className="text-xs text-muted-foreground">
-            Applied: {formatDate(application.date_applied)}
-          </Text>
-        </View>
-
-        {/* Message */}
-        {application.message && (
-          <View className="mb-3 rounded-lg bg-secondary p-3">
-            <Text className="text-xs font-semibold text-muted-foreground">Message:</Text>
-            <Text className="mt-1 text-sm leading-5 text-foreground">{application.message}</Text>
-          </View>
-        )}
-
-        {/* Action Buttons */}
-        {application.status === 'pending' && onCancel && (
-          <Button
-            variant="destructive"
-            size="sm"
-            onPress={handleCancel}
-            disabled={isActionLoading}
-            className="mt-2">
-            {isActionLoading ? (
-              <ActivityIndicator size="small" color="#fff" />
-            ) : (
-              'Cancel Application'
-            )}
-          </Button>
-        )}
-
-        {application.status === 'cancelled' && canReapply && onReapply && (
-          <Button
-            variant="primary"
-            size="sm"
-            onPress={handleReapply}
-            disabled={isActionLoading}
-            className="mt-2">
-            {isActionLoading ? <ActivityIndicator size="small" color="#fff" /> : 'Reapply'}
-          </Button>
-        )}
       </View>
+
+      {/* Location */}
+      <View className="mb-2 flex-row items-center">
+        <MapPin size={14} color="#888" />
+        <Text className="ml-1 flex-1 text-sm text-muted-foreground" numberOfLines={1}>
+          {application.property.street && `${application.property.street}, `}
+          {application.property.barangay}, {application.property.city}
+        </Text>
+      </View>
+
+      {/* Rent and Date */}
+      <View className="mb-2 flex-row items-center justify-between">
+        <Text className="text-base font-semibold text-primary">
+          ₱{application.property.rent.toLocaleString()}/mo
+        </Text>
+        <Text className="text-xs text-muted-foreground">
+          Applied {formatDate(application.date_applied)}
+        </Text>
+      </View>
+
+      {/* Message */}
+      {application.message && (
+        <View className="mb-3 rounded-lg bg-secondary p-2.5">
+          <Text className="text-xs font-semibold text-muted-foreground">Message:</Text>
+          <Text className="mt-1 text-sm leading-5 text-foreground" numberOfLines={2}>
+            {application.message}
+          </Text>
+        </View>
+      )}
+
+      {/* Action Buttons */}
+      {application.status === 'pending' && (
+        <View className="mt-2 flex-row gap-2">
+          {onCancel && (
+            <View className="flex-1">
+              <SmallButton
+                variant="destructive"
+                onPress={handleCancel}
+                disabled={isActionLoading}>
+                {isActionLoading ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  'Cancel'
+                )}
+              </SmallButton>
+            </View>
+          )}
+          {onContactOwner && (
+            <View className="flex-1">
+              <SmallButton
+                variant="secondary"
+                onPress={() => onContactOwner(application.owner_id)}>
+                Contact Owner
+              </SmallButton>
+            </View>
+          )}
+        </View>
+      )}
+
+      {application.status === 'cancelled' && canReapply && onReapply && (
+        <Button
+          variant="primary"
+          size="sm"
+          onPress={handleReapply}
+          disabled={isActionLoading}
+          className="mt-2">
+          {isActionLoading ? <ActivityIndicator size="small" color="#fff" /> : 'Reapply'}
+        </Button>
+      )}
     </Pressable>
   );
 };

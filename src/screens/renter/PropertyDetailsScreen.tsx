@@ -18,7 +18,6 @@ import { useState, useEffect, useRef } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RouteProp } from '@react-navigation/native';
-import { Ionicons } from '@expo/vector-icons';
 import {
   Star,
   MapPin,
@@ -31,6 +30,9 @@ import {
   Car,
   Bed,
   Bath,
+  ArrowLeft,
+  CheckCircle,
+  Users,
 } from 'lucide-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { RootStackParamList } from '../../utils/navigation';
@@ -304,7 +306,12 @@ export default function PropertyDetailsScreen({ navigation, route }: PropertyDet
           (app) => app.property_id === propertyId && app.status === 'pending'
         );
         setHasPendingApplicationToThisProperty(hasPendingToThisProperty);
-        console.log('[PropertyDetails] Has pending to property_id', propertyId, ':', hasPendingToThisProperty);
+        console.log(
+          '[PropertyDetails] Has pending to property_id',
+          propertyId,
+          ':',
+          hasPendingToThisProperty
+        );
       }
     } catch (error) {
       console.error('[PropertyDetails] Error fetching applications:', error);
@@ -373,7 +380,11 @@ export default function PropertyDetailsScreen({ navigation, route }: PropertyDet
 
   const handleFileApplication = () => {
     // Show confirmation modal if user is allowed to apply
-    if (!hasApprovedApplication && !hasPendingApplicationToThisProperty && pendingApplicationsCount < 5) {
+    if (
+      !hasApprovedApplication &&
+      !hasPendingApplicationToThisProperty &&
+      pendingApplicationsCount < 5
+    ) {
       setShowApplicationModal(true);
     }
   };
@@ -815,7 +826,8 @@ export default function PropertyDetailsScreen({ navigation, route }: PropertyDet
                       className="mr-1.5 h-3 w-3 rounded-full"
                       style={{ backgroundColor: userCoords ? '#3b82f6' : '#d4d4d8' }}
                     />
-                    <Text className={`text-xs ${userCoords ? 'text-foreground' : 'text-muted-foreground'}`}>
+                    <Text
+                      className={`text-xs ${userCoords ? 'text-foreground' : 'text-muted-foreground'}`}>
                       Work/Study
                     </Text>
                   </View>
@@ -956,9 +968,9 @@ export default function PropertyDetailsScreen({ navigation, route }: PropertyDet
             {/* Back Button */}
             <TouchableOpacity
               onPress={() => navigation.goBack()}
-              className="absolute left-4 rounded-full border border-primary bg-background p-2"
-              style={{ top: Platform.OS === 'ios' ? insets.top + 8 : 16, zIndex: 20 }}>
-              <Ionicons name="arrow-back" size={24} color="#222" />
+              className="absolute left-4 z-20 rounded-full border border-primary bg-background p-2"
+              style={{ top: Platform.OS === 'ios' ? insets.top + 8 : 16 }}>
+              <ArrowLeft size={24} color="#222" />
             </TouchableOpacity>
 
             {/* Image Indicators */}
@@ -999,24 +1011,15 @@ export default function PropertyDetailsScreen({ navigation, route }: PropertyDet
               {/* Price */}
               <View className="flex-row items-center">
                 <Text
-                  className="text-2xl font-bold"
-                  style={{ color: matchesPriceRange() ? 'rgb(76, 175, 80)' : '#644A40' }}>
+                  className={`text-2xl font-bold ${matchesPriceRange() ? 'text-green-600' : 'text-primary'}`}>
                   ₱{property.rent.toLocaleString()}
                 </Text>
                 <Text className="text-sm text-muted-foreground">/mo</Text>
-                {matchesPriceRange() && (
-                  <Ionicons
-                    name="checkmark-circle-outline"
-                    size={18}
-                    color="rgb(76, 175, 80)"
-                    style={{ marginLeft: 4 }}
-                  />
-                )}
               </View>
 
               {/* Reviews */}
               <View className="flex-row items-center">
-                <Ionicons name="star" size={20} color="#FFD700" />
+                <Star size={20} color="rgb(250, 204, 21)" fill="rgb(250, 204, 21)" />
                 <Text className="ml-1 text-lg font-semibold text-foreground">
                   {property.rating?.toFixed(1) || 'N/A'}
                 </Text>
@@ -1034,7 +1037,7 @@ export default function PropertyDetailsScreen({ navigation, route }: PropertyDet
             <View className="flex-row items-center gap-2">
               {/* Current/Max Renters */}
               <View className="flex-row items-center">
-                <Ionicons name="people-outline" size={14} color="#644A40" />
+                <Users size={14} color="#644A40" />
                 <Text className="ml-1 text-sm text-muted-foreground">
                   {currentRenters}/{property.max_renters}
                 </Text>
@@ -1099,13 +1102,13 @@ export default function PropertyDetailsScreen({ navigation, route }: PropertyDet
               ) : hasPendingApplicationToThisProperty ? (
                 'Application Pending'
               ) : hasApprovedApplication ? (
-                'Rent (Approved)'
+                'Apply (Approved)'
               ) : pendingApplicationsCount >= 5 ? (
-                'Rent (5/5)'
+                'Apply (5/5)'
               ) : pendingApplicationsCount > 0 ? (
-                `Rent (${pendingApplicationsCount}/5)`
+                `Apply (${pendingApplicationsCount}/5)`
               ) : (
-                'Rent'
+                'Apply'
               )}
             </Button>
           </View>

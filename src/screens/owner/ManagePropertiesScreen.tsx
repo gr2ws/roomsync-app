@@ -72,6 +72,7 @@ export default function ManagePropertiesScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchInput, setSearchInput] = useState('');
   const [isSearching, setIsSearching] = useState(false);
+  const [selectedFilters, setSelectedFilters] = useState<Set<string>>(new Set(['All']));
 
   const fetchProperties = async (searchTerm?: string) => {
     if (!userProfile?.user_id) {
@@ -119,7 +120,12 @@ export default function ManagePropertiesScreen() {
             .eq('rented_property', property.property_id);
 
           if (countError) {
-            console.error('[ManagePropertiesScreen] Error counting renters for property_id', property.property_id, ':', countError);
+            console.error(
+              '[ManagePropertiesScreen] Error counting renters for property_id',
+              property.property_id,
+              ':',
+              countError
+            );
           }
 
           // Count applications
@@ -129,7 +135,12 @@ export default function ManagePropertiesScreen() {
             .eq('property_id', property.property_id);
 
           if (appsError) {
-            console.error('[ManagePropertiesScreen] Error counting applications for property_id', property.property_id, ':', appsError);
+            console.error(
+              '[ManagePropertiesScreen] Error counting applications for property_id',
+              property.property_id,
+              ':',
+              appsError
+            );
           }
 
           console.log('[ManagePropertiesScreen] Property', property.property_id, ':', {
@@ -245,6 +256,50 @@ export default function ManagePropertiesScreen() {
     fetchProperties();
   };
 
+  const handleFilterToggle = (filter: string) => {
+    setSelectedFilters((prev) => {
+      const newFilters = new Set(prev);
+
+      if (filter === 'All') {
+        // If "All" is clicked, clear all other filters
+        return new Set(['All']);
+      }
+
+      // Remove "All" if another filter is selected
+      newFilters.delete('All');
+
+      // Toggle the selected filter
+      if (newFilters.has(filter)) {
+        newFilters.delete(filter);
+      } else {
+        newFilters.add(filter);
+      }
+
+      // If no filters are selected, default to "All"
+      if (newFilters.size === 0) {
+        return new Set(['All']);
+      }
+
+      return newFilters;
+    });
+  };
+
+  const filteredProperties = properties.filter((property) => {
+    // If "All" is selected, show all properties
+    if (selectedFilters.has('All')) {
+      return true;
+    }
+
+    // Apply multi-select filters
+    const matchesVerified = !selectedFilters.has('Verified') || property.is_verified;
+    const matchesApplications =
+      !selectedFilters.has('Has Applicants') || property.applicationsCount > 0;
+    const matchesReviews = !selectedFilters.has('Reviewed') || property.number_reviews > 0;
+
+    // All selected filters must be satisfied
+    return matchesVerified && matchesApplications && matchesReviews;
+  });
+
   const renderProperty = ({ item }: { item: PropertyWithRenters }) => (
     <PropertyListItem
       property={item}
@@ -291,9 +346,7 @@ export default function ManagePropertiesScreen() {
       className="flex-1 bg-background"
       style={{ paddingTop: Platform.OS === 'ios' ? 0 : insets.top + 8 }}>
       {/* Fixed Header Section */}
-      <View
-        className="border-b border-border bg-background px-4 pb-4"
-        style={{ paddingTop: Platform.OS === 'ios' ? 50 : 0 }}>
+      <View className="bg-background px-4" style={{ paddingTop: Platform.OS === 'ios' ? 50 : 0 }}>
         {/* Header Text */}
         <View className="mb-4">
           <Text className="text-3xl font-bold text-primary">Manage Properties</Text>
@@ -304,7 +357,7 @@ export default function ManagePropertiesScreen() {
 
         {/* Search Bar */}
         <View
-          className={`flex-row items-center rounded-lg border border-input bg-card ${
+          className={`mb-4 flex-row items-center rounded-lg border border-input bg-card ${
             isSearching ? 'opacity-60' : 'opacity-100'
           }`}>
           <TextInput
@@ -332,11 +385,33 @@ export default function ManagePropertiesScreen() {
             )}
           </TouchableOpacity>
         </View>
+
+        {/* Filters (Tabs style) */}
+        <View className="flex-row border-b border-border">
+          {(['All', 'Verified', 'Has Applicants', 'Reviewed'] as const).map((filter) => (
+            <TouchableOpacity
+              key={filter}
+              className={`flex-1 items-center pb-3 ${
+                selectedFilters.has(filter)
+                  ? 'border-b-2 border-primary bg-transparent'
+                  : 'bg-transparent'
+              }`}
+              onPress={() => handleFilterToggle(filter)}
+              activeOpacity={1}>
+              <Text
+                className={`font-semibold ${
+                  selectedFilters.has(filter) ? 'text-primary' : 'text-muted-foreground'
+                }`}>
+                {filter}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
       </View>
 
       {/* Properties List */}
       <FlatList
-        data={properties}
+        data={filteredProperties}
         renderItem={renderProperty}
         keyExtractor={(item) => item.property_id.toString()}
         contentContainerStyle={{

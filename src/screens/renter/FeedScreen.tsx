@@ -11,7 +11,16 @@ import {
   RefreshControl,
   Keyboard,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import {
+  Star,
+  Search,
+  MapPin,
+  Users,
+  Image as ImageIcon,
+  Home,
+  X,
+  CheckCircle,
+} from 'lucide-react-native';
 import { useState, useEffect } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -235,30 +244,26 @@ export default function FeedScreen() {
 
   const userCity = extractCityFromLocation(userProfile?.place_of_work_study);
 
-  // Remove this - we'll use only RefreshControl's built-in spinner
-
   const renderPropertyCard = ({ item: property }: { item: PropertyWithDistance }) => {
     const isImageLoading = imageLoadingStates[property.property_id] ?? true;
 
     return (
       <TouchableOpacity
-        className="my-1 h-36 flex-row border border-input bg-card shadow-sm"
-        style={{ borderRadius: 12, overflow: 'hidden' }}
+        className="my-1 h-36 flex-row overflow-hidden rounded-lg border border-input bg-card shadow-sm"
         onPress={() =>
           navigation.navigate('PropertyDetails', { propertyId: property.property_id })
         }>
         {/* Image (35%) */}
         {property.image_url && property.image_url.length > 0 ? (
-          <View className="w-[35%] overflow-hidden" style={{ borderTopLeftRadius: 12, borderBottomLeftRadius: 12 }}>
+          <View className="w-[35%] overflow-hidden rounded-bl-xl rounded-tl-xl">
             {isImageLoading && (
-              <View className="absolute inset-0" style={{ borderTopLeftRadius: 12, borderBottomLeftRadius: 12 }}>
+              <View className="absolute inset-0 rounded-bl-xl rounded-tl-xl">
                 <ImageSkeleton width="100%" height="100%" borderRadius={12} />
               </View>
             )}
             <Image
               source={{ uri: property.image_url[0] }}
-              className="h-full w-full"
-              style={{ borderTopLeftRadius: 12, borderBottomLeftRadius: 12 }}
+              className="h-full w-full rounded-bl-xl rounded-tl-xl"
               resizeMode="cover"
               onLoadStart={() => {
                 setImageLoadingStates((prev) => ({ ...prev, [property.property_id]: true }));
@@ -269,10 +274,8 @@ export default function FeedScreen() {
             />
           </View>
         ) : (
-          <View
-            className="w-[35%] items-center justify-center bg-muted"
-            style={{ borderTopLeftRadius: 12, borderBottomLeftRadius: 12 }}>
-            <Ionicons name="image-outline" size={28} color="#EFEFEF" />
+          <View className="w-[35%] items-center justify-center rounded-bl-xl rounded-tl-xl bg-muted">
+            <ImageIcon size={28} color="#EFEFEF" />
           </View>
         )}
 
@@ -291,19 +294,10 @@ export default function FeedScreen() {
           {/* Price */}
           <View className="mb-1 flex-row items-center">
             <Text
-              className="text-base font-bold"
-              style={{ color: property.matchesPriceRange ? 'rgb(76, 175, 80)' : undefined }}>
+              className={`text-base font-bold ${property.matchesPriceRange ? 'text-green-600' : 'text-foreground'}`}>
               ₱{property.rent.toLocaleString()}
             </Text>
             <Text className="text-sm text-muted-foreground">/mo</Text>
-            {property.matchesPriceRange && (
-              <Ionicons
-                name="checkmark-circle-outline"
-                size={14}
-                color="rgb(76, 175, 80)"
-                style={{ marginLeft: 4 }}
-              />
-            )}
           </View>
 
           {/* Rating and Occupancy */}
@@ -311,7 +305,7 @@ export default function FeedScreen() {
             <View className="flex-row items-center">
               {property.rating && property.rating > 0 ? (
                 <>
-                  <Ionicons name="star" size={14} color="#FFD700" />
+                  <Star size={14} color="rgb(250, 204, 21)" fill="rgb(250, 204, 21)" />
                   <Text className="ml-1 text-sm text-muted-foreground">
                     {property.rating.toFixed(1)} ({property.number_reviews || 0})
                   </Text>
@@ -321,7 +315,7 @@ export default function FeedScreen() {
               )}
             </View>
             <View className="flex-row items-center">
-              <Ionicons name="people-outline" size={14} color="#644A40" />
+              <Users size={14} color="#644A40" />
               <Text className="ml-1 text-sm text-muted-foreground">
                 {property.currentRenters || 0}/{property.max_renters}
               </Text>
@@ -331,7 +325,7 @@ export default function FeedScreen() {
           {/* Distance and Room Type Badge */}
           <View className="flex-row items-center justify-between">
             <View className="flex-row items-center">
-              <Ionicons name="location-outline" size={14} color="#644A40" />
+              <MapPin size={14} color="#644A40" />
               <Text className="ml-1 text-xs text-muted-foreground">
                 {property.distance !== null
                   ? `${formatDistance(property.distance)} from work/school`
@@ -384,7 +378,7 @@ export default function FeedScreen() {
     if (isLoading) return null;
     return (
       <View className="flex-1 items-center justify-center py-20">
-        <Ionicons name="home-outline" size={64} color="#A0A0A0" />
+        <Home size={64} color="#A0A0A0" />
         <Text className="mt-4 text-lg font-semibold text-foreground">No properties found</Text>
         <Text className="mt-2 text-center text-muted-foreground">
           {searchQuery ? 'Try adjusting your search terms' : 'Check back later for new listings'}
@@ -423,7 +417,7 @@ export default function FeedScreen() {
           />
           {searchInput.length > 0 && (
             <TouchableOpacity onPress={handleClearSearch} className="px-2" disabled={isSearching}>
-              <Ionicons name="close-circle" size={20} color="#646464" />
+              <X size={20} color="#646464" />
             </TouchableOpacity>
           )}
           <View className="h-full w-px bg-input" />
@@ -431,7 +425,7 @@ export default function FeedScreen() {
             {isSearching ? (
               <ActivityIndicator size="small" color="#644A40" />
             ) : (
-              <Ionicons name="search" size={20} color="#644A40" />
+              <Search size={20} color="#644A40" />
             )}
           </TouchableOpacity>
         </View>

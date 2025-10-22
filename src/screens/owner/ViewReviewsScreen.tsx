@@ -197,7 +197,7 @@ export default function ViewReviewsScreen() {
     if (!hasMore && reviews.length > 0) {
       return (
         <View className="items-center py-4">
-          <Text className="text-sm text-muted-foreground">You've reached the end</Text>
+          <Text className="text-sm text-muted-foreground">You&apos;ve reached the end</Text>
         </View>
       );
     }
@@ -239,13 +239,11 @@ export default function ViewReviewsScreen() {
             <View className="flex-row items-center gap-3">
               <Text className="text-3xl font-bold text-primary">Property Reviews</Text>
               <View className="flex-row items-center">
-                <Star size={18} color="#FFD700" fill="#FFD700" />
+                <Star size={18} color="rgb(250, 204, 21)" fill="rgb(250, 204, 21)" />
                 <Text className="ml-1 text-base font-semibold text-foreground">
                   {averageRating ? averageRating.toFixed(1) : 'N/A'}
                 </Text>
-                <Text className="ml-1 text-sm text-muted-foreground">
-                  ({reviews.length})
-                </Text>
+                <Text className="ml-1 text-sm text-muted-foreground">({reviews.length})</Text>
               </View>
             </View>
           </View>
@@ -263,8 +261,12 @@ export default function ViewReviewsScreen() {
         {/* Subtitle - fixed height container */}
         <View style={{ minHeight: 24 }}>
           {filterPropertyId && reviews.length > 0 && reviews[0].property?.title ? (
-            <Text className="mt-1 text-sm text-muted-foreground">
+            <Text className="mt-1 text-sm text-muted-foreground" numberOfLines={1}>
               {reviews[0].property.title}
+            </Text>
+          ) : filterPropertyId && reviews.length === 0 ? (
+            <Text className="mt-1 text-sm text-muted-foreground">
+              No reviews for this property yet
             </Text>
           ) : (
             <Text className="mt-1 text-sm text-muted-foreground">
@@ -289,7 +291,7 @@ export default function ViewReviewsScreen() {
         ListEmptyComponent={renderEmpty}
         contentContainerStyle={{
           paddingHorizontal: 16,
-          paddingTop: 16,
+          paddingTop: 12,
           paddingBottom: 16,
           flexGrow: 1,
         }}
