@@ -21,7 +21,14 @@ const RadioGroup: React.FC<RadioGroupProps> = ({ options, value, onChange, label
           return (
             <Pressable
               key={option}
-              onPress={() => onChange(lowercaseValue)}
+              onPress={() => {
+                // If already selected, deselect by passing empty string
+                if (isSelected) {
+                  onChange('');
+                } else {
+                  onChange(lowercaseValue);
+                }
+              }}
               className={`flex-row items-center rounded-lg border px-4 py-3 ${
                 isSelected ? 'border-primary bg-muted' : 'border-input bg-card'
               }`}

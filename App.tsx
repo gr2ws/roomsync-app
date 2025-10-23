@@ -37,6 +37,7 @@ import AddPropertyScreen from './src/screens/owner/AddPropertyScreen';
 import ManagePropertiesScreen from './src/screens/owner/ManagePropertiesScreen';
 import ViewReviewsScreen from './src/screens/owner/ViewReviewsScreen';
 import ApplicationsListScreen from './src/screens/owner/ApplicationsListScreen';
+import ReportScreen from './src/screens/ReportScreen';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useEffect, useState } from 'react';
 import ErrorBoundary from './src/components/ErrorBoundary';
@@ -465,6 +466,7 @@ export default function App() {
                   <Stack.Screen name="Preferences" component={PreferencesScreen} />
                   <Stack.Screen name="PropertyDetails" component={PropertyDetailsScreen} />
                   <Stack.Screen name="ApplicationsList" component={ApplicationsListScreen} />
+                  <Stack.Screen name="ReportScreen" component={ReportScreen} />
                 </>
               ) : (
                 <>

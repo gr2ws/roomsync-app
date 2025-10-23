@@ -18,7 +18,8 @@ export type NotificationType =
   | 'new_review'
   | 'new_property_submission'
   | 'new_report'
-  | 'new_registration';
+  | 'new_registration'
+  | 'user_reported';
 
 export interface Notification {
   notif_id: number;
@@ -102,6 +103,11 @@ export const notificationMessages: Record<
     title: 'New User Registration',
     message: 'A new user has registered on the platform.',
     icon: 'UserPlus',
+  },
+  user_reported: {
+    title: 'You Have Been Reported',
+    message: 'A report has been filed against you. Please review your conduct and ensure you follow community guidelines.',
+    icon: 'AlertTriangle',
   },
 };
 

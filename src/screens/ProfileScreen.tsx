@@ -1,4 +1,13 @@
-import { View, Text, ScrollView, Alert, Platform, ActivityIndicator, Linking } from 'react-native';
+import {
+  View,
+  Text,
+  ScrollView,
+  Alert,
+  Platform,
+  ActivityIndicator,
+  Linking,
+  TouchableOpacity,
+} from 'react-native';
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useLoggedIn } from '../store/useLoggedIn';
@@ -18,8 +27,9 @@ import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ApplicationWithProperty } from '../types/property';
-import { MapPin } from 'lucide-react-native';
+import { MapPin, Flag } from 'lucide-react-native';
 import { RootStackParamList, RootTabParamList } from '../utils/navigation';
+import UserSelectionModal from '../components/UserSelectionModal';
 
 // Define the composite navigation prop type
 type ProfileScreenNavigationProp = CompositeNavigationProp<
@@ -34,6 +44,7 @@ function CurrentRentalCard({
   onEndRental,
   onContactOwner,
   onReview,
+  onReport,
   canReview,
 }: {
   currentRental: ApplicationWithProperty;
@@ -41,6 +52,7 @@ function CurrentRentalCard({
   onEndRental: () => void;
   onContactOwner: () => void;
   onReview: () => void;
+  onReport: () => void;
   canReview: boolean;
 }) {
   console.log('[CurrentRentalCard] Rendering');
@@ -51,20 +63,32 @@ function CurrentRentalCard({
 
   return (
     <View className="overflow-hidden rounded-lg border border-input bg-card p-4 shadow-sm">
-      {/* Property Details */}
-      <Text className="mb-2 text-lg font-bold text-card-foreground">
-        {currentRental.property.title || 'Untitled Property'}
-      </Text>
+      {/* Header with Title/Location and Report Button */}
+      <View className="mb-3 flex-row items-start justify-between">
+        {/* Property Title and Location */}
+        <View className="flex-1">
+          <Text className="text-lg font-bold text-primary">
+            {currentRental.property.title || 'Untitled Property'}
+          </Text>
+          <View className="mt-1 flex-row items-center">
+            <MapPin size={14} color="#888" />
+            <Text className="ml-1 flex-1 text-sm text-muted-foreground">
+              {currentRental.property.street && `${currentRental.property.street}, `}
+              {currentRental.property.barangay}, {currentRental.property.city}
+            </Text>
+          </View>
+        </View>
 
-      <View className="mb-2 flex-row items-center">
-        <MapPin size={14} color="#888" />
-        <Text className="ml-1 flex-1 text-sm text-muted-foreground">
-          {currentRental.property.street && `${currentRental.property.street}, `}
-          {currentRental.property.barangay}, {currentRental.property.city}
-        </Text>
+        {/* Circular Report Button */}
+        <TouchableOpacity
+          onPress={onReport}
+          className="ml-3 h-10 w-10 items-center justify-center rounded-full bg-destructive"
+          activeOpacity={0.7}>
+          <Flag size={18} color="#fff" />
+        </TouchableOpacity>
       </View>
 
-      <Text className="mb-3 text-base font-semibold text-primary">
+      <Text className="text-foreground2 mb-3 text-base font-semibold">
         ₱{(currentRental.property.rent || 0).toLocaleString()}/month
       </Text>
 
@@ -167,6 +191,10 @@ export default function ProfileScreen() {
   // Review modal state
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [endedRental, setEndedRental] = useState<ApplicationWithProperty | null>(null);
+
+  // Report modal state
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [reportableUsers, setReportableUsers] = useState<{ user_id: number; name: string }[]>([]);
 
   // Initialize budget fields from price_range and reset fields when userProfile changes
   useEffect(() => {
@@ -754,6 +782,122 @@ export default function ProfileScreen() {
     }
   };
 
+  const handleReportPress = async () => {
+    console.log('[ProfileScreen] Report button pressed');
+
+    if (!currentRental || !userProfile?.user_id) {
+      console.error('[ProfileScreen] Cannot open report - missing rental or user:', {
+        hasRental: !!currentRental,
+        hasUserId: !!userProfile?.user_id,
+      });
+      Alert.alert('Error', 'Unable to open report. Please try again.');
+      return;
+    }
+
+    console.log('[ProfileScreen] Fetching reportable users for property:', currentRental.property_id);
+
+    try {
+      // Fetch roommates (users with same rented_property)
+      console.log('[ProfileScreen] Fetching roommates...');
+      const { data: roommates, error: roommatesError } = await supabase
+        .from('users')
+        .select('user_id, first_name, last_name')
+        .eq('rented_property', currentRental.property_id)
+        .neq('user_id', userProfile.user_id);
+
+      if (roommatesError) throw roommatesError;
+      console.log('[ProfileScreen] Roommates fetched:', roommates?.length || 0);
+
+      // Fetch owner details
+      console.log('[ProfileScreen] Fetching owner details for owner_id:', currentRental.owner_id);
+      const { data: ownerData, error: ownerError } = await supabase
+        .from('users')
+        .select('user_id, first_name, last_name')
+        .eq('user_id', currentRental.owner_id)
+        .single();
+
+      if (ownerError) throw ownerError;
+      console.log('[ProfileScreen] Owner data fetched:', ownerData);
+
+      // Build list of reportable users
+      const users: { user_id: number; name: string }[] = [];
+
+      // Add owner
+      if (ownerData) {
+        users.push({
+          user_id: ownerData.user_id,
+          name: `${ownerData.first_name} ${ownerData.last_name} (Owner)`,
+        });
+        console.log('[ProfileScreen] Added owner to reportable users');
+      }
+
+      // Add roommates
+      if (roommates && roommates.length > 0) {
+        roommates.forEach((roommate) => {
+          users.push({
+            user_id: roommate.user_id,
+            name: `${roommate.first_name} ${roommate.last_name} (Roommate)`,
+          });
+        });
+        console.log('[ProfileScreen] Added', roommates.length, 'roommates to reportable users');
+      }
+
+      console.log('[ProfileScreen] Total reportable users:', users.length);
+
+      if (users.length === 0) {
+        console.log('[ProfileScreen] No reportable users found');
+        Alert.alert(
+          'No Users to Report',
+          'There are no other users associated with this property.'
+        );
+        return;
+      }
+
+      console.log('[ProfileScreen] Opening user selection modal with users:', users);
+      setReportableUsers(users);
+      setShowReportModal(true);
+    } catch (error) {
+      console.error('[ProfileScreen] Error fetching reportable users:', error);
+      Alert.alert('Error', 'Failed to load users. Please try again.');
+    }
+  };
+
+  const handleReportConfirm = (selectedUserId: number, selectedUserName: string) => {
+    console.log('[ProfileScreen] Report user selected:', {
+      userId: selectedUserId,
+      userName: selectedUserName,
+    });
+
+    setShowReportModal(false);
+
+    if (!currentRental) {
+      console.error('[ProfileScreen] No current rental found for navigation');
+      return;
+    }
+
+    console.log('[ProfileScreen] Navigating to ReportScreen with params:', {
+      reportedUserId: selectedUserId,
+      reportedUserName: selectedUserName,
+      propertyId: currentRental.property_id,
+      reporterRole: 'renter',
+    });
+
+    // Navigate to ReportScreen
+    const parent = navigation.getParent();
+    if (parent && typeof parent.navigate === 'function') {
+      parent.navigate('ReportScreen', {
+        reportedUserId: selectedUserId,
+        reportedUserName: selectedUserName,
+        propertyId: currentRental.property_id,
+        reporterRole: 'renter',
+      });
+      console.log('[ProfileScreen] Navigation to ReportScreen initiated');
+    } else {
+      console.error('[ProfileScreen] Parent navigator not available');
+      Alert.alert('Navigation Error', 'Unable to navigate to report screen.');
+    }
+  };
+
   const handleEndRental = async (optionalMessage?: string) => {
     if (!currentRental || !userProfile?.user_id) {
       Alert.alert('Error', 'Unable to end rental. Please try again.');
@@ -1047,6 +1191,7 @@ export default function ProfileScreen() {
                         onEndRental={() => setShowEndRentalModal(true)}
                         onContactOwner={handleContactOwner}
                         onReview={handleReview}
+                        onReport={handleReportPress}
                         canReview={!hasExistingReview}
                       />
                     ) : null}
@@ -1135,6 +1280,17 @@ export default function ProfileScreen() {
           }}
         />
       )}
+
+      {/* User Selection Modal for Reporting */}
+      <UserSelectionModal
+        visible={showReportModal}
+        users={reportableUsers}
+        onConfirm={handleReportConfirm}
+        onCancel={() => {
+          setShowReportModal(false);
+          setReportableUsers([]);
+        }}
+      />
     </View>
   );
 }

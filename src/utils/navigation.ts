@@ -9,6 +9,12 @@ export type RootStackParamList = {
   Preferences: { fromProfile?: boolean } | undefined;
   PropertyDetails: { propertyId: number };
   ApplicationsList: { propertyId: number };
+  ReportScreen: {
+    reportedUserId: number;
+    reportedUserName: string;
+    propertyId: number;
+    reporterRole: 'renter' | 'owner';
+  };
 };
 
 export type RootTabParamList = {

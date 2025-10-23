@@ -342,3 +342,29 @@ CREATE TRIGGER trigger_new_registration
 AFTER INSERT ON users
 FOR EACH ROW
 EXECUTE FUNCTION notify_new_registration();
+
+-- Trigger: Notify reported user when a report is filed against them
+CREATE OR REPLACE FUNCTION notify_user_reported()
+RETURNS TRIGGER AS $$
+DECLARE
+  reported_user_auth_id uuid;
+BEGIN
+  -- Only notify if a user is being reported (not just a property)
+  IF NEW.reported_user IS NOT NULL THEN
+    SELECT auth_id INTO reported_user_auth_id
+    FROM users WHERE user_id = NEW.reported_user;
+
+    IF reported_user_auth_id IS NOT NULL THEN
+      INSERT INTO notifications (notif_type, user_auth_id, created_at)
+      VALUES ('user_reported', reported_user_auth_id, NOW());
+    END IF;
+  END IF;
+
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trigger_user_reported
+AFTER INSERT ON reports
+FOR EACH ROW
+EXECUTE FUNCTION notify_user_reported();

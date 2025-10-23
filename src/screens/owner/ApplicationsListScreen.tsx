@@ -15,6 +15,7 @@ import { RouteProp } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../../utils/navigation';
 import { supabase } from '../../utils/supabase';
+import { useLoggedIn } from '../../store/useLoggedIn';
 import { ApplicationWithRenter } from '../../types/property';
 import {
   calculateDistanceFromStrings,
@@ -26,7 +27,7 @@ import SmallButton from '../../components/SmallButton';
 import BackButton from '../../components/BackButton';
 import ApplicationActionModal from '../../components/ApplicationActionModal';
 import ConfirmationModal from '../../components/ConfirmationModal';
-import { User, MapPin, Banknote, Home, MessageCircle, X, Check, Ban } from 'lucide-react-native';
+import { User, MapPin, Banknote, Home, MessageCircle, X, Check, Ban, Flag } from 'lucide-react-native';
 
 type ApplicationsListScreenRouteProp = RouteProp<RootStackParamList, 'ApplicationsList'>;
 type ApplicationsListScreenNavigationProp = StackNavigationProp<
@@ -42,6 +43,7 @@ interface ApplicationsListScreenProps {
 export default function ApplicationsListScreen({ route, navigation }: ApplicationsListScreenProps) {
   const insets = useSafeAreaInsets();
   const { propertyId } = route.params;
+  const { userProfile } = useLoggedIn();
 
   const [applications, setApplications] = useState<ApplicationWithRenter[]>([]);
   const [propertyTitle, setPropertyTitle] = useState<string>('');
@@ -255,6 +257,34 @@ export default function ApplicationsListScreen({ route, navigation }: Applicatio
   const handleEndRentalPress = (application: ApplicationWithRenter) => {
     setSelectedRenterForEndRental(application);
     setShowEndRentalModal(true);
+  };
+
+  const handleReportPress = (application: ApplicationWithRenter) => {
+    console.log('[ApplicationsListScreen] Report button pressed for application:', {
+      application_id: application.application_id,
+      renter_id: application.renter_id,
+      renter_name: `${application.renter.first_name} ${application.renter.last_name}`,
+      status: application.status,
+    });
+
+    if (!userProfile?.user_id) {
+      console.error('[ApplicationsListScreen] No user profile found');
+      Alert.alert('Error', 'User profile not found. Please log in again.');
+      return;
+    }
+
+    const reportParams = {
+      reportedUserId: application.renter_id,
+      reportedUserName: `${application.renter.first_name} ${application.renter.last_name}`,
+      propertyId: application.property_id,
+      reporterRole: 'owner' as const,
+    };
+
+    console.log('[ApplicationsListScreen] Navigating to ReportScreen with params:', reportParams);
+
+    // Navigate to ReportScreen
+    navigation.navigate('ReportScreen', reportParams);
+    console.log('[ApplicationsListScreen] Navigation to ReportScreen initiated');
   };
 
   const handleEndRental = async (optionalMessage?: string) => {
@@ -670,6 +700,17 @@ export default function ApplicationsListScreen({ route, navigation }: Applicatio
               variant="destructive"
               onPress={() => handleEndRentalPress(item)}
               disabled={isEndingRental}
+              className="flex-1"
+            />
+          )}
+
+          {/* Report Button - For all applications except pending */}
+          {item.status !== 'pending' && (
+            <SmallButton
+              text="Report"
+              Icon={Flag}
+              variant="destructive"
+              onPress={() => handleReportPress(item)}
               className="flex-1"
             />
           )}
