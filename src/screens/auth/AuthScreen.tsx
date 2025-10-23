@@ -1,4 +1,4 @@
-import { View, Text, TextInput, Alert, Platform } from 'react-native';
+import { View, Text, TextInput, Alert, Platform, Image } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import { useLoggedIn } from '../../store/useLoggedIn';
 import Button from '../../components/Button';
@@ -152,10 +152,21 @@ export default function AuthScreen({ navigation }: Props) {
         )}
         <View className="flex-1 items-center justify-center">
           <View className="w-full max-w-sm">
+            <Image 
+              source={require('../../assets/logo.png')}
+              style={{
+                width: 400,
+                height: 400,
+                alignSelf: 'center',
+                marginBottom: -80,
+                marginTop: -180
+              }}
+              resizeMode="contain"
+            />
             <Text className="mb-4 text-center text-4xl font-bold text-primary">Welcome back!</Text>
             <Text className="mb-8 text-center text-base text-muted-foreground">
               Sign in to continue...
-            </Text>
+            </Text> 
 
             <View className="flex w-full justify-center gap-4">
               <View className="">
