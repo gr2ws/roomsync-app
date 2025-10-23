@@ -167,7 +167,7 @@ export default function NotificationsScreen() {
         style={{ paddingTop: Platform.OS === 'ios' ? 50 : 0 }}>
         <Text className="text-3xl font-bold text-primary">Notifications</Text>
         <Text className="mt-2.5 text-muted-foreground">
-          Stay updated with important alerts about your applications and properties
+          Stay updated with important alerts about your applications
         </Text>
       </View>
 

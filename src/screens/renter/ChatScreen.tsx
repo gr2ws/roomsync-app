@@ -14,7 +14,8 @@ import {
   Image,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { SendHorizontal, MessageCircle, Bot } from 'lucide-react-native';
+import { SendHorizontal, MessageCircle, Bot, RotateCcw } from 'lucide-react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { sendMessageToAI } from '../../utils/gemini';
 import { useLoggedIn } from '../../store/useLoggedIn';
 
@@ -35,6 +36,68 @@ const ChatScreen: React.FC = () => {
   const [isTyping, setIsTyping] = useState(false);
   const keyboardHeight = useRef(new Animated.Value(0)).current;
   const [scrollPadding, setScrollPadding] = useState(80);
+  const [isLoadingMessages, setIsLoadingMessages] = useState(true);
+
+  const MESSAGE_LIMIT = 30;
+
+  // Calculate user message count
+  const userMessageCount = messages.filter((msg) => msg.sender === 'user').length;
+  const isAtLimit = userMessageCount >= MESSAGE_LIMIT;
+  const isNearLimit = userMessageCount >= 25;
+
+  // Storage key unique to each user
+  const getStorageKey = () => {
+    return `chat_messages_${userProfile?.user_id || 'guest'}`;
+  };
+
+  // Load messages from AsyncStorage
+  const loadMessages = async () => {
+    console.log('[ChatScreen] Loading messages from storage...');
+    try {
+      const storageKey = getStorageKey();
+      console.log('[ChatScreen] Storage key:', storageKey);
+      const storedMessages = await AsyncStorage.getItem(storageKey);
+      if (storedMessages) {
+        const parsedMessages = JSON.parse(storedMessages);
+        // Convert timestamp strings back to Date objects
+        const messagesWithDates = parsedMessages.map((msg: Message) => ({
+          ...msg,
+          timestamp: new Date(msg.timestamp),
+        }));
+        console.log('[ChatScreen] Loaded', messagesWithDates.length, 'messages from storage');
+        setMessages(messagesWithDates);
+      } else {
+        console.log('[ChatScreen] No stored messages found');
+      }
+    } catch (error) {
+      console.error('[ChatScreen] Error loading messages from storage:', error);
+    } finally {
+      setIsLoadingMessages(false);
+      console.log('[ChatScreen] Message loading complete');
+    }
+  };
+
+  // Save messages to AsyncStorage
+  const saveMessages = async (messagesToSave: Message[]) => {
+    console.log('[ChatScreen] Saving', messagesToSave.length, 'messages to storage');
+    try {
+      const storageKey = getStorageKey();
+      await AsyncStorage.setItem(storageKey, JSON.stringify(messagesToSave));
+      console.log('[ChatScreen] Messages saved successfully');
+    } catch (error) {
+      console.error('[ChatScreen] Error saving messages to storage:', error);
+    }
+  };
+
+  // Load messages on mount
+  useEffect(() => {
+    console.log('[ChatScreen] Component mounted, user_id:', userProfile?.user_id);
+    loadMessages();
+
+    return () => {
+      console.log('[ChatScreen] Component unmounting');
+    };
+  }, [userProfile?.user_id]);
 
   useEffect(() => {
     const keyboardWillShow = Keyboard.addListener(
@@ -70,10 +133,67 @@ const ChatScreen: React.FC = () => {
     };
   }, [insets.bottom]);
 
+  const handleReset = () => {
+    console.log('[ChatScreen] Reset conversation requested');
+    Alert.alert('Reset Conversation', 'Are you sure you want to reset the conversation?', [
+      {
+        text: 'Cancel',
+        style: 'cancel',
+        onPress: () => {
+          console.log('[ChatScreen] Reset cancelled by user');
+        },
+      },
+      {
+        text: 'Reset',
+        style: 'destructive',
+        onPress: async () => {
+          console.log('[ChatScreen] Resetting conversation...');
+          setMessages([]);
+          setInput('');
+          // Clear messages from storage
+          try {
+            const storageKey = getStorageKey();
+            await AsyncStorage.removeItem(storageKey);
+            console.log('[ChatScreen] Conversation reset successfully');
+          } catch (error) {
+            console.error('[ChatScreen] Error clearing messages from storage:', error);
+          }
+        },
+      },
+    ]);
+  };
+
   const handleSend = async () => {
-    if (!input.trim() || isSending) return;
+    if (!input.trim() || isSending) {
+      console.log('[ChatScreen] Send blocked - empty input or already sending');
+      return;
+    }
+
+    console.log('[ChatScreen] User message count:', userMessageCount, '/', MESSAGE_LIMIT);
+
+    // Check message limit
+    if (isAtLimit) {
+      console.log('[ChatScreen] Message limit reached, showing alert');
+      Alert.alert(
+        'Message Limit Reached',
+        "You've reached the 30-message limit. Please reset the conversation to continue.",
+        [
+          {
+            text: 'Reset Now',
+            onPress: handleReset,
+          },
+          {
+            text: 'Cancel',
+            style: 'cancel',
+          },
+        ]
+      );
+      return;
+    }
 
     const userMessageText = input.trim();
+    console.log('[ChatScreen] Sending user message:', userMessageText.substring(0, 50) + '...');
+
     const userMessage: Message = {
       id: Date.now().toString(),
       sender: 'user',
@@ -81,7 +201,11 @@ const ChatScreen: React.FC = () => {
       timestamp: new Date(),
     };
 
-    setMessages((prev) => [...prev, userMessage]);
+    const updatedMessagesWithUser = [...messages, userMessage];
+    setMessages(updatedMessagesWithUser);
+    // Save user message immediately
+    await saveMessages(updatedMessagesWithUser);
+
     setInput('');
     setIsSending(true);
     setIsTyping(true);
@@ -94,8 +218,12 @@ const ChatScreen: React.FC = () => {
         parts: msg.text,
       }));
 
+      console.log('[ChatScreen] Sending request to AI with', chatHistory.length, 'history messages');
+
       // Send message to Gemini AI
       const aiResponseText = await sendMessageToAI(userMessageText, chatHistory);
+
+      console.log('[ChatScreen] Received AI response:', aiResponseText.substring(0, 50) + '...');
 
       const aiMessage: Message = {
         id: (Date.now() + 1).toString(),
@@ -104,9 +232,13 @@ const ChatScreen: React.FC = () => {
         timestamp: new Date(),
       };
 
-      setMessages((prev) => [...prev, aiMessage]);
+      const updatedMessagesWithAI = [...updatedMessagesWithUser, aiMessage];
+      setMessages(updatedMessagesWithAI);
+      // Save messages with AI response
+      await saveMessages(updatedMessagesWithAI);
+      console.log('[ChatScreen] Message exchange complete');
     } catch (error) {
-      console.error('Error sending message to AI:', error);
+      console.error('[ChatScreen] Error sending message to AI:', error);
       Alert.alert(
         'Error',
         'Failed to get a response from the AI assistant. Please check your API key and try again.'
@@ -219,8 +351,28 @@ const ChatScreen: React.FC = () => {
       <View
         className="border-b border-border bg-background px-4 pb-4"
         style={{ paddingTop: Platform.OS === 'ios' ? 50 : 0 }}>
-        <Text className="text-3xl font-bold text-primary">Chat</Text>
-        <Text className="mt-2.5 text-muted-foreground">Find recommendations and ask questions</Text>
+        <View className="flex-row items-start justify-between">
+          <View className="flex-1">
+            <Text className="text-3xl font-bold text-primary">Chat</Text>
+            <Text className="mt-2.5 text-muted-foreground">
+              Find recommendations and ask questions
+            </Text>
+          </View>
+          <View className=" flex-col-reverse items-center gap-2">
+            <Text
+              className={`text-sm font-medium ${
+                isNearLimit ? 'text-destructive' : 'text-muted-foreground'
+              }`}>
+              {userMessageCount}/{MESSAGE_LIMIT}
+            </Text>
+            <TouchableOpacity
+              onPress={handleReset}
+              className="rounded-lg border border-input bg-card p-2 shadow-xs"
+              disabled={messages.length === 0}>
+              <RotateCcw size={20} color={messages.length === 0 ? '#9CA3AF' : '#644A40'} />
+            </TouchableOpacity>
+          </View>
+        </View>
       </View>
 
       {/* Messages List - Scrollable area */}
@@ -259,11 +411,11 @@ const ChatScreen: React.FC = () => {
         <TextInput
           className="flex-1 px-4 text-base text-foreground"
           style={{ height: 44, lineHeight: 18 }}
-          placeholder="Type your message..."
+          placeholder={isAtLimit ? 'Message limit reached. Please reset.' : 'Type your message...'}
           placeholderTextColor="#646464"
           value={input}
           onChangeText={setInput}
-          editable={!isSending}
+          editable={!isSending && !isAtLimit}
           onSubmitEditing={handleSend}
           returnKeyType="send"
           multiline={false}
@@ -272,8 +424,10 @@ const ChatScreen: React.FC = () => {
         <View className="h-full w-px bg-input" />
         <TouchableOpacity
           onPress={handleSend}
-          disabled={!input.trim() || isSending}
-          className={`px-3 py-3 ${!input.trim() || isSending ? 'opacity-40' : 'opacity-100'}`}>
+          disabled={!input.trim() || isSending || isAtLimit}
+          className={`px-3 py-3 ${
+            !input.trim() || isSending || isAtLimit ? 'opacity-40' : 'opacity-100'
+          }`}>
           {isSending ? (
             <ActivityIndicator size="small" color="#644A40" />
           ) : (

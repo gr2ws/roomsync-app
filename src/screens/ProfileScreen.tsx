@@ -903,7 +903,7 @@ export default function ProfileScreen() {
       <ScrollView
         className="flex-1"
         contentContainerClassName="px-6 pb-2"
-        style={{ paddingTop: Platform.OS === 'ios' ? 40 : 0 }}>
+        style={{ paddingTop: Platform.OS === 'ios' ? 55 : 0 }}>
         <View
           style={{
             paddingBottom: Platform.OS === 'ios' ? 0 : 32,
