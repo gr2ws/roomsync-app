@@ -100,3 +100,38 @@ export interface ApplicationWithRenter extends Application {
     room_preference: PropertyCategory | null;
   };
 }
+
+export interface PropertyWithScore extends Property {
+  amenityScore: number;
+  distance_formatted: string;
+}
+
+export interface PropertyForAI {
+  property_id: number;
+  title: string;
+  description: string | null;
+  category: PropertyCategory;
+  street: string | null;
+  barangay: string | null;
+  city: string;
+  rent: number;
+  amenities: string[] | null;
+  rating: number | null;
+  max_renters: number;
+  is_available: boolean;
+  is_verified: boolean;
+  has_internet: boolean | null;
+  allows_pets: boolean | null;
+  is_furnished: boolean | null;
+  has_ac: boolean | null;
+  is_secure: boolean | null;
+  has_parking: boolean | null;
+  number_reviews: number;
+  distance_formatted: string;
+  // Explicitly excludes: owner_id, coordinates, image_url (handled by UI)
+}
+
+export interface RecommendationResult {
+  properties: PropertyWithScore[];
+  json: string;
+}

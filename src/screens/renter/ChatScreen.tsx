@@ -18,17 +18,34 @@ import { SendHorizontal, MessageCircle, Bot, RotateCcw } from 'lucide-react-nati
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { sendMessageToAI } from '../../utils/gemini';
 import { useLoggedIn } from '../../store/useLoggedIn';
+import { useRejectedRecommendations } from '../../store/useRejectedRecommendations';
+import { getRecommendedProperties } from '../../services/recommendations';
+import { Property } from '../../types/property';
+import { supabase } from '../../utils/supabase';
+import ChatPropertyCard from '../../components/ChatPropertyCard';
 
 interface Message {
   id: string;
   sender: 'user' | 'ai';
   text: string;
   timestamp: Date;
+  properties?: Property[];
 }
 
 const ChatScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
   const { userProfile } = useLoggedIn();
+  const {
+    rejectedIds,
+    addRejectedProperty,
+    getRejectedIds,
+    setRecommendationQueue,
+    getNextRecommendation,
+    markPropertyAsShown,
+    hasMoreRecommendations,
+    setCurrentProperty,
+    getCurrentPropertyId,
+  } = useRejectedRecommendations();
   const scrollViewRef = useRef<ScrollView>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
@@ -219,10 +236,14 @@ const ChatScreen: React.FC = () => {
         parts: msg.text,
       }));
 
-      console.log('[ChatScreen] Sending request to AI with', chatHistory.length, 'history messages');
+      console.log(
+        '[ChatScreen] Sending request to AI with',
+        chatHistory.length,
+        'history messages'
+      );
 
       // Send message to Gemini AI with tool call handler
-      const aiResponseText = await sendMessageToAI(
+      const aiResponse = await sendMessageToAI(
         userMessageText,
         chatHistory,
         async (toolName, args) => {
@@ -261,18 +282,234 @@ const ChatScreen: React.FC = () => {
               }
             }, 1500);
           }
+
+          // Handle get_recommendations tool
+          if (toolName === 'get_recommendations') {
+            console.log('[ChatScreen] AI requested recommendations with priority:', args.priority);
+
+            try {
+              const excludedIds = getRejectedIds();
+              console.log('[ChatScreen] Excluded property IDs:', excludedIds);
+
+              const result = await getRecommendedProperties(excludedIds, args.priority);
+
+              if (result.properties.length === 0) {
+                console.log('[ChatScreen] No recommendations available');
+                return {
+                  success: false,
+                  message: 'No properties available at the moment.',
+                };
+              }
+
+              console.log('[ChatScreen] Got', result.properties.length, 'recommendations');
+
+              // Store in recommendation queue
+              setRecommendationQueue(result.properties);
+
+              // Automatically show the first property
+              const firstProperty = result.properties[0];
+              markPropertyAsShown(firstProperty.property_id);
+              setCurrentProperty(firstProperty.property_id);
+              console.log(
+                '[ChatScreen] Auto-showing first property:',
+                firstProperty.title,
+                'ID:',
+                firstProperty.property_id
+              );
+
+              // Return first property with fields for AI to discuss (excluding owner_id, coordinates and image_url)
+              return {
+                success: true,
+                count: result.properties.length,
+                hasMore: result.properties.length > 1,
+                json: JSON.stringify({
+                  property_id: firstProperty.property_id,
+                  title: firstProperty.title,
+                  description: firstProperty.description,
+                  category: firstProperty.category,
+                  street: firstProperty.street,
+                  barangay: firstProperty.barangay,
+                  city: firstProperty.city,
+                  rent: firstProperty.rent,
+                  amenities: firstProperty.amenities,
+                  rating: firstProperty.rating,
+                  max_renters: firstProperty.max_renters,
+                  is_available: firstProperty.is_available,
+                  is_verified: firstProperty.is_verified,
+                  has_internet: firstProperty.has_internet,
+                  allows_pets: firstProperty.allows_pets,
+                  is_furnished: firstProperty.is_furnished,
+                  has_ac: firstProperty.has_ac,
+                  is_secure: firstProperty.is_secure,
+                  has_parking: firstProperty.has_parking,
+                  number_reviews: firstProperty.number_reviews,
+                  distance_formatted: firstProperty.distance_formatted,
+                }),
+                properties: [firstProperty],
+              };
+            } catch (error) {
+              console.error('[ChatScreen] Error fetching recommendations:', error);
+              return {
+                success: false,
+                message: 'Failed to fetch recommendations. Please try again.',
+              };
+            }
+          }
+
+          // Handle show_next_property tool
+          if (toolName === 'show_next_property') {
+            console.log('[ChatScreen] AI requested to show next property');
+
+            try {
+              const nextProperty = getNextRecommendation();
+
+              if (!nextProperty) {
+                console.log('[ChatScreen] No more properties in queue');
+                return {
+                  success: false,
+                  message: 'No more properties to show.',
+                };
+              }
+
+              // Mark as shown and set as current
+              markPropertyAsShown(nextProperty.property_id);
+              setCurrentProperty(nextProperty.property_id);
+              console.log(
+                '[ChatScreen] Showing property:',
+                nextProperty.title,
+                'ID:',
+                nextProperty.property_id
+              );
+
+              // Return property data (excluding owner_id, coordinates and image_url)
+              return {
+                success: true,
+                hasMore: hasMoreRecommendations(),
+                json: JSON.stringify({
+                  property_id: nextProperty.property_id,
+                  title: nextProperty.title,
+                  description: nextProperty.description,
+                  category: nextProperty.category,
+                  street: nextProperty.street,
+                  barangay: nextProperty.barangay,
+                  city: nextProperty.city,
+                  rent: nextProperty.rent,
+                  amenities: nextProperty.amenities,
+                  rating: nextProperty.rating,
+                  max_renters: nextProperty.max_renters,
+                  is_available: nextProperty.is_available,
+                  is_verified: nextProperty.is_verified,
+                  has_internet: nextProperty.has_internet,
+                  allows_pets: nextProperty.allows_pets,
+                  is_furnished: nextProperty.is_furnished,
+                  has_ac: nextProperty.has_ac,
+                  is_secure: nextProperty.is_secure,
+                  has_parking: nextProperty.has_parking,
+                  number_reviews: nextProperty.number_reviews,
+                  distance_formatted:
+                    (nextProperty as any).distance_formatted || 'Distance unavailable',
+                }),
+                properties: [nextProperty],
+              };
+            } catch (error) {
+              console.error('[ChatScreen] Error showing next property:', error);
+              return {
+                success: false,
+                message: 'Failed to show property. Please try again.',
+              };
+            }
+          }
+
+          // Handle reject_recommendation tool
+          if (toolName === 'reject_recommendation') {
+            console.log('[ChatScreen] AI requested to reject property:', args.property_id);
+
+            try {
+              const propertyId = args.property_id;
+
+              // Add to rejected list
+              addRejectedProperty(propertyId);
+              console.log('[ChatScreen] Property', propertyId, 'added to rejected list');
+
+              // Automatically show the next property from queue
+              const nextProperty = getNextRecommendation();
+
+              if (!nextProperty) {
+                console.log('[ChatScreen] No more properties in queue after rejection');
+                return {
+                  success: true,
+                  hasMore: false,
+                  message: 'Property rejected. No more properties available.',
+                };
+              }
+
+              // Mark next property as shown and set as current
+              markPropertyAsShown(nextProperty.property_id);
+              setCurrentProperty(nextProperty.property_id);
+              console.log(
+                '[ChatScreen] Auto-showing next property after rejection:',
+                nextProperty.title,
+                'ID:',
+                nextProperty.property_id
+              );
+
+              // Return next property (excluding owner_id, coordinates and image_url)
+              return {
+                success: true,
+                hasMore: hasMoreRecommendations(),
+                json: JSON.stringify({
+                  property_id: nextProperty.property_id,
+                  title: nextProperty.title,
+                  description: nextProperty.description,
+                  category: nextProperty.category,
+                  street: nextProperty.street,
+                  barangay: nextProperty.barangay,
+                  city: nextProperty.city,
+                  rent: nextProperty.rent,
+                  amenities: nextProperty.amenities,
+                  rating: nextProperty.rating,
+                  max_renters: nextProperty.max_renters,
+                  is_available: nextProperty.is_available,
+                  is_verified: nextProperty.is_verified,
+                  has_internet: nextProperty.has_internet,
+                  allows_pets: nextProperty.allows_pets,
+                  is_furnished: nextProperty.is_furnished,
+                  has_ac: nextProperty.has_ac,
+                  is_secure: nextProperty.is_secure,
+                  has_parking: nextProperty.has_parking,
+                  number_reviews: nextProperty.number_reviews,
+                  distance_formatted:
+                    (nextProperty as any).distance_formatted || 'Distance unavailable',
+                }),
+                properties: [nextProperty],
+              };
+            } catch (error) {
+              console.error('[ChatScreen] Error rejecting recommendation:', error);
+              return {
+                success: false,
+                message: 'Failed to reject property. Please try again.',
+              };
+            }
+          }
+
+          // Apply tool temporarily disabled for testing reject functionality
+          // if (toolName === 'apply_to_property') {
+          //   console.log('[ChatScreen] AI requested to apply to property:', args.property_id);
+          //   // ... implementation commented out
+          // }
         }
       );
 
       // Only add AI message if there's a response (not a tool call)
-      if (aiResponseText) {
-        console.log('[ChatScreen] Received AI response:', aiResponseText.substring(0, 50) + '...');
+      if (aiResponse.text) {
+        console.log('[ChatScreen] Received AI response:', aiResponse.text.substring(0, 50) + '...');
 
         const aiMessage: Message = {
           id: (Date.now() + 1).toString(),
           sender: 'ai',
-          text: aiResponseText,
+          text: aiResponse.text,
           timestamp: new Date(),
+          properties: aiResponse.properties || undefined,
         };
 
         const updatedMessagesWithAI = [...updatedMessagesWithUser, aiMessage];
@@ -305,46 +542,57 @@ const ChatScreen: React.FC = () => {
     const isUser = item.sender === 'user';
 
     return (
-      <View className={`my-2 flex-row ${isUser ? 'flex-row-reverse' : 'flex-row'} items-start`}>
-        {/* Profile Picture */}
-        {isUser ? (
-          userProfile?.profile_picture ? (
-            <Image
-              source={{ uri: userProfile.profile_picture }}
-              className="ml-2 mt-1.5 h-8 w-8 rounded-full"
-            />
+      <View className={`my-2 ${isUser ? '' : 'w-full'}`}>
+        <View className={`flex-row ${isUser ? 'flex-row-reverse' : 'flex-row'} items-start`}>
+          {/* Profile Picture */}
+          {isUser ? (
+            userProfile?.profile_picture ? (
+              <Image
+                source={{ uri: userProfile.profile_picture }}
+                className="ml-2 mt-1.5 h-8 w-8 rounded-full"
+              />
+            ) : (
+              <View className="ml-2 h-8 w-8 items-center justify-center rounded-full bg-primary">
+                <Text className="text-sm font-semibold text-primary-foreground">
+                  {userProfile?.first_name?.[0]?.toUpperCase() || 'U'}
+                </Text>
+              </View>
+            )
           ) : (
-            <View className="ml-2 h-8 w-8 items-center justify-center rounded-full bg-primary">
-              <Text className="text-sm font-semibold text-primary-foreground">
-                {userProfile?.first_name?.[0]?.toUpperCase() || 'U'}
+            <View className="mr-2 mt-1.5 h-8 w-8 items-center justify-center rounded-full bg-accent">
+              <Bot size={18} color="#644A40" />
+            </View>
+          )}
+
+          {/* Message Content */}
+          <View className={isUser ? 'max-w-[75%]' : 'flex-1'}>
+            <View
+              className={`rounded-lg border px-4 py-3 shadow-xs ${
+                isUser ? 'border-primary bg-secondary' : 'border-border bg-card'
+              }`}>
+              <Text
+                className={`text-base leading-5 ${
+                  isUser ? 'text-secondary-foreground' : 'text-card-foreground'
+                }`}>
+                {item.text}
               </Text>
             </View>
-          )
-        ) : (
-          <View className="mr-2 mt-1.5 h-8 w-8 items-center justify-center rounded-full bg-accent">
-            <Bot size={18} color="#644A40" />
-          </View>
-        )}
-
-        {/* Message Content */}
-        <View className="max-w-[75%]">
-          <View
-            className={`rounded-lg border px-4 py-3 shadow-xs ${
-              isUser ? 'border-primary bg-secondary' : 'border-border bg-card'
-            }`}>
+            {/* Timestamp */}
             <Text
-              className={`text-base leading-5 ${
-                isUser ? 'text-secondary-foreground' : 'text-card-foreground'
-              }`}>
-              {item.text}
+              className={`mt-1 text-xs text-muted-foreground ${isUser ? 'text-right' : 'text-left'}`}>
+              {formatTime(item.timestamp)}
             </Text>
           </View>
-          {/* Timestamp */}
-          <Text
-            className={`mt-1 text-xs text-muted-foreground ${isUser ? 'text-right' : 'text-left'}`}>
-            {formatTime(item.timestamp)}
-          </Text>
         </View>
+
+        {/* Property Cards (only for AI messages) */}
+        {!isUser && item.properties && item.properties.length > 0 && (
+          <View className="ml-10 mt-2">
+            {item.properties.map((property) => (
+              <ChatPropertyCard key={property.property_id} property={property} />
+            ))}
+          </View>
+        )}
       </View>
     );
   };

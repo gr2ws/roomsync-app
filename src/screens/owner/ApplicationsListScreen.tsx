@@ -27,7 +27,17 @@ import SmallButton from '../../components/SmallButton';
 import BackButton from '../../components/BackButton';
 import ApplicationActionModal from '../../components/ApplicationActionModal';
 import ConfirmationModal from '../../components/ConfirmationModal';
-import { User, MapPin, Banknote, Home, MessageCircle, X, Check, Ban, Flag } from 'lucide-react-native';
+import {
+  User,
+  MapPin,
+  Banknote,
+  Home,
+  MessageCircle,
+  X,
+  Check,
+  Ban,
+  Flag,
+} from 'lucide-react-native';
 
 type ApplicationsListScreenRouteProp = RouteProp<RootStackParamList, 'ApplicationsList'>;
 type ApplicationsListScreenNavigationProp = StackNavigationProp<

@@ -106,7 +106,8 @@ export const notificationMessages: Record<
   },
   user_reported: {
     title: 'You Have Been Reported',
-    message: 'A report has been filed against you. Please review your conduct and ensure you follow community guidelines.',
+    message:
+      'A report has been filed against you. Please review your conduct and ensure you follow community guidelines.',
     icon: 'AlertTriangle',
   },
 };

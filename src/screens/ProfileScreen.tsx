@@ -794,7 +794,10 @@ export default function ProfileScreen() {
       return;
     }
 
-    console.log('[ProfileScreen] Fetching reportable users for property:', currentRental.property_id);
+    console.log(
+      '[ProfileScreen] Fetching reportable users for property:',
+      currentRental.property_id
+    );
 
     try {
       // Fetch roommates (users with same rented_property)
