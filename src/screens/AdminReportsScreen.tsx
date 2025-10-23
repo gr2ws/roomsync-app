@@ -69,7 +69,7 @@ export default function AdminReportsScreen() {
 
   return (
     <View
-      className="flex-1 bg-[rgb(249, 249, 249)]"
+      className="bg-[rgb(249, 249, 249)] flex-1"
       style={{
         flex: 1,
         paddingTop: Platform.OS === 'android' ? insets.top + 12 : insets.top,
@@ -157,10 +157,6 @@ function ReportCard({
         ? 'bg-blue-100 text-blue-600'
         : 'bg-amber-100 text-amber-600';
 
-  // Normalize proof: single URL or empty
-  const proofUrl =
-    typeof report.proof === 'string' && report.proof.trim() !== '' ? report.proof.trim() : null;
-
   return (
     <View className="mb-3 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
       <View className="mb-3 flex-row items-center justify-between">
@@ -191,6 +187,8 @@ function ReportCard({
           }`}
           onPress={() => {
             setProofVisible(true);
+            console.log("showing photo");
+            console.log(report.proof);
           }}
           disabled={isInactive}>
           <Ionicons
@@ -243,28 +241,37 @@ function ReportCard({
         visible={proofVisible}
         transparent
         animationType="slide"
-         onRequestClose={() => {
-           setProofVisible(false);
-           if (report.status === 'pending') onViewProof();
-         }}>
-        <View className="flex-1 items-center justify-center bg-black/90 px-4">
-          {proofUrl ? (
-            <Image
-              source={{ uri: proofUrl }}
-              style={{
-                width: width * 0.9,
-                height: width * 1.1,
-                resizeMode: 'contain',
-                borderRadius: 12,
-              }}
-            />
+        onRequestClose={() => {
+          setProofVisible(false);
+          if (report.status === 'pending') onViewProof(); // update status after closing the modal
+        }}>
+        <View className="flex-1 items-center justify-center bg-black/80 px-4">
+          {Array.isArray(report.proof) && report.proof.length > 0 ? (
+            <ScrollView horizontal pagingEnabled>
+              {report.proof.map((uri : any, index : number) => (
+                <Image
+                  key={index}
+                  source={{ uri }}
+                  className = "h-[100dvh]"
+                  style={{
+                    width: width * 0.9,
+                    resizeMode: 'contain',
+                    borderRadius: 12,
+                    marginRight: 12,
+                  }}
+                />
+              ))}
+            </ScrollView>
           ) : (
             <Text className="text-lg font-medium text-white">No proof uploaded.</Text>
           )}
 
           <TouchableOpacity
             className="absolute right-6 top-12 rounded-full bg-black/50 p-2"
-            onPress={() => setProofVisible(false)}>
+            onPress={() => {
+                setProofVisible(false);
+                if (report.status === 'pending') onViewProof();
+            }}>
             <Ionicons name="close" size={26} color="#fff" />
           </TouchableOpacity>
         </View>
@@ -305,7 +312,10 @@ function ReportsSafetyTab({ reports, refresh }: { reports: any[]; refresh: () =>
         <ReportCard
           key={report.report_id}
           report={report}
-          onViewProof={() => handleViewProof(report.report_id)}
+          onViewProof={() => {
+            console.log(`viewing proof for report id: ${report.report_id}`)
+            handleViewProof(report.report_id)
+          }}
           onResolve={() => handleResolve(report.report_id)}
           onDismiss={() => handleDismiss(report.report_id)}
         />
@@ -323,4 +333,3 @@ async function updateStatus(reportId: number, newStatus: string) {
 
   if (error) console.error('Error updating report status:', error);
 }
-// checkpoint

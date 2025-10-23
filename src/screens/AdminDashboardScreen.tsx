@@ -2,6 +2,7 @@ import * as React from 'react';
 import { useMemo, useRef, useState, useEffect } from 'react';
 import { useAdminData } from '../store/useAdminData';
 import { supabase } from '../utils/supabase';
+import { useFocusEffect } from '@react-navigation/native';
 import {
   View,
   Text,
@@ -18,13 +19,12 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { BarChart, PieChart } from 'react-native-chart-kit';
 
-
 export default function AdminDashboard() {
   const insets = useSafeAreaInsets();
 
   return (
     <View
-      className="flex-1 bg-[rgb(249, 249, 249)]"
+      className="bg-[rgb(249, 249, 249)] flex-1"
       style={{
         flex: 1,
         paddingTop: Platform.OS === 'android' ? insets.top + 12 : insets.top, // use insets.top for both platforms to handle safe area via flexbox
@@ -76,20 +76,32 @@ function OverviewTab() {
   };
 
   // [TEST NOTE] disable here when debugging
-  useEffect(() => {
+useFocusEffect(
+  React.useCallback(() => {
+    let isActive = true;
+
     const fetchCounts = async () => {
       setLoading(true);
       const results: any = await fetchAllCounts();
 
-      // Artificial delay for smooth UI (1.5 seconds)
+      // optional artificial delay
       setTimeout(() => {
-        setMetrics(results);
-        setLoading(false);
+        if (isActive) {
+          setMetrics(results);
+          setLoading(false);
+        }
       }, 100);
     };
 
     fetchCounts();
-  }, []);
+
+    // cleanup when leaving screen
+    return () => {
+      isActive = false;
+    };
+  }, [])
+);
+
 
   const [propertyCityData, setPropertyCityData] = useState<any[]>([]);
 
@@ -100,7 +112,6 @@ function OverviewTab() {
     };
     loadCityDistribution();
   }, []);
-
 
   const [userGrowthData, setUserGrowthData] = useState<{ month: string; users: number }[]>([]);
 
@@ -151,17 +162,16 @@ function OverviewTab() {
         />
       </StatSection>
 
-     <StatSection title="Monthly User Growth (2025)">
+      <StatSection title="Monthly User Growth (2025)">
         {userGrowthData.length === 0 ? (
           <Text className="text-gray-500">No data available</Text>
         ) : (
           <View
-            className="border border-gray-200 rounded-2xl bg-white pr-2"
+            className="rounded-2xl border border-gray-200 bg-white pr-2"
             style={{
               alignItems: 'center', // 👈 centers children horizontally
               justifyContent: 'center', // 👈 centers vertically (optional)
-            }}
-          >
+            }}>
             <BarChart
               data={{
                 labels: userGrowthData.map((d) => d.month),
@@ -190,8 +200,6 @@ function OverviewTab() {
           </View>
         )}
       </StatSection>
-
-
 
       {/* PROPERTIES SECTION */}
       <StatSection title="Properties">
@@ -222,27 +230,27 @@ function OverviewTab() {
         ) : (
           <>
             {/* PIE CHART */}
-            <View className="flex-row justify-center items-center w-full border border-gray-200 rounded-2xl mb-4 bg-white">
-                <PieChart
-                  data={propertyCityData.map((d) => ({
-                    name: d.key,
-                    population: d.value,
-                    color: d.svg.fill,
-                  }))}
-                  width={Dimensions.get('window').width} // 60% of screen width
-                  height={220}
-                  accessor="population"
-                  center={[0, 0]}
-                  backgroundColor="transparent"
-                  paddingLeft="100"
-                  chartConfig={{
-                    backgroundGradientFrom: '#ffffff',
-                    backgroundGradientTo: '#ffffff',
-                    color: () => '#000',
-                  }}
-                  hasLegend={false}  
-                  absolute
-                />
+            <View className="mb-4 w-full flex-row items-center justify-center rounded-2xl border border-gray-200 bg-white">
+              <PieChart
+                data={propertyCityData.map((d) => ({
+                  name: d.key,
+                  population: d.value,
+                  color: d.svg.fill,
+                }))}
+                width={Dimensions.get('window').width} // 60% of screen width
+                height={220}
+                accessor="population"
+                center={[0, 0]}
+                backgroundColor="transparent"
+                paddingLeft="100"
+                chartConfig={{
+                  backgroundGradientFrom: '#ffffff',
+                  backgroundGradientTo: '#ffffff',
+                  color: () => '#000',
+                }}
+                hasLegend={false}
+                absolute
+              />
             </View>
 
             {/* PROPERTY COUNT PER CITY */}
@@ -261,7 +269,6 @@ function OverviewTab() {
           </>
         )}
       </StatSection>
-
 
       {/* REPORTS SECTION */}
       <StatSection title="Reports">
@@ -307,7 +314,7 @@ async function fetchAllCounts() {
     const { count: totalUsers, error: usersError } = await supabase
       .from('users')
       .select('*', { count: 'exact', head: true });
-    if (usersError) throw new Error(`Users count failed: ${JSON.stringify(usersError, null, 2)}`);
+    //if (usersError) throw new Error(Users count failed: ${JSON.stringify(usersError, null, 2)});
 
     const { count: renters } = await supabase
       .from('users')
@@ -366,20 +373,20 @@ async function fetchAllCounts() {
 
     // SET STATE HELPER
     return {
-      totalUsers: totalUsers || -1,
-      renters: renters || -1,
-      propertyOwners: propertyOwners || -1,
-      administrators: administrators || -1,
+      totalUsers: totalUsers || 0,
+      renters: renters || 0,
+      propertyOwners: propertyOwners || 0,
+      administrators: administrators || 0,
 
-      totalListings: totalListings || -1,
-      activeListings: activeListings || -1,
-      pendingApprovals: pendingApprovals || -1,
+      totalListings: totalListings || 0,
+      activeListings: activeListings || 0,
+      pendingApprovals: pendingApprovals || 0,
 
-      totalReports: totalReports || -1,
-      pendingReports: pendingReports || -1,
-      underInvestigationReports: underInvestigationReports || -1,
-      resolvedReports: resolvedReports || -1,
-      dismissedReports: dismissedReports || -1,
+      totalReports: totalReports || 0,
+      pendingReports: pendingReports || 0,
+      underInvestigationReports: underInvestigationReports || 0,
+      resolvedReports: resolvedReports || 0,
+      dismissedReports: dismissedReports || 0,
     };
   } catch (err) {
     console.error('Error fetching metrics:', err);
@@ -395,7 +402,7 @@ async function fetchMonthlyUserGrowth() {
     .lt('account_created_date', '2026-01-01');
 
   if (error) {
-    console.error(`Error fetching user growth: ` + error);
+    console.error("Error fetching user growth:"  + error);
     return [];
   }
 
@@ -432,9 +439,7 @@ async function fetchMonthlyUserGrowth() {
 }
 
 async function fetchPropertyDistributionByCity() {
-  const { data, error } = await supabase
-    .from('properties')
-    .select('city');
+  const { data, error } = await supabase.from('properties').select('city');
 
   if (error) {
     console.error('Error fetching property distribution:', error);
@@ -456,14 +461,12 @@ async function fetchPropertyDistributionByCity() {
   }));
 }
 
-// Utility: simple hash → color
 function getRandomColor(key: string) {
   const colors = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#6366F1', '#F97316', '#84CC16'];
   let hash = 0;
   for (let i = 0; i < key.length; i++) hash = key.charCodeAt(i) + ((hash << 5) - hash);
   return colors[Math.abs(hash) % colors.length];
 }
-
 
 /* ------------------- Reusable Section Component ------------------- */
 function StatSection({ title, children }: { title: string; children: React.ReactNode }) {
@@ -477,7 +480,7 @@ function StatSection({ title, children }: { title: string; children: React.React
 
 /* ------------------- Small Components ------------------- */
 interface StatCardProps {
-  icon: keyof typeof Ionicons.glyphMap; // ✅ restricts to valid Ionicons names
+  icon: keyof typeof Ionicons.glyphMap; 
   label: string;
   value: string;
   color: string;
@@ -488,7 +491,7 @@ function StatCard({ icon, label, value, color, fullWidth }: StatCardProps) {
   return (
     <View
       className={`mb-2 min-w-40 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm 
-        ${fullWidth ? 'w-[98%] text-center' : 'flex-1 mr-2 '}`}>
+        ${fullWidth ? 'w-[98%] text-center' : 'mr-2 flex-1 '}`}>
       <View className={`mb-2 flex-row items-center`}>
         <Ionicons name={icon} size={18} color={color || '#6B7280'} />
         <Text className="ml-2 mr-3 text-sm font-medium text-gray-600">{label}</Text>
