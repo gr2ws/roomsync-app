@@ -34,6 +34,7 @@ const ChatScreen: React.FC = () => {
   const [input, setInput] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
   const keyboardHeight = useRef(new Animated.Value(0)).current;
   const [scrollPadding, setScrollPadding] = useState(80);
   const [isLoadingMessages, setIsLoadingMessages] = useState(true);
@@ -220,23 +221,66 @@ const ChatScreen: React.FC = () => {
 
       console.log('[ChatScreen] Sending request to AI with', chatHistory.length, 'history messages');
 
-      // Send message to Gemini AI
-      const aiResponseText = await sendMessageToAI(userMessageText, chatHistory);
+      // Send message to Gemini AI with tool call handler
+      const aiResponseText = await sendMessageToAI(
+        userMessageText,
+        chatHistory,
+        async (toolName, args) => {
+          console.log('[ChatScreen] Tool called by AI:', toolName, args);
 
-      console.log('[ChatScreen] Received AI response:', aiResponseText.substring(0, 50) + '...');
+          // Handle reset_conversation tool
+          if (toolName === 'reset_conversation') {
+            console.log('[ChatScreen] AI requested conversation reset:', args.reason);
 
-      const aiMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        sender: 'ai',
-        text: aiResponseText,
-        timestamp: new Date(),
-      };
+            // Disable input during reset
+            setIsResetting(true);
 
-      const updatedMessagesWithAI = [...updatedMessagesWithUser, aiMessage];
-      setMessages(updatedMessagesWithAI);
-      // Save messages with AI response
-      await saveMessages(updatedMessagesWithAI);
-      console.log('[ChatScreen] Message exchange complete');
+            // Clear conversation immediately
+            setTimeout(async () => {
+              setMessages([]);
+              setInput('');
+              try {
+                const storageKey = getStorageKey();
+                await AsyncStorage.removeItem(storageKey);
+                console.log('[ChatScreen] Conversation reset by AI tool');
+
+                // After clearing, add the reset message to start the new conversation
+                const resetMessage: Message = {
+                  id: Date.now().toString(),
+                  sender: 'ai',
+                  text: "It seems we've gotten a bit off track! Let me help you find the perfect rental in Dumaguete. What are you looking for?",
+                  timestamp: new Date(),
+                };
+
+                setMessages([resetMessage]);
+                await saveMessages([resetMessage]);
+              } catch (error) {
+                console.error('[ChatScreen] Error clearing messages after AI reset:', error);
+              } finally {
+                setIsResetting(false);
+              }
+            }, 1500);
+          }
+        }
+      );
+
+      // Only add AI message if there's a response (not a tool call)
+      if (aiResponseText) {
+        console.log('[ChatScreen] Received AI response:', aiResponseText.substring(0, 50) + '...');
+
+        const aiMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          sender: 'ai',
+          text: aiResponseText,
+          timestamp: new Date(),
+        };
+
+        const updatedMessagesWithAI = [...updatedMessagesWithUser, aiMessage];
+        setMessages(updatedMessagesWithAI);
+        // Save messages with AI response
+        await saveMessages(updatedMessagesWithAI);
+        console.log('[ChatScreen] Message exchange complete');
+      }
     } catch (error) {
       console.error('[ChatScreen] Error sending message to AI:', error);
       Alert.alert(
@@ -408,25 +452,36 @@ const ChatScreen: React.FC = () => {
             outputRange: [16, 1016],
           }),
         }}>
-        <TextInput
-          className="flex-1 px-4 text-base text-foreground"
-          style={{ height: 44, lineHeight: 18 }}
-          placeholder={isAtLimit ? 'Message limit reached. Please reset.' : 'Type your message...'}
-          placeholderTextColor="#646464"
-          value={input}
-          onChangeText={setInput}
-          editable={!isSending && !isAtLimit}
-          onSubmitEditing={handleSend}
-          returnKeyType="send"
-          multiline={false}
-          maxLength={500}
-        />
+        <View className="flex-1" style={{ height: 44, overflow: 'hidden' }}>
+          <TextInput
+            className="px-4 text-base text-foreground"
+            style={{ height: 44, lineHeight: 18, width: '100%', paddingTop: 12, paddingBottom: 12 }}
+            placeholder={
+              isResetting
+                ? 'Resetting conversation...'
+                : isAtLimit
+                  ? 'Message limit reached. Please reset.'
+                  : 'Type your message...'
+            }
+            placeholderTextColor="#646464"
+            value={input}
+            onChangeText={setInput}
+            editable={!isSending && !isAtLimit && !isResetting}
+            onSubmitEditing={handleSend}
+            returnKeyType="send"
+            multiline={false}
+            maxLength={500}
+            numberOfLines={1}
+            scrollEnabled={false}
+            textAlignVertical="center"
+          />
+        </View>
         <View className="h-full w-px bg-input" />
         <TouchableOpacity
           onPress={handleSend}
-          disabled={!input.trim() || isSending || isAtLimit}
+          disabled={!input.trim() || isSending || isAtLimit || isResetting}
           className={`px-3 py-3 ${
-            !input.trim() || isSending || isAtLimit ? 'opacity-40' : 'opacity-100'
+            !input.trim() || isSending || isAtLimit || isResetting ? 'opacity-40' : 'opacity-100'
           }`}>
           {isSending ? (
             <ActivityIndicator size="small" color="#644A40" />

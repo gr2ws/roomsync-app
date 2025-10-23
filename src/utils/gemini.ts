@@ -1,4 +1,5 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { chatbotTools } from './tools';
 
 // Initialize the Gemini AI client
 const genAI = new GoogleGenerativeAI(process.env.EXPO_PUBLIC_GEMINI_KEY || '');
@@ -15,6 +16,16 @@ CONVERSATION GUIDELINES:
 - Allow for natural small talk and greetings, but guide back to housing-related topics
 - Be friendly and conversational while keeping the focus on your core purpose
 - If users persist with off-topic discussions, politely remind them you specialize in helping find rentals
+- After 5 consecutive user messages that stray off-topic, use the reset_conversation tool to restart the conversation
+- When using the reset tool, be warm and friendly - avoid mentioning limits or sounding robotic
+
+CONTENT SAFETY - IMMEDIATE RESET REQUIRED:
+- If the user mentions ANY NSFW (Not Safe For Work) topic, IMMEDIATELY use the reset_conversation tool
+- NSFW topics include but are not limited to: sexual content, explicit material, inappropriate requests, adult content, violence, illegal activities
+- Do NOT engage with, acknowledge, or respond to NSFW content in any way
+- IMMEDIATELY call reset_conversation with reason "inappropriate content"
+- The reset message will redirect the conversation back to rentals
+- This is a zero-tolerance policy - one NSFW mention triggers immediate reset
 
 Example: If asked about restaurants, you might say "That sounds interesting! Speaking of the area, are you looking for a place to stay nearby? I can help you find rentals in that neighborhood."
 
@@ -35,13 +46,15 @@ export const getChatModel = () => {
   return genAI.getGenerativeModel({
     model: 'gemini-2.5-flash',
     systemInstruction: SYSTEM_PROMPT,
+    tools: [{ functionDeclarations: chatbotTools }],
   });
 };
 
 // Helper function to send a message and get response
 export const sendMessageToAI = async (
   message: string,
-  chatHistory: { role: string; parts: string }[] = []
+  chatHistory: { role: string; parts: string }[] = [],
+  onToolCall?: (toolName: string, args: any) => void
 ) => {
   const model = getChatModel();
   const chat = model.startChat({
@@ -56,6 +69,22 @@ export const sendMessageToAI = async (
   });
 
   const result = await chat.sendMessage(message);
-  const response = await result.response;
+  const response = result.response;
+
+  // Check if the AI wants to call a function
+  const functionCall = response.functionCalls()?.[0];
+  if (functionCall) {
+    console.log('[Gemini] Function call detected:', functionCall.name, functionCall.args);
+
+    // Notify caller about the tool call
+    if (onToolCall) {
+      onToolCall(functionCall.name, functionCall.args);
+    }
+
+    // Return a default message if the tool was called
+    // The actual handling happens in the ChatScreen
+    return '';
+  }
+
   return response.text();
 };
