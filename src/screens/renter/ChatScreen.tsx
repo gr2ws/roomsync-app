@@ -549,17 +549,17 @@ const ChatScreen: React.FC = () => {
             userProfile?.profile_picture ? (
               <Image
                 source={{ uri: userProfile.profile_picture }}
-                className="ml-2 mt-1.5 h-8 w-8 rounded-full"
+                className="ml-2 mt-1.5 h-8 w-8 rounded-full border border-primary"
               />
             ) : (
-              <View className="ml-2 h-8 w-8 items-center justify-center rounded-full bg-primary">
+              <View className="ml-2 h-8 w-8 items-center justify-center rounded-full border border-primary bg-primary">
                 <Text className="text-sm font-semibold text-primary-foreground">
                   {userProfile?.first_name?.[0]?.toUpperCase() || 'U'}
                 </Text>
               </View>
             )
           ) : (
-            <View className="mr-2 mt-1.5 h-8 w-8 items-center justify-center rounded-full bg-accent">
+            <View className="mr-2 mt-1.5 h-8 w-8 items-center justify-center rounded-full border border-primary bg-accent">
               <Bot size={18} color="#644A40" />
             </View>
           )}
@@ -577,22 +577,25 @@ const ChatScreen: React.FC = () => {
                 {item.text}
               </Text>
             </View>
-            {/* Timestamp */}
-            <Text
-              className={`mt-1 text-xs text-muted-foreground ${isUser ? 'text-right' : 'text-left'}`}>
-              {formatTime(item.timestamp)}
-            </Text>
           </View>
         </View>
 
         {/* Property Cards (only for AI messages) */}
         {!isUser && item.properties && item.properties.length > 0 && (
-          <View className="ml-10 mt-2">
+          <View className="ml-10">
             {item.properties.map((property) => (
               <ChatPropertyCard key={property.property_id} property={property} />
             ))}
           </View>
         )}
+
+        {/* Timestamp - Now below property cards */}
+        <View className={isUser ? 'items-end' : 'ml-10'}>
+          <Text
+            className={`mt-1 text-xs text-muted-foreground ${isUser ? 'text-right' : 'text-left'}`}>
+            {formatTime(item.timestamp)}
+          </Text>
+        </View>
       </View>
     );
   };

@@ -22,7 +22,7 @@ export const resetConversationTool = {
 export const getRecommendationsTool = {
   name: 'get_recommendations',
   description:
-    'Fetches 3 property recommendations based on ONE user-selected priority. Call this AFTER asking the user which criteria they prioritize: distance (2-5km from work/study), price (within budget), or room_type (preferred category). Properties matching the chosen filter are ranked by amenity score.',
+    'Get properties filtered by ONE priority. Ask user conversationally what matters most first. Priorities: "distance" (2-5km from work/study), "price" (within budget), "room_type" (preferred category). Returns first property + count. Properties ranked by amenity match.',
   parameters: {
     type: 'object' as const,
     properties: {
@@ -30,7 +30,7 @@ export const getRecommendationsTool = {
         type: 'string' as const,
         enum: ['distance', 'price', 'room_type'],
         description:
-          'The user-selected priority: distance (within 2-5km), price (within budget), or room_type (matches preference)',
+          'User-selected priority: "distance", "price", or "room_type"',
       },
     },
     required: ['priority'],
@@ -40,7 +40,7 @@ export const getRecommendationsTool = {
 export const showNextPropertyTool = {
   name: 'show_next_property',
   description:
-    'Shows the next property from the recommendation queue to the user. Use this: 1) Right after get_recommendations to show the first property, 2) After user rejects a property to show the next one, 3) After user applies to a property to show the next one. Returns property data and displays a property card.',
+    'Shows the next property from the queue (neutral browsing, does NOT mark as rejected). Use when user neutrally asks for more options: "show another", "what else do you have", "next one". DO NOT use after get_recommendations (already shows first property).',
   parameters: {
     type: 'object' as const,
     properties: {},
@@ -51,14 +51,14 @@ export const showNextPropertyTool = {
 export const rejectRecommendationTool = {
   name: 'reject_recommendation',
   description:
-    'Marks a property as rejected by the user. Use this when the user says they are not interested in the currently shown property (e.g., "reject", "no", "not interested", "I don\'t like it", "next", "skip"). The property will not be recommended again and the next property will be automatically shown.',
+    'Marks property as rejected and shows next. Use when user expresses NEGATIVE emotion/dissatisfaction: "not interested", "I don\'t like it", "pass", "reject". Automatically shows next property. Use current_property_id from latest function response (database ID like 45, 70, 127 - NOT indices 1,2,3).',
   parameters: {
     type: 'object' as const,
     properties: {
       property_id: {
         type: 'number' as const,
         description:
-          'The current_property_id from the most recent function response. This is the database ID of the property currently being shown to the user. DO NOT use array indices (1,2,3). Use the exact current_property_id value you received (e.g., 45, 70, 127).',
+          'The current_property_id from most recent function response (database ID, e.g., 45, 70, 127). NOT array indices.',
       },
     },
     required: ['property_id'],
