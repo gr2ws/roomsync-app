@@ -7,6 +7,14 @@ export type RootStackParamList = {
   Welcome: undefined;
   Details: undefined;
   Preferences: { fromProfile?: boolean } | undefined;
+  PropertyDetails: { propertyId: number };
+  ApplicationsList: { propertyId: number };
+  ReportScreen: {
+    reportedUserId: number;
+    reportedUserName: string;
+    propertyId: number;
+    reporterRole: 'renter' | 'owner';
+  };
 };
 
 export type RootTabParamList = {
@@ -16,11 +24,12 @@ export type RootTabParamList = {
   AddProperty: undefined;
   EditProperty: { propertyId: number };
   ManageProperties: undefined;
-  ViewReviews: undefined;
+  ViewReviews: { propertyId?: number } | undefined;
   Profile: undefined;
   Notifications: undefined;
   Admin: undefined;
   AdminDashboard: undefined;
+  AdminReports: undefined;
   AdminAnalytics: undefined;
   AdminUsers: undefined;
   AdminProfile: undefined;

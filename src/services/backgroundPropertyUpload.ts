@@ -61,12 +61,6 @@ export async function uploadPropertyInBackground(
 
     // Mark upload as complete
     completeUpload();
-
-    // Show success notification
-    Alert.alert(
-      'Success!',
-      'Property uploaded successfully! It will be available once approved by an admin.'
-    );
   } catch (error) {
     const errorMessage =
       error instanceof Error ? error.message : 'Failed to upload property. Please try again.';

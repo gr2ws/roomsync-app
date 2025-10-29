@@ -21,6 +21,42 @@ create table public.properties (
   has_ac boolean null,
   is_secure boolean null,
   has_parking boolean null,
+  number_reviews integer null default 0,
+  constraint properties_pkey primary key (property_id),
+  constraint fk_properties_owner foreign KEY (owner_id) references users (user_id) on update CASCADE on delete set null
+) TABLESPACE pg_default;create table public.properties (
+  property_id serial not null,
+  owner_id integer not null,
+  title text not null,
+  description text null,
+  category public.property_category not null,
+  street text null,
+  barangay text null,
+  city text null,
+  coordinates text null,
+  image_url text[] null,
+  rent numeric not null,
+  amenities text[] null,
+  rating double precision null,
+  max_renters integer not null,
+  is_available boolean not null,
+  is_verified boolean not null default false,
+  has_internet boolean null,
+  allows_pets boolean null,
+  is_furnished boolean null,
+  has_ac boolean null,
+  is_secure boolean null,
+  has_parking boolean null,
+  number_reviews integer null default 0,
   constraint properties_pkey primary key (property_id),
   constraint fk_properties_owner foreign KEY (owner_id) references users (user_id) on update CASCADE on delete set null
 ) TABLESPACE pg_default;
+
+create trigger trigger_property_verified
+after
+update on properties for EACH row
+execute FUNCTION notify_property_verified ();
+
+create trigger trigger_new_property
+after INSERT on properties for EACH row
+execute FUNCTION notify_new_property ();

@@ -2,23 +2,26 @@ import { create } from 'zustand';
 
 interface PropertyData {
   property_id: number;
+  owner_id: number;
   title: string;
   description: string | null;
   category: 'apartment' | 'room' | 'bedspace';
   street: string | null;
   barangay: string | null;
   city: string;
-  coordinates: string;
+  coordinates: string | null;
   image_url: string[];
   rent: number;
   max_renters: number;
-  has_internet: boolean;
-  allows_pets: boolean;
-  is_furnished: boolean;
-  has_ac: boolean;
-  is_secure: boolean;
-  has_parking: boolean;
-  amenities: string[];
+  has_internet: boolean | null;
+  allows_pets: boolean | null;
+  is_furnished: boolean | null;
+  has_ac: boolean | null;
+  is_secure: boolean | null;
+  has_parking: boolean | null;
+  amenities: string[] | null;
+  rating: number | null;
+  number_reviews: number;
 }
 
 interface PropertyEditState {

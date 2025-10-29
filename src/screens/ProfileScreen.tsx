@@ -1,19 +1,116 @@
-import { View, Text, ScrollView, Alert, Platform } from 'react-native';
-import { useState, useEffect, useMemo } from 'react';
+import {
+  View,
+  Text,
+  ScrollView,
+  Alert,
+  Platform,
+  ActivityIndicator,
+  Linking,
+  TouchableOpacity,
+} from 'react-native';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useLoggedIn } from '../store/useLoggedIn';
 import { supabase } from '../utils/supabase';
 import { z } from 'zod';
 import Button from '../components/Button';
+import SmallButton from '../components/SmallButton';
 import Input from '../components/Input';
 import ProfilePicturePicker from '../components/ProfilePicturePicker';
 import RadioGroup from '../components/RadioGroup';
 import LocationPicker from '../components/LocationPicker';
 import DatePicker from '../components/DatePicker';
-import { useNavigation } from '@react-navigation/native';
-import { StackNavigationProp } from '@react-navigation/stack';
-import { RootStackParamList } from '../utils/navigation';
+import ConfirmationModal from '../components/ConfirmationModal';
+import ReviewModal from '../components/ReviewModal';
+import { useNavigation, CompositeNavigationProp } from '@react-navigation/native';
+import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { ApplicationWithProperty } from '../types/property';
+import { MapPin, Flag } from 'lucide-react-native';
+import { RootStackParamList, RootTabParamList } from '../utils/navigation';
+import UserSelectionModal from '../components/UserSelectionModal';
+
+// Define the composite navigation prop type
+type ProfileScreenNavigationProp = CompositeNavigationProp<
+  BottomTabNavigationProp<RootTabParamList, 'Profile'>,
+  NativeStackNavigationProp<RootStackParamList>
+>;
+
+// Separate component for Current Rental to isolate re-renders
+function CurrentRentalCard({
+  currentRental,
+  isEndingRental,
+  onEndRental,
+  onContactOwner,
+  onReview,
+  onReport,
+  canReview,
+}: {
+  currentRental: ApplicationWithProperty;
+  isEndingRental: boolean;
+  onEndRental: () => void;
+  onContactOwner: () => void;
+  onReview: () => void;
+  onReport: () => void;
+  canReview: boolean;
+}) {
+  console.log('[CurrentRentalCard] Rendering');
+
+  if (!currentRental.property) {
+    return null;
+  }
+
+  return (
+    <View className="overflow-hidden rounded-lg border border-input bg-card p-4 shadow-sm">
+      {/* Header with Title/Location and Report Button */}
+      <View className="mb-3 flex-row items-start justify-between">
+        {/* Property Title and Location */}
+        <View className="flex-1">
+          <Text className="text-lg font-bold text-primary">
+            {currentRental.property.title || 'Untitled Property'}
+          </Text>
+          <View className="mt-1 flex-row items-center">
+            <MapPin size={14} color="#888" />
+            <Text className="ml-1 flex-1 text-sm text-muted-foreground">
+              {currentRental.property.street && `${currentRental.property.street}, `}
+              {currentRental.property.barangay}, {currentRental.property.city}
+            </Text>
+          </View>
+        </View>
+
+        {/* Circular Report Button */}
+        <TouchableOpacity
+          onPress={onReport}
+          className="ml-3 h-10 w-10 items-center justify-center rounded-full bg-destructive"
+          activeOpacity={0.7}>
+          <Flag size={18} color="#fff" />
+        </TouchableOpacity>
+      </View>
+
+      <Text className="text-foreground2 mb-3 text-base font-semibold">
+        ₱{(currentRental.property.rent || 0).toLocaleString()}/month
+      </Text>
+
+      {/* Action Buttons */}
+      <View className="flex-row flex-wrap gap-2">
+        <SmallButton
+          variant="destructive"
+          onPress={onEndRental}
+          disabled={isEndingRental}
+          className="flex-1">
+          {isEndingRental ? <ActivityIndicator size="small" color="#fff" /> : 'End Rental'}
+        </SmallButton>
+        <SmallButton variant="secondary" onPress={onContactOwner} className="flex-1">
+          Contact Owner
+        </SmallButton>
+        <SmallButton variant="primary" onPress={onReview} disabled={!canReview} className="flex-1">
+          Review
+        </SmallButton>
+      </View>
+    </View>
+  );
+}
 
 // Schema for renters
 const renterSchema = z
@@ -56,11 +153,12 @@ const ownerSchema = z.object({
 type RenterFormFields = z.infer<typeof renterSchema>;
 type OwnerFormFields = z.infer<typeof ownerSchema>;
 
-type ProfileScreenNavigationProp = StackNavigationProp<RootStackParamList>;
-
 export default function ProfileScreen() {
+  console.log('[ProfileScreen] Component render started');
   const navigation = useNavigation<ProfileScreenNavigationProp>();
+  console.log('[ProfileScreen] useNavigation called, navigation exists:', !!navigation);
   const { setIsLoggedIn, userProfile, setUserProfile, userRole } = useLoggedIn();
+  console.log('[ProfileScreen] useLoggedIn called, userRole:', userRole);
   const [tapCount, setTapCount] = useState(0);
 
   // Form fields
@@ -78,6 +176,25 @@ export default function ProfileScreen() {
   const [formErrors, setFormErrors] = useState<
     Partial<Record<keyof RenterFormFields | keyof OwnerFormFields, string>>
   >({});
+
+  // Current Rental state
+  const [currentRental, setCurrentRental] = useState<ApplicationWithProperty | null>(null);
+  const [isLoadingRental, setIsLoadingRental] = useState(true);
+  const [showEndRentalModal, setShowEndRentalModal] = useState(false);
+  const [isEndingRental, setIsEndingRental] = useState(false);
+  const [hasExistingReview, setHasExistingReview] = useState(false);
+  const [ownerPhoneNumber, setOwnerPhoneNumber] = useState<string | null>(null);
+
+  // Logout modal state
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
+
+  // Review modal state
+  const [showReviewModal, setShowReviewModal] = useState(false);
+  const [endedRental, setEndedRental] = useState<ApplicationWithProperty | null>(null);
+
+  // Report modal state
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [reportableUsers, setReportableUsers] = useState<{ user_id: number; name: string }[]>([]);
 
   // Initialize budget fields from price_range and reset fields when userProfile changes
   useEffect(() => {
@@ -99,6 +216,230 @@ export default function ProfileScreen() {
       setMaxBudget('');
     }
   }, [userProfile]);
+
+  // Fetch current rental for renters
+  const fetchCurrentRental = useCallback(async () => {
+    console.log('[ProfileScreen - fetchCurrentRental] START');
+    console.log('[ProfileScreen - fetchCurrentRental] userProfile:', {
+      user_id: userProfile?.user_id,
+      user_type: userRole,
+      exists: !!userProfile,
+    });
+
+    if (!userProfile?.user_id) {
+      console.log('[ProfileScreen - fetchCurrentRental] No user_id, aborting fetch');
+      // Don't call setIsLoadingRental here - it may be called during render
+      // The useEffect that calls this will handle setting isLoadingRental to false
+      return;
+    }
+
+    console.log('[ProfileScreen - fetchCurrentRental] Setting isLoadingRental to true');
+    setIsLoadingRental(true);
+
+    try {
+      console.log(
+        '[ProfileScreen - fetchCurrentRental] Querying Supabase for renter_id:',
+        userProfile.user_id
+      );
+
+      const { data, error } = await supabase
+        .from('applications')
+        .select(
+          `
+          application_id,
+          property_id,
+          renter_id,
+          owner_id,
+          status,
+          message,
+          date_applied,
+          date_updated,
+          property:properties (
+            property_id,
+            owner_id,
+            title,
+            description,
+            category,
+            street,
+            barangay,
+            city,
+            coordinates,
+            image_url,
+            rent,
+            amenities,
+            rating,
+            max_renters,
+            is_available,
+            is_verified,
+            has_internet,
+            allows_pets,
+            is_furnished,
+            has_ac,
+            is_secure,
+            has_parking,
+            number_reviews
+          )
+        `
+        )
+        .eq('renter_id', userProfile.user_id)
+        .eq('status', 'approved')
+        .single();
+
+      if (error) {
+        if (error.code !== 'PGRST116') {
+          // PGRST116 is "no rows returned", which is fine
+          console.error('[ProfileScreen - fetchCurrentRental] ERROR fetching rental:', error);
+          console.error('[ProfileScreen - fetchCurrentRental] Error details:', {
+            code: error.code,
+            message: error.message,
+            details: error.details,
+          });
+        } else {
+          console.log(
+            '[ProfileScreen - fetchCurrentRental] No current rental found (PGRST116 - no rows)'
+          );
+        }
+        console.log('[ProfileScreen - fetchCurrentRental] Setting currentRental to null');
+        setCurrentRental(null);
+      } else if (data) {
+        console.log('[ProfileScreen - fetchCurrentRental] Data received from Supabase:', {
+          application_id: data.application_id,
+          property_id: data.property_id,
+          has_property: !!data.property,
+          property_type: Array.isArray(data.property) ? 'array' : typeof data.property,
+        });
+
+        console.log('[ProfileScreen - fetchCurrentRental] Raw property data:', data.property);
+
+        // Ensure property is treated as a single object (Supabase foreign key relation)
+        const property = Array.isArray(data.property) ? data.property[0] : data.property;
+        console.log('[ProfileScreen - fetchCurrentRental] Property after array check:', {
+          is_array: Array.isArray(data.property),
+          property_exists: !!property,
+          property_id: property?.property_id,
+        });
+
+        // Validate that property exists and has required fields
+        if (!property || !property.property_id) {
+          console.error(
+            '[ProfileScreen - fetchCurrentRental] INVALID property data received:',
+            property
+          );
+          console.error(
+            '[ProfileScreen - fetchCurrentRental] Setting currentRental to null due to invalid property'
+          );
+          setCurrentRental(null);
+          return;
+        }
+
+        console.log(
+          '[ProfileScreen - fetchCurrentRental] Property validation passed, creating transformedData'
+        );
+        const transformedData: ApplicationWithProperty = {
+          application_id: data.application_id,
+          property_id: data.property_id,
+          renter_id: data.renter_id,
+          owner_id: data.owner_id,
+          status: data.status,
+          message: data.message,
+          date_applied: data.date_applied,
+          date_updated: data.date_updated,
+          property: property,
+        };
+        console.log(
+          '[ProfileScreen - fetchCurrentRental] Setting current rental with transformed data:',
+          {
+            has_property: !!transformedData.property,
+            property_id: transformedData.property?.property_id,
+            property_title: transformedData.property?.title,
+            property_keys: transformedData.property ? Object.keys(transformedData.property) : [],
+          }
+        );
+        console.log('[ProfileScreen - fetchCurrentRental] About to call setCurrentRental...');
+        setCurrentRental(transformedData);
+        console.log('[ProfileScreen - fetchCurrentRental] setCurrentRental called successfully');
+
+        // Check if user has already reviewed this property
+        const { data: reviewData, error: reviewError } = await supabase
+          .from('reviews')
+          .select('review_id')
+          .eq('user_id', userProfile.user_id)
+          .eq('property_id', data.property_id)
+          .maybeSingle();
+
+        if (reviewError) {
+          console.error(
+            '[ProfileScreen - fetchCurrentRental] Error checking for review:',
+            reviewError
+          );
+        } else {
+          setHasExistingReview(!!reviewData);
+          console.log(
+            '[ProfileScreen - fetchCurrentRental] User has existing review:',
+            !!reviewData
+          );
+        }
+
+        // Fetch owner's phone number
+        const { data: ownerData, error: ownerError } = await supabase
+          .from('users')
+          .select('phone_number')
+          .eq('user_id', data.owner_id)
+          .single();
+
+        if (ownerError) {
+          console.error(
+            '[ProfileScreen - fetchCurrentRental] Error fetching owner phone:',
+            ownerError
+          );
+          setOwnerPhoneNumber(null);
+        } else {
+          setOwnerPhoneNumber(ownerData?.phone_number || null);
+          console.log('[ProfileScreen - fetchCurrentRental] Owner phone fetched');
+        }
+      } else {
+        console.log('[ProfileScreen - fetchCurrentRental] No data and no error (unexpected state)');
+        setCurrentRental(null);
+      }
+    } catch (error) {
+      console.error('[ProfileScreen - fetchCurrentRental] CATCH block - Unexpected error:', error);
+      console.error(
+        '[ProfileScreen - fetchCurrentRental] Error stack:',
+        error instanceof Error ? error.stack : 'No stack'
+      );
+      setCurrentRental(null);
+    } finally {
+      console.log(
+        '[ProfileScreen - fetchCurrentRental] FINALLY block - Setting isLoadingRental to false'
+      );
+      setIsLoadingRental(false);
+      console.log('[ProfileScreen - fetchCurrentRental] END');
+    }
+  }, [userProfile]);
+
+  useEffect(() => {
+    console.log('[ProfileScreen - useEffect] Rental fetch effect triggered');
+    console.log('[ProfileScreen - useEffect] userRole:', userRole);
+    console.log('[ProfileScreen - useEffect] userProfile exists:', !!userProfile);
+    console.log('[ProfileScreen - useEffect] isLoadingRental:', isLoadingRental);
+
+    if (userRole === 'renter') {
+      console.log('[ProfileScreen - useEffect] User is renter, calling fetchCurrentRental');
+      if (userProfile?.user_id) {
+        fetchCurrentRental();
+      } else {
+        console.log(
+          '[ProfileScreen - useEffect] No userProfile.user_id, setting isLoadingRental to false'
+        );
+        setIsLoadingRental(false);
+      }
+    } else {
+      console.log(
+        '[ProfileScreen - useEffect] User is NOT renter, setting isLoadingRental to false'
+      );
+      setIsLoadingRental(false);
+    }
+  }, [userRole, fetchCurrentRental]);
 
   // Store initial values to detect changes
   const initialValues = useMemo(
@@ -167,29 +508,18 @@ export default function ProfileScreen() {
     });
   };
 
-  const handleLogout = async () => {
-    Alert.alert(
-      'Log Out',
-      'Are you sure you want to log out?',
-      [
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
-        {
-          text: 'Log Out',
-          style: 'destructive',
-          onPress: async () => {
-            const { error } = await supabase.auth.signOut();
-            if (error) {
-              Alert.alert('Error', 'Failed to log out: ' + error.message);
-              return;
-            }
-            setIsLoggedIn(false);
-          },
-        },
-      ]
-    );
+  const handleLogout = () => {
+    setShowLogoutModal(true);
+  };
+
+  const confirmLogout = async () => {
+    setShowLogoutModal(false);
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      Alert.alert('Error', 'Failed to log out: ' + error.message);
+      return;
+    }
+    setIsLoggedIn(false);
   };
 
   const handleNameTap = () => {
@@ -348,157 +678,622 @@ export default function ProfileScreen() {
     Alert.alert('Success', 'Profile updated successfully');
   };
 
+  const handleContactOwner = async () => {
+    if (!ownerPhoneNumber) {
+      Alert.alert('Error', 'Owner phone number not available');
+      return;
+    }
+
+    try {
+      const url = `sms:${ownerPhoneNumber}`;
+      const canOpen = await Linking.canOpenURL(url);
+
+      if (canOpen) {
+        await Linking.openURL(url);
+      } else {
+        Alert.alert('Error', 'Cannot open messaging app');
+      }
+    } catch (error) {
+      console.error('[ProfileScreen] Error opening SMS:', error);
+      Alert.alert('Error', 'Failed to open messaging app');
+    }
+  };
+
+  const handleReview = () => {
+    if (!currentRental) return;
+
+    if (hasExistingReview) {
+      Alert.alert('Review Already Submitted', 'You have already reviewed this property.');
+      return;
+    }
+
+    setShowReviewModal(true);
+  };
+
+  const submitReview = async (rating: number, comment: string) => {
+    // Use endedRental if available (for post-rental reviews), otherwise use currentRental
+    const rentalToReview = endedRental || currentRental;
+
+    if (!rentalToReview || !userProfile?.user_id) {
+      throw new Error('Unable to submit review. Please try again.');
+    }
+
+    console.log('[ProfileScreen] Submitting review:', {
+      property_id: rentalToReview.property_id,
+      user_id: userProfile.user_id,
+      rating,
+      comment,
+    });
+
+    try {
+      // Insert review into database
+      const { error: reviewError } = await supabase.from('reviews').insert({
+        user_id: userProfile.user_id,
+        property_id: rentalToReview.property_id,
+        rating: rating,
+        comment: comment || null,
+        date_created: new Date().toISOString(),
+      });
+
+      if (reviewError) throw reviewError;
+      console.log('[ProfileScreen] Review inserted successfully');
+
+      // Recalculate property average rating
+      const { data: reviews, error: fetchError } = await supabase
+        .from('reviews')
+        .select('rating')
+        .eq('property_id', rentalToReview.property_id);
+
+      if (fetchError) {
+        console.error('[ProfileScreen] Error fetching reviews for average:', fetchError);
+        // Don't throw - review was submitted successfully
+      } else if (reviews && reviews.length > 0) {
+        const totalRating = reviews.reduce((sum, review) => sum + review.rating, 0);
+        const averageRating = totalRating / reviews.length;
+
+        // Update property rating
+        const { error: updateError } = await supabase
+          .from('properties')
+          .update({
+            rating: averageRating,
+            number_reviews: reviews.length,
+          })
+          .eq('property_id', rentalToReview.property_id);
+
+        if (updateError) {
+          console.error('[ProfileScreen] Error updating property rating:', updateError);
+          // Don't throw - review was submitted successfully
+        } else {
+          console.log('[ProfileScreen] Property rating updated:', {
+            rating: averageRating,
+            number_reviews: reviews.length,
+          });
+        }
+      }
+
+      // Update local state
+      setHasExistingReview(true);
+      setShowReviewModal(false);
+      setEndedRental(null); // Clear the ended rental after review is submitted
+      Alert.alert('Success', 'Your review has been submitted successfully.');
+    } catch (error) {
+      console.error('[ProfileScreen] Error submitting review:', error);
+      throw error; // Re-throw to let modal handle the error
+    }
+  };
+
+  const handleReportPress = async () => {
+    console.log('[ProfileScreen] Report button pressed');
+
+    if (!currentRental || !userProfile?.user_id) {
+      console.error('[ProfileScreen] Cannot open report - missing rental or user:', {
+        hasRental: !!currentRental,
+        hasUserId: !!userProfile?.user_id,
+      });
+      Alert.alert('Error', 'Unable to open report. Please try again.');
+      return;
+    }
+
+    console.log(
+      '[ProfileScreen] Fetching reportable users for property:',
+      currentRental.property_id
+    );
+
+    try {
+      // Fetch roommates (users with same rented_property)
+      console.log('[ProfileScreen] Fetching roommates...');
+      const { data: roommates, error: roommatesError } = await supabase
+        .from('users')
+        .select('user_id, first_name, last_name')
+        .eq('rented_property', currentRental.property_id)
+        .neq('user_id', userProfile.user_id);
+
+      if (roommatesError) throw roommatesError;
+      console.log('[ProfileScreen] Roommates fetched:', roommates?.length || 0);
+
+      // Fetch owner details
+      console.log('[ProfileScreen] Fetching owner details for owner_id:', currentRental.owner_id);
+      const { data: ownerData, error: ownerError } = await supabase
+        .from('users')
+        .select('user_id, first_name, last_name')
+        .eq('user_id', currentRental.owner_id)
+        .single();
+
+      if (ownerError) throw ownerError;
+      console.log('[ProfileScreen] Owner data fetched:', ownerData);
+
+      // Build list of reportable users
+      const users: { user_id: number; name: string }[] = [];
+
+      // Add owner
+      if (ownerData) {
+        users.push({
+          user_id: ownerData.user_id,
+          name: `${ownerData.first_name} ${ownerData.last_name} (Owner)`,
+        });
+        console.log('[ProfileScreen] Added owner to reportable users');
+      }
+
+      // Add roommates
+      if (roommates && roommates.length > 0) {
+        roommates.forEach((roommate) => {
+          users.push({
+            user_id: roommate.user_id,
+            name: `${roommate.first_name} ${roommate.last_name} (Roommate)`,
+          });
+        });
+        console.log('[ProfileScreen] Added', roommates.length, 'roommates to reportable users');
+      }
+
+      console.log('[ProfileScreen] Total reportable users:', users.length);
+
+      if (users.length === 0) {
+        console.log('[ProfileScreen] No reportable users found');
+        Alert.alert(
+          'No Users to Report',
+          'There are no other users associated with this property.'
+        );
+        return;
+      }
+
+      console.log('[ProfileScreen] Opening user selection modal with users:', users);
+      setReportableUsers(users);
+      setShowReportModal(true);
+    } catch (error) {
+      console.error('[ProfileScreen] Error fetching reportable users:', error);
+      Alert.alert('Error', 'Failed to load users. Please try again.');
+    }
+  };
+
+  const handleReportConfirm = (selectedUserId: number, selectedUserName: string) => {
+    console.log('[ProfileScreen] Report user selected:', {
+      userId: selectedUserId,
+      userName: selectedUserName,
+    });
+
+    setShowReportModal(false);
+
+    if (!currentRental) {
+      console.error('[ProfileScreen] No current rental found for navigation');
+      return;
+    }
+
+    console.log('[ProfileScreen] Navigating to ReportScreen with params:', {
+      reportedUserId: selectedUserId,
+      reportedUserName: selectedUserName,
+      propertyId: currentRental.property_id,
+      reporterRole: 'renter',
+    });
+
+    // Navigate to ReportScreen
+    const parent = navigation.getParent();
+    if (parent && typeof parent.navigate === 'function') {
+      parent.navigate('ReportScreen', {
+        reportedUserId: selectedUserId,
+        reportedUserName: selectedUserName,
+        propertyId: currentRental.property_id,
+        reporterRole: 'renter',
+      });
+      console.log('[ProfileScreen] Navigation to ReportScreen initiated');
+    } else {
+      console.error('[ProfileScreen] Parent navigator not available');
+      Alert.alert('Navigation Error', 'Unable to navigate to report screen.');
+    }
+  };
+
+  const handleEndRental = async (optionalMessage?: string) => {
+    if (!currentRental || !userProfile?.user_id) {
+      Alert.alert('Error', 'Unable to end rental. Please try again.');
+      return;
+    }
+
+    setIsEndingRental(true);
+    setShowEndRentalModal(false);
+
+    try {
+      const endDate = new Date().toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+      });
+      const message = `Rental ended by tenant on ${endDate}.${optionalMessage ? ' ' + optionalMessage : ''}`;
+
+      console.log('[ProfileScreen] Ending rental:', {
+        application_id: currentRental.application_id,
+        property_id: currentRental.property_id,
+        message: message,
+      });
+
+      // Update application status to completed
+      const { error: appError } = await supabase
+        .from('applications')
+        .update({
+          status: 'completed',
+          message: message,
+          date_updated: new Date().toISOString(),
+        })
+        .eq('application_id', currentRental.application_id);
+
+      if (appError) throw appError;
+      console.log('[ProfileScreen] Application status updated to completed');
+
+      // Remove rented_property FK from users table
+      const { error: userError } = await supabase
+        .from('users')
+        .update({ rented_property: null })
+        .eq('user_id', userProfile.user_id);
+
+      if (userError) throw userError;
+      console.log('[ProfileScreen] User rented_property FK removed');
+
+      // Query current renters count for the property
+      const { count: currentRentersCount, error: countError } = await supabase
+        .from('users')
+        .select('*', { count: 'exact', head: true })
+        .eq('rented_property', currentRental.property_id);
+
+      if (countError) throw countError;
+
+      console.log(
+        '[ProfileScreen] Current renters count:',
+        currentRentersCount,
+        '/',
+        currentRental.property.max_renters
+      );
+
+      // If current renters < max_renters, set property to available
+      if (
+        currentRentersCount !== null &&
+        currentRental.property.max_renters &&
+        currentRentersCount < currentRental.property.max_renters
+      ) {
+        const { error: propError } = await supabase
+          .from('properties')
+          .update({ is_available: true })
+          .eq('property_id', currentRental.property_id);
+
+        if (propError) {
+          console.error('[ProfileScreen] Error updating property availability:', propError);
+          // Don't throw - rental ending was successful even if this fails
+        } else {
+          console.log('[ProfileScreen] Property set to available');
+        }
+      } else {
+        console.log('[ProfileScreen] Property remains unavailable (still at capacity)');
+      }
+
+      console.log('[ProfileScreen] Rental ended successfully');
+      Alert.alert('Success', 'Your rental has been ended successfully.');
+
+      // Store the rental info before clearing state
+      const rentalToReview = currentRental;
+
+      // Update local state
+      setCurrentRental(null);
+      setUserProfile({
+        ...userProfile,
+        rented_property: null,
+      });
+
+      // Prompt user to leave a review if they haven't already
+      if (!hasExistingReview) {
+        setEndedRental(rentalToReview);
+        // Show review modal after a short delay
+        setTimeout(() => {
+          setShowReviewModal(true);
+        }, 500);
+      }
+    } catch (error) {
+      console.error('[ProfileScreen] Error ending rental:', error);
+      Alert.alert('Error', 'Failed to end rental. Please try again.');
+    } finally {
+      setIsEndingRental(false);
+    }
+  };
+
   const insets = useSafeAreaInsets();
 
+  // Debug: Log when component renders with rental data
+  useEffect(() => {
+    if (currentRental) {
+      console.log('[ProfileScreen] Rendering with current rental:', {
+        has_property: !!currentRental.property,
+        property_id: currentRental.property?.property_id,
+        has_image: !!(
+          currentRental.property?.image_url && currentRental.property.image_url.length > 0
+        ),
+      });
+    }
+  }, [currentRental]);
+
+  console.log('[ProfileScreen] About to return JSX, currentRental exists:', !!currentRental);
+  console.log('[ProfileScreen] About to return JSX, isLoadingRental:', isLoadingRental);
+  console.log('[ProfileScreen] About to return JSX, navigation exists:', !!navigation);
+
+  // Safety check - if navigation is not available, show error screen
+  if (!navigation) {
+    console.error('[ProfileScreen] Navigation context is missing!');
+    return (
+      <View className="flex-1 items-center justify-center bg-background p-6">
+        <Text className="mb-4 text-lg font-bold text-destructive">Navigation Error</Text>
+        <Text className="text-center text-muted-foreground">
+          Unable to load profile. Please restart the app.
+        </Text>
+      </View>
+    );
+  }
+
   return (
-    <ScrollView
+    <View
       className="flex-1 bg-background"
-      contentContainerClassName="px-6 pb-2"
       style={{ paddingTop: Platform.OS === 'ios' ? 0 : insets.top + 8 }}>
-      <View
-        style={{
-          paddingTop: Platform.OS === 'ios' ? 40 : 0,
-          paddingBottom: Platform.OS === 'ios' ? 0 : 32,
-        }}>
-        <Text className="mb-2 text-center text-3xl font-bold text-primary" onPress={handleNameTap}>
-          {userProfile?.full_name || 'Your Profile'}
-        </Text>
-        <Text className="mb-8 text-center text-base text-muted-foreground">
-          {userRole === 'renter' ? 'Renter' : 'Property Owner'}
-        </Text>
+      <ScrollView
+        className="flex-1"
+        contentContainerClassName="px-6 pb-2"
+        style={{ paddingTop: Platform.OS === 'ios' ? 55 : 0 }}>
+        <View
+          style={{
+            paddingBottom: Platform.OS === 'ios' ? 0 : 32,
+          }}>
+          <Text
+            className="mb-2 text-center text-3xl font-bold text-primary"
+            onPress={handleNameTap}>
+            {userProfile?.full_name || 'Your Profile'}
+          </Text>
+          <Text className="mb-8 text-center text-base text-muted-foreground">
+            {userRole === 'renter' ? 'Renter' : 'Property Owner'}
+          </Text>
 
-        <View className="w-full max-w-sm self-center">
-          {/* Profile Picture Picker - All roles */}
-          <ProfilePicturePicker
-            value={profilePicture}
-            onChange={handleProfilePictureChange}
-            authId={userProfile?.auth_id || ''}
-          />
+          <View className="w-full max-w-sm self-center">
+            {/* Profile Picture Picker - All roles */}
+            <ProfilePicturePicker
+              value={profilePicture}
+              onChange={handleProfilePictureChange}
+              authId={userProfile?.auth_id || ''}
+            />
 
-          {/* Basic Information - All roles */}
-          <View className="gap-4">
-            <View>
-              <Text className="mb-2 text-base font-medium text-foreground">First Name</Text>
-              <Input
-                placeholder="Enter your first name"
-                autoCapitalize="words"
-                value={firstName}
-                onChangeText={setFirstName}
-                error={formErrors.firstName}
-              />
-            </View>
-            <View>
-              <Text className="mb-2 text-base font-medium text-foreground">Last Name</Text>
-              <Input
-                placeholder="Enter your last name"
-                autoCapitalize="words"
-                value={lastName}
-                onChangeText={setLastName}
-                error={formErrors.lastName}
-              />
-            </View>
-            <View>
-              <Text className="mb-2 text-base font-medium text-foreground">Phone Number</Text>
-              <Input
-                placeholder="Enter your phone number"
-                keyboardType="phone-pad"
-                autoCapitalize="none"
-                value={phoneNumber}
-                onChangeText={setPhoneNumber}
-                error={formErrors.phoneNumber}
-              />
-            </View>
-          </View>
-
-          {/* Birth Date - All roles */}
-          <DatePicker
-            label="Birth Date"
-            placeholder="Select your birth date"
-            value={birthDate}
-            onChange={setBirthDate}
-            error={formErrors.birthDate}
-          />
-
-          {/* Renter-specific fields */}
-          {userRole === 'renter' && (
-            <View className="flex-1 gap-4">
+            {/* Basic Information - All roles */}
+            <View className="gap-4">
               <View>
-                <Text className="mb-2 text-base font-medium text-foreground">
-                  Monthly Budget Range
-                </Text>
-                <View className="flex-row gap-2">
-                  <View className="flex-1">
-                    <Input
-                      placeholder="Min. Budget"
-                      keyboardType="numeric"
-                      autoCapitalize="none"
-                      value={minBudget}
-                      onChangeText={setMinBudget}
-                      error={formErrors.minBudget}
-                    />
-                  </View>
-                  <View className="flex-1">
-                    <Input
-                      placeholder="Max. Budget"
-                      keyboardType="numeric"
-                      autoCapitalize="none"
-                      value={maxBudget}
-                      onChangeText={setMaxBudget}
-                      error={formErrors.maxBudget}
-                    />
+                <Text className="mb-2 text-base font-medium text-foreground">First Name</Text>
+                <Input
+                  placeholder="Enter your first name"
+                  autoCapitalize="words"
+                  value={firstName}
+                  onChangeText={setFirstName}
+                  error={formErrors.firstName}
+                />
+              </View>
+              <View>
+                <Text className="mb-2 text-base font-medium text-foreground">Last Name</Text>
+                <Input
+                  placeholder="Enter your last name"
+                  autoCapitalize="words"
+                  value={lastName}
+                  onChangeText={setLastName}
+                  error={formErrors.lastName}
+                />
+              </View>
+              <View>
+                <Text className="mb-2 text-base font-medium text-foreground">Phone Number</Text>
+                <Input
+                  placeholder="Enter your phone number"
+                  keyboardType="phone-pad"
+                  autoCapitalize="none"
+                  value={phoneNumber}
+                  onChangeText={setPhoneNumber}
+                  error={formErrors.phoneNumber}
+                />
+              </View>
+            </View>
+
+            {/* Birth Date - All roles */}
+            <DatePicker
+              label="Birth Date"
+              placeholder="Select your birth date"
+              value={birthDate}
+              onChange={setBirthDate}
+              error={formErrors.birthDate}
+            />
+
+            {/* Renter-specific fields */}
+            {userRole === 'renter' && (
+              <View className="flex-1 gap-4">
+                <View>
+                  <Text className="mb-2 text-base font-medium text-foreground">
+                    Monthly Budget Range
+                  </Text>
+                  <View className="flex-row gap-2">
+                    <View className="flex-1">
+                      <Input
+                        placeholder="Min. Budget"
+                        keyboardType="numeric"
+                        autoCapitalize="none"
+                        value={minBudget}
+                        onChangeText={setMinBudget}
+                        error={formErrors.minBudget}
+                      />
+                    </View>
+                    <View className="flex-1">
+                      <Input
+                        placeholder="Max. Budget"
+                        keyboardType="numeric"
+                        autoCapitalize="none"
+                        value={maxBudget}
+                        onChangeText={setMaxBudget}
+                        error={formErrors.maxBudget}
+                      />
+                    </View>
                   </View>
                 </View>
+
+                {/* Room Preference Radio Group */}
+                <RadioGroup
+                  label="Room Preference"
+                  options={['Bedspace', 'Room', 'Apartment']}
+                  value={roomPreference}
+                  onChange={setRoomPreference}
+                  error={formErrors.roomPreference}
+                />
+
+                {/* Occupation Radio Group */}
+                <RadioGroup
+                  label="Occupation"
+                  options={['Student', 'Employee']}
+                  value={occupation}
+                  onChange={setOccupation}
+                  error={formErrors.occupation}
+                />
+
+                {/* Place of Work/Study - Map Picker */}
+                <LocationPicker
+                  label="Place of Work/Study"
+                  value={placeOfWorkStudy}
+                  onChange={setPlaceOfWorkStudy}
+                  placeholder="Select location on map"
+                  error={formErrors.placeOfWorkStudy}
+                />
+
+                {/* Current Rental Section - Below Place of Work/Study */}
+                {(isLoadingRental || currentRental) && (
+                  <View className="mb-4">
+                    <Text className="mb-2 text-base font-medium text-foreground">
+                      Current Rental
+                    </Text>
+                    {isLoadingRental ? (
+                      <View className="items-center justify-center rounded-lg border border-input bg-card p-6">
+                        <ActivityIndicator size="small" color="#644A40" />
+                        <Text className="mt-2 text-sm text-muted-foreground">
+                          Loading current rental...
+                        </Text>
+                      </View>
+                    ) : currentRental && currentRental.property ? (
+                      <CurrentRentalCard
+                        currentRental={currentRental}
+                        isEndingRental={isEndingRental}
+                        onEndRental={() => setShowEndRentalModal(true)}
+                        onContactOwner={handleContactOwner}
+                        onReview={handleReview}
+                        onReport={handleReportPress}
+                        canReview={!hasExistingReview}
+                      />
+                    ) : null}
+                  </View>
+                )}
               </View>
-
-              {/* Room Preference Radio Group */}
-              <RadioGroup
-                label="Room Preference"
-                options={['Bedspace', 'Room', 'Apartment']}
-                value={roomPreference}
-                onChange={setRoomPreference}
-                error={formErrors.roomPreference}
-              />
-
-              {/* Occupation Radio Group */}
-              <RadioGroup
-                label="Occupation"
-                options={['Student', 'Employee']}
-                value={occupation}
-                onChange={setOccupation}
-                error={formErrors.occupation}
-              />
-
-              {/* Place of Work/Study - Map Picker */}
-              <LocationPicker
-                label="Place of Work/Study"
-                value={placeOfWorkStudy}
-                onChange={setPlaceOfWorkStudy}
-                placeholder="Select location on map"
-                error={formErrors.placeOfWorkStudy}
-              />
-            </View>
-          )}
-
-          {/* Action Buttons */}
-          <View className="mt-2 gap-2">
-            <Button onPress={handleSaveDetails} variant="primary">
-              Save Details
-            </Button>
-
-            {userRole === 'renter' && (
-              <Button
-                onPress={() => navigation.navigate('Preferences', { fromProfile: true })}
-                variant="secondary">
-                Edit Preferences
-              </Button>
             )}
 
-            <Button onPress={handleLogout} variant="destructive">
-              Log Out
-            </Button>
+            {/* Action Buttons */}
+            <View className="mt-2 gap-2">
+              <Button onPress={handleSaveDetails} variant="primary">
+                Save Details
+              </Button>
+
+              {userRole === 'renter' && (
+                <Button
+                  onPress={() => {
+                    try {
+                      const parent = navigation.getParent();
+                      if (parent && typeof parent.navigate === 'function') {
+                        parent.navigate('Preferences', { fromProfile: true });
+                      } else {
+                        console.warn('[ProfileScreen] Parent navigator not available');
+                        Alert.alert(
+                          'Navigation Error',
+                          'Unable to navigate to preferences. Please try again.'
+                        );
+                      }
+                    } catch (error) {
+                      console.error('[ProfileScreen] Navigation error:', error);
+                      Alert.alert('Navigation Error', 'Unable to navigate to preferences.');
+                    }
+                  }}
+                  variant="secondary">
+                  Edit Preferences
+                </Button>
+              )}
+
+              <Button onPress={handleLogout} variant="destructive">
+                Log Out
+              </Button>
+            </View>
           </View>
         </View>
-      </View>
-    </ScrollView>
+      </ScrollView>
+
+      {/* End Rental Confirmation Modal */}
+      <ConfirmationModal
+        visible={showEndRentalModal}
+        title="End Rental"
+        message="Are you sure you want to end your current rental? This action will cancel your approved application and make the property available again."
+        confirmText="End Rental"
+        cancelText="Cancel"
+        showMessageInput
+        messageInputPlaceholder="Add an optional message (e.g., reason for ending rental)"
+        messageInputLabel="Optional Message"
+        confirmVariant="destructive"
+        isLoading={isEndingRental}
+        onConfirm={handleEndRental}
+        onCancel={() => setShowEndRentalModal(false)}
+      />
+
+      {/* Logout Confirmation Modal */}
+      <ConfirmationModal
+        visible={showLogoutModal}
+        title="Log Out"
+        message="Are you sure you want to log out?"
+        confirmText="Log Out"
+        cancelText="Cancel"
+        confirmVariant="destructive"
+        onConfirm={confirmLogout}
+        onCancel={() => setShowLogoutModal(false)}
+      />
+
+      {/* Review Modal */}
+      {((currentRental && currentRental.property) || (endedRental && endedRental.property)) && (
+        <ReviewModal
+          visible={showReviewModal}
+          propertyTitle={
+            endedRental?.property?.title || currentRental?.property?.title || 'this property'
+          }
+          onConfirm={submitReview}
+          onCancel={() => {
+            setShowReviewModal(false);
+            setEndedRental(null); // Clear ended rental if user cancels review
+          }}
+        />
+      )}
+
+      {/* User Selection Modal for Reporting */}
+      <UserSelectionModal
+        visible={showReportModal}
+        users={reportableUsers}
+        onConfirm={handleReportConfirm}
+        onCancel={() => {
+          setShowReportModal(false);
+          setReportableUsers([]);
+        }}
+      />
+    </View>
   );
 }

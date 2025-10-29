@@ -86,14 +86,9 @@ export default function PreferencesScreen({ navigation, route }: PreferencesScre
       if (userProfile?.user_id) {
         await AsyncStorage.setItem(`user_${userProfile.user_id}_hasCompletedOnboarding`, 'true');
       }
+      // Setting isLoggedIn will trigger NavigationContainer remount in App.tsx
+      // which automatically navigates to Home (no manual reset needed)
       setIsLoggedIn(true);
-      // Force navigation to Home after state update
-      setTimeout(() => {
-        navigation.reset({
-          index: 0,
-          routes: [{ name: 'Home' }],
-        });
-      }, 30);
     } catch (error) {
       console.error('Error in handleSkip:', error);
     }
@@ -115,15 +110,10 @@ export default function PreferencesScreen({ navigation, route }: PreferencesScre
         if (userProfile?.user_id) {
           await AsyncStorage.setItem(`user_${userProfile.user_id}_hasCompletedOnboarding`, 'true');
         }
+        // Setting isLoggedIn will trigger NavigationContainer remount in App.tsx
+        // which automatically navigates to Home (no manual reset needed)
         setIsLoggedIn(true);
-        // Force navigation to Home after state update
-        setTimeout(() => {
-          navigation.reset({
-            index: 0,
-            routes: [{ name: 'Home' }],
-          });
-          setLoading(false);
-        }, 100);
+        setLoading(false);
       }
     } catch (error) {
       console.error('Error saving preferences:', error);

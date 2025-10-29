@@ -7,7 +7,7 @@ import {
 } from '@react-navigation/bottom-tabs';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
-import { Platform, Alert, ActivityIndicator } from 'react-native';
+import { Platform, Alert, ActivityIndicator, View, Text, TouchableOpacity } from 'react-native';
 
 import ProfileScreen from './src/screens/ProfileScreen';
 import NotificationsScreen from './src/screens/NotificationsScreen';
@@ -17,6 +17,7 @@ import { MainScaffold } from '~/components/layout/MainScaffold';
 import { useLoggedIn } from './src/store/useLoggedIn';
 import { usePropertyUpload } from './src/store/usePropertyUpload';
 import { usePropertyEdit } from './src/store/usePropertyEdit';
+import { useNotificationCount } from './src/store/useNotificationCount';
 import AuthScreen from './src/screens/auth/AuthScreen';
 import RegisterScreen from './src/screens/auth/RegisterScreen';
 import AdminDashboardScreen from './src/screens/AdminDashboardScreen';
@@ -31,11 +32,16 @@ import PreferencesScreen from './src/screens/auth/PreferencesScreen';
 import FeedScreen from './src/screens/renter/FeedScreen';
 import ApplicationsScreen from './src/screens/renter/ApplicationsScreen';
 import ChatScreen from './src/screens/renter/ChatScreen';
+import PropertyDetailsScreen from './src/screens/renter/PropertyDetailsScreen';
 import AddPropertyScreen from './src/screens/owner/AddPropertyScreen';
 import ManagePropertiesScreen from './src/screens/owner/ManagePropertiesScreen';
 import ViewReviewsScreen from './src/screens/owner/ViewReviewsScreen';
+import ApplicationsListScreen from './src/screens/owner/ApplicationsListScreen';
+import ReportScreen from './src/screens/ReportScreen';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useEffect, useState } from 'react';
+import ErrorBoundary from './src/components/ErrorBoundary';
+import { supabase } from './src/utils/supabase';
 
 const Tab = createBottomTabNavigator<RootTabParamList>();
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -43,9 +49,39 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 // refer to https://reactnavigation.org/docs/bottom-tab-navigator?config=static for styling tabs and tab states
 
 function MainApp() {
-  const { userRole } = useLoggedIn();
+  const { userRole, userProfile } = useLoggedIn();
   const { isUploading } = usePropertyUpload();
   const { isEditing, cancelEdit } = usePropertyEdit();
+  const { count: notificationCount, showBadge, showBadgeWithCount } = useNotificationCount();
+
+  // Fetch notification count on login and show badge
+  useEffect(() => {
+    const fetchNotificationCount = async () => {
+      if (!userProfile?.auth_id) {
+        return;
+      }
+
+      try {
+        console.log('[App] Fetching notification count for user_auth_id:', userProfile.auth_id);
+
+        const { count, error } = await supabase
+          .from('notifications')
+          .select('*', { count: 'exact', head: true })
+          .eq('user_auth_id', userProfile.auth_id);
+
+        if (error) throw error;
+
+        console.log('[App] Notification count fetched:', count);
+
+        // Show badge with count after login
+        showBadgeWithCount(count || 0);
+      } catch (error) {
+        console.error('[App] Error fetching notification count:', error);
+      }
+    };
+
+    fetchNotificationCount();
+  }, [userProfile?.auth_id, showBadgeWithCount]);
 
   const commonScreenOptions: BottomTabNavigationOptions = {
     headerShown: false,
@@ -74,6 +110,26 @@ function MainApp() {
     },
   };
 
+  // Function to get notification badge
+  const getNotificationBadge = () => {
+    console.log(
+      '[App] getNotificationBadge called, showBadge:',
+      showBadge,
+      'count:',
+      notificationCount
+    );
+    if (!showBadge || notificationCount === 0) return undefined;
+    if (notificationCount > 99) return '99+';
+    return notificationCount;
+  };
+
+  console.log(
+    '[App] MainApp render, showBadge:',
+    showBadge,
+    'notificationCount:',
+    notificationCount
+  );
+
   const notificationsScreen = (
     <Tab.Screen
       name="Notifications"
@@ -86,7 +142,7 @@ function MainApp() {
             color={color}
           />
         ),
-        tabBarBadge: 1,
+        tabBarBadge: getNotificationBadge(),
       }}
     />
   );
@@ -299,8 +355,11 @@ function MainApp() {
 
 export default function App() {
   const { isLoggedIn } = useLoggedIn();
-  const [initialRoute, setInitialRoute] = useState<'Introduction' | 'Auth'>('Introduction');
+  const [initialRoute, setInitialRoute] = useState<'Introduction' | 'Auth' | 'Home'>(
+    'Introduction'
+  );
   const [isCheckingOnboarding, setIsCheckingOnboarding] = useState(true);
+  const [navigationError, setNavigationError] = useState<string | null>(null);
 
   useEffect(() => {
     const checkOnboarding = async () => {
@@ -309,9 +368,11 @@ export default function App() {
         const deviceOnboarded = await AsyncStorage.getItem('DeviceOnboarded');
         if (deviceOnboarded === 'true') {
           // Device has seen onboarding before, go to Auth
+          console.log('[App] Device onboarded, setting initialRoute to Auth');
           setInitialRoute('Auth');
         } else {
           // First time on this device, show Introduction
+          console.log('[App] First time device, setting initialRoute to Introduction');
           setInitialRoute('Introduction');
         }
       } catch (error) {
@@ -323,53 +384,118 @@ export default function App() {
     };
 
     if (!isLoggedIn) {
+      console.log('[App] User not logged in, checking onboarding');
       checkOnboarding();
     } else {
+      console.log('[App] User logged in, setting initialRoute to Home');
+      setInitialRoute('Home');
       setIsCheckingOnboarding(false);
     }
   }, [isLoggedIn]);
 
-  if (isCheckingOnboarding && !isLoggedIn) {
-    return null; // Or a loading screen
+  if (isCheckingOnboarding) {
+    return (
+      <View className="flex-1 items-center justify-center bg-background">
+        <ActivityIndicator size="large" color="rgb(100, 74, 64)" />
+        <Text className="mt-4 text-muted-foreground">Loading...</Text>
+      </View>
+    );
   }
 
+  // Handle navigation errors gracefully
+  if (navigationError) {
+    return (
+      <View className="flex-1 items-center justify-center bg-background px-6">
+        <Text className="mb-4 text-xl font-bold text-destructive">Navigation Error</Text>
+        <Text className="mb-6 text-center text-muted-foreground">{navigationError}</Text>
+        <TouchableOpacity
+          onPress={() => setNavigationError(null)}
+          className="rounded-lg bg-primary px-6 py-3">
+          <Text className="font-semibold text-white">Try Again</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  // Determine the correct initial route based on login state
+  const getInitialRouteName = (): keyof RootStackParamList => {
+    console.log('[App] getInitialRouteName called:', { isLoggedIn, initialRoute });
+    if (isLoggedIn) {
+      return 'Home';
+    }
+    // When logged out, ensure we return a valid route from the logged-out screens
+    // The initialRoute should be 'Introduction' or 'Auth' based on onboarding status
+    if (initialRoute === 'Home') {
+      // If somehow initialRoute is 'Home' but we're logged out, go to Auth
+      return 'Auth';
+    }
+    return initialRoute as keyof RootStackParamList;
+  };
+
+  console.log('[App] Current state:', {
+    isLoggedIn,
+    initialRoute,
+    routeName: getInitialRouteName(),
+    isCheckingOnboarding,
+  });
+
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
+    <ErrorBoundary>
       <MainScaffold>
-        <NavigationContainer>
-          <Stack.Navigator initialRouteName={initialRoute} screenOptions={{ headerShown: false }}>
-            {isLoggedIn ? (
-              <>
-                <Stack.Screen name="Home" component={MainApp} />
-                <Stack.Screen name="Preferences" component={PreferencesScreen} />
-              </>
-            ) : (
-              <>
-                <Stack.Screen
-                  name="Introduction"
-                  component={IntroductionScreen}
-                  options={{
-                    animationTypeForReplace: 'pop',
-                  }}
-                />
-                <Stack.Screen name="RoleSelection" component={RoleSelectionScreen} />
-                <Stack.Screen
-                  name="Auth"
-                  component={AuthScreen}
-                  options={{
-                    animation: 'slide_from_left',
-                  }}
-                />
-                <Stack.Screen name="Register" component={RegisterScreen} />
-                <Stack.Screen name="Welcome" component={WelcomeScreen} />
-                <Stack.Screen name="Details" component={DetailsScreen} />
-                <Stack.Screen name="Preferences" component={PreferencesScreen} />
-              </>
-            )}
-          </Stack.Navigator>
-          <StatusBar style="auto" />
-        </NavigationContainer>
+        <GestureHandlerRootView style={{ flex: 1 }}>
+          <NavigationContainer
+            key={isLoggedIn ? 'logged-in' : 'logged-out'}
+            onStateChange={() => {
+              // Clear navigation errors when state changes successfully
+              if (navigationError) {
+                setNavigationError(null);
+              }
+            }}
+            onUnhandledAction={(action) => {
+              console.warn('[Navigation] Unhandled action:', action);
+              setNavigationError(
+                `Navigation error: Could not perform action "${action.type}". Please try again.`
+              );
+            }}>
+            <Stack.Navigator
+              initialRouteName={getInitialRouteName()}
+              screenOptions={{ headerShown: false }}>
+              {isLoggedIn ? (
+                <>
+                  <Stack.Screen name="Home" component={MainApp} />
+                  <Stack.Screen name="Preferences" component={PreferencesScreen} />
+                  <Stack.Screen name="PropertyDetails" component={PropertyDetailsScreen} />
+                  <Stack.Screen name="ApplicationsList" component={ApplicationsListScreen} />
+                  <Stack.Screen name="ReportScreen" component={ReportScreen} />
+                </>
+              ) : (
+                <>
+                  <Stack.Screen
+                    name="Introduction"
+                    component={IntroductionScreen}
+                    options={{
+                      animationTypeForReplace: 'pop',
+                    }}
+                  />
+                  <Stack.Screen name="RoleSelection" component={RoleSelectionScreen} />
+                  <Stack.Screen
+                    name="Auth"
+                    component={AuthScreen}
+                    options={{
+                      animation: 'slide_from_left',
+                    }}
+                  />
+                  <Stack.Screen name="Register" component={RegisterScreen} />
+                  <Stack.Screen name="Welcome" component={WelcomeScreen} />
+                  <Stack.Screen name="Details" component={DetailsScreen} />
+                  <Stack.Screen name="Preferences" component={PreferencesScreen} />
+                </>
+              )}
+            </Stack.Navigator>
+            <StatusBar style="auto" />
+          </NavigationContainer>
+        </GestureHandlerRootView>
       </MainScaffold>
-    </GestureHandlerRootView>
+    </ErrorBoundary>
   );
 }

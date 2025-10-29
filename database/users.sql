@@ -24,3 +24,22 @@ create table public.users (
   constraint users_phone_number_key unique (phone_number),
   constraint fk_users_rented_property foreign KEY (rented_property) references properties (property_id) on update CASCADE on delete set null
 ) TABLESPACE pg_default;
+
+create trigger trigger_user_warned
+after
+update on users for EACH row
+execute FUNCTION notify_user_warned ();
+
+create trigger trigger_user_verified
+after
+update on users for EACH row
+execute FUNCTION notify_user_verified ();
+
+create trigger trigger_rental_ended
+after
+update on users for EACH row
+execute FUNCTION notify_rental_ended ();
+
+create trigger trigger_new_registration
+after INSERT on users for EACH row
+execute FUNCTION notify_new_registration ();

@@ -22,7 +22,9 @@ export default function Button({
     const baseStyles = 'rounded-lg';
 
     const variantStyles = {
-      primary: 'bg-primary px-6 py-3 shadow-sm',
+      primary: props.disabled
+        ? 'bg-muted px-6 py-3 border border-muted-foreground'
+        : 'bg-primary px-6 py-3 shadow-sm',
       secondary: 'border border-primary bg-secondary px-6 py-3',
       text: '',
       destructive: 'border border-destructive bg-secondary px-6 py-3',
@@ -41,7 +43,7 @@ export default function Button({
     const baseStyles = 'text-center font-semibold';
 
     const variantStyles = {
-      primary: 'text-primary-foreground text-lg',
+      primary: props.disabled ? 'text-muted-foreground text-lg' : 'text-primary-foreground text-lg',
       secondary: 'text-secondary-foreground text-lg',
       text: 'text-primary',
       destructive: 'text-destructive text-lg',
@@ -59,7 +61,7 @@ export default function Button({
   return (
     <Pressable
       className={getButtonStyles()}
-      style={({ pressed }) => [{ opacity: pressed || props.disabled ? 0.5 : 1 }]}
+      style={({ pressed }) => [{ opacity: pressed && !props.disabled ? 0.8 : 1 }]}
       {...props}>
       {typeof children === 'string' ? (
         <Text className={getTextStyles()}>{children}</Text>

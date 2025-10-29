@@ -1,213 +1,491 @@
-import { View, Text, TextInput, TouchableOpacity, Image, ScrollView } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { useState } from 'react';
-import FeedScreenModal from './FeedScreenModal';
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  Image,
+  Platform,
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  RefreshControl,
+  Keyboard,
+} from 'react-native';
+import {
+  Star,
+  Search,
+  MapPin,
+  Users,
+  Image as ImageIcon,
+  Home,
+  X,
+  CheckCircle,
+} from 'lucide-react-native';
+import { useState, useEffect } from 'react';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
+import { StackNavigationProp } from '@react-navigation/stack';
+import { supabase } from '../../utils/supabase';
+import { useLoggedIn } from '../../store/useLoggedIn';
+import { RootStackParamList } from '../../utils/navigation';
+import { Property, PropertyWithDistance, PropertyCategory } from '../../types/property';
+import {
+  calculateDistanceFromStrings,
+  formatDistance,
+  extractCityFromLocation,
+} from '../../utils/distance';
+import PropertyCardSkeleton from '../../components/PropertyCardSkeleton';
+import ImageSkeleton from '../../components/ImageSkeleton';
 
-type Room = {
-  id: number;
-  image: any;
-  title: string;
-  location: string;
-  price: number;
-  rating: number;
-  category: string;
-  amenities: string[];
-};
+type FeedScreenNavigationProp = StackNavigationProp<RootStackParamList>;
 
 export default function FeedScreen() {
-  const [selectedCategory, setSelectedCategory] = useState('All');
+  const insets = useSafeAreaInsets();
+  const navigation = useNavigation<FeedScreenNavigationProp>();
+  const { userProfile } = useLoggedIn();
+  const [selectedCategory, setSelectedCategory] = useState<'All' | PropertyCategory>('All');
   const [searchQuery, setSearchQuery] = useState('');
-  const [modalVisible, setModalVisible] = useState(false);
-  const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
+  const [searchInput, setSearchInput] = useState('');
+  const [properties, setProperties] = useState<PropertyWithDistance[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSearching, setIsSearching] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+  const [currentPage, setCurrentPage] = useState(0);
+  const [imageLoadingStates, setImageLoadingStates] = useState<{ [key: number]: boolean }>({});
+  const ITEMS_PER_PAGE = 8;
 
-  const rooms = [
-    {
-      id: 1,
-      image: require('../../assets/room1.jpg'),
-      title: 'Cozy Room Near Silliman University',
-      location: 'Dumaguete City',
-      price: 3500,
-      rating: 4.5,
-      category: 'Rooms',
-      amenities: ['WiFi', 'Air Conditioning', 'Private Bathroom'],
-    },
-    {
-      id: 2,
-      image: require('../../assets/room2.jpg'),
-      title: 'Modern Studio Apartment',
-      location: 'Dumaguete City',
-      price: 4000,
-      rating: 4.0,
-      category: 'Apartments',
-      amenities: ['Kitchen', 'WiFi', 'Furnished'],
-    },
-    {
-      id: 3,
-      image: require('../../assets/room3.jpg'),
-      title: 'Student Bedspace near Foundation',
-      location: 'Dumaguete City',
-      price: 2500,
-      rating: 4.2,
-      category: 'Bedspace',
-      amenities: ['WiFi', 'Study Area', 'Shared Bathroom'],
-    },
-    {
-      id: 4,
-      image: require('../../assets/room4.jpg'),
-      title: 'Family Apartment with Garden',
-      location: 'Dumaguete City',
-      price: 3800,
-      rating: 4.8,
-      category: 'Apartments',
-      amenities: ['Garden', 'Parking', 'Full Kitchen'],
-    },
-    {
-      id: 5,
-      image: require('../../assets/room5.jpg'),
-      title: 'Downtown Studio Unit',
-      location: 'Dumaguete City',
-      price: 3200,
-      rating: 4.3,
-      category: 'Rooms',
-      amenities: ['WiFi', 'Security', 'Balcony'],
-    },
-  ];
+  useEffect(() => {
+    fetchProperties();
+  }, []);
 
-  const filteredRooms = rooms.filter((room) => {
+  useEffect(() => {
+    // Re-sort and filter when category changes
+    filterAndSortProperties();
+  }, [selectedCategory, searchQuery]);
+
+  const parsePriceRange = (priceRange: string | null): { min: number; max: number } | null => {
+    if (!priceRange) return null;
+
+    try {
+      // Handle formats like "2000-5000" or "2000,5000"
+      const parts = priceRange.split(/[-,]/).map((s) => parseInt(s.trim()));
+      if (parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
+        return { min: parts[0], max: parts[1] };
+      }
+    } catch (error) {
+      console.error('Error parsing price range:', error);
+    }
+
+    return null;
+  };
+
+  const fetchProperties = async (searchTerm?: string, loadMore: boolean = false) => {
+    try {
+      if (loadMore) {
+        setIsLoadingMore(true);
+      } else {
+        setIsLoading(searchTerm ? false : true);
+        if (searchTerm !== undefined) setIsSearching(true);
+        setCurrentPage(0);
+        setHasMore(true);
+      }
+
+      const page = loadMore ? currentPage + 1 : 0;
+      const from = page * ITEMS_PER_PAGE;
+      const to = from + ITEMS_PER_PAGE - 1;
+
+      // Build query with pagination
+      let query = supabase
+        .from('properties')
+        .select('*')
+        .eq('is_available', true)
+        .eq('is_verified', true)
+        .range(from, to);
+
+      // Apply search if provided
+      if (searchTerm && searchTerm.trim()) {
+        query = query.or(
+          `title.ilike.%${searchTerm}%,street.ilike.%${searchTerm}%,barangay.ilike.%${searchTerm}%,city.ilike.%${searchTerm}%`
+        );
+      }
+
+      const { data, error } = await query;
+
+      if (error) throw error;
+
+      if (!data) {
+        if (!loadMore) setProperties([]);
+        setHasMore(false);
+        return;
+      }
+
+      // Check if there are more items
+      if (data.length < ITEMS_PER_PAGE) {
+        setHasMore(false);
+      }
+
+      // Get user preferences
+      const priceRange = parsePriceRange(userProfile?.price_range);
+      const userLocation = userProfile?.place_of_work_study;
+
+      // Fetch current renters count for all properties
+      const propertyIds = data.map((p) => p.property_id);
+      const { data: rentersData } = await supabase
+        .from('users')
+        .select('rented_property')
+        .in('rented_property', propertyIds);
+
+      // Count renters per property
+      const renterCounts: { [key: number]: number } = {};
+      rentersData?.forEach((renter) => {
+        if (renter.rented_property) {
+          renterCounts[renter.rented_property] = (renterCounts[renter.rented_property] || 0) + 1;
+        }
+      });
+
+      // Calculate distance and price match for each property
+      const propertiesWithMetadata: PropertyWithDistance[] = data.map((property) => {
+        const distance = calculateDistanceFromStrings(userLocation, property.coordinates);
+        const matchesPriceRange = priceRange
+          ? property.rent >= priceRange.min && property.rent <= priceRange.max
+          : false;
+
+        return {
+          ...property,
+          distance,
+          matchesPriceRange,
+          currentRenters: renterCounts[property.property_id] || 0,
+        };
+      });
+
+      // Sort: price match first, then distance, then reviews
+      const sorted = propertiesWithMetadata.sort((a, b) => {
+        // First priority: matches price range
+        if (a.matchesPriceRange !== b.matchesPriceRange) {
+          return a.matchesPriceRange ? -1 : 1;
+        }
+
+        // Second priority: distance (ascending)
+        if (a.distance !== null && b.distance !== null) {
+          if (a.distance !== b.distance) {
+            return a.distance - b.distance;
+          }
+        } else if (a.distance !== null) {
+          return -1;
+        } else if (b.distance !== null) {
+          return 1;
+        }
+
+        // Third priority: number of reviews (descending)
+        return (b.number_reviews || 0) - (a.number_reviews || 0);
+      });
+
+      if (loadMore) {
+        setProperties((prev) => [...prev, ...sorted]);
+        setCurrentPage(page);
+      } else {
+        setProperties(sorted);
+        setCurrentPage(0);
+      }
+    } catch (error) {
+      console.error('Error fetching properties:', error);
+      Alert.alert('Error', 'Failed to load properties. Please try again.');
+    } finally {
+      setIsLoading(false);
+      setIsSearching(false);
+      setIsLoadingMore(false);
+    }
+  };
+
+  const filterAndSortProperties = () => {
+    // Frontend filtering is already done by re-rendering based on selectedCategory
+    // No need to re-fetch from database
+  };
+
+  const handleSearch = () => {
+    Keyboard.dismiss();
+    setSearchQuery(searchInput);
+    fetchProperties(searchInput);
+  };
+
+  const handleClearSearch = () => {
+    setSearchInput('');
+    setSearchQuery('');
+    fetchProperties();
+  };
+
+  const handleLoadMore = () => {
+    if (!isLoadingMore && hasMore && !isLoading) {
+      fetchProperties(searchQuery || undefined, true);
+    }
+  };
+
+  const handleRefresh = () => {
+    setIsRefreshing(true);
+    setCurrentPage(0);
+    setHasMore(true);
+    fetchProperties(searchQuery || undefined, false).finally(() => {
+      setIsRefreshing(false);
+    });
+  };
+
+  const getCategoryLabel = (category: PropertyCategory) => {
+    if (category === 'bedspace') return 'Bedspace';
+    return category.charAt(0).toUpperCase() + category.slice(1);
+  };
+
+  const filteredProperties = properties.filter((property) => {
     // Apply category filter
-    const matchesCategory = selectedCategory === 'All' || room.category === selectedCategory;
-
-    // Apply search filter
-    const matchesSearch =
-      searchQuery.length === 0
-        ? true
-        : room.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          room.location.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          room.amenities.some((amenity) =>
-            amenity.toLowerCase().includes(searchQuery.toLowerCase())
-          );
-
-    return matchesCategory && matchesSearch;
+    const matchesCategory = selectedCategory === 'All' || property.category === selectedCategory;
+    return matchesCategory;
   });
 
-  return (
-    <>
-      {/* Modal for Room Details */}
-      <FeedScreenModal
-        visible={modalVisible}
-        onClose={() => setModalVisible(false)}
-        room={selectedRoom}
-      />
+  const userCity = extractCityFromLocation(userProfile?.place_of_work_study);
 
-      {/* Main Feed Content */}
-      <ScrollView
-        className="flex-1 bg-white"
-        contentInsetAdjustmentBehavior="automatic"
-        contentContainerStyle={{ paddingTop: 16, paddingBottom: 90 }}>
-        <View className="px-4">
-          {/* Header Text */}
-          <View className="mb-4">
-            <Text className="text-3xl font-bold text-gray-900">Find Your Room</Text>
-            <Text className="text-gray-600">Dumaguete City</Text>
+  const renderPropertyCard = ({ item: property }: { item: PropertyWithDistance }) => {
+    const isImageLoading = imageLoadingStates[property.property_id] ?? true;
+
+    return (
+      <TouchableOpacity
+        className="my-1 h-36 flex-row overflow-hidden rounded-lg border border-input bg-card shadow-sm"
+        onPress={() =>
+          navigation.navigate('PropertyDetails', { propertyId: property.property_id })
+        }>
+        {/* Image (35%) */}
+        {property.image_url && property.image_url.length > 0 ? (
+          <View className="w-[35%] overflow-hidden rounded-bl-xl rounded-tl-xl">
+            {isImageLoading && (
+              <View className="absolute inset-0 rounded-bl-xl rounded-tl-xl">
+                <ImageSkeleton width="100%" height="100%" borderRadius={12} />
+              </View>
+            )}
+            <Image
+              source={{ uri: property.image_url[0] }}
+              className="h-full w-full rounded-bl-xl rounded-tl-xl"
+              resizeMode="cover"
+              onLoadStart={() => {
+                setImageLoadingStates((prev) => ({ ...prev, [property.property_id]: true }));
+              }}
+              onLoadEnd={() => {
+                setImageLoadingStates((prev) => ({ ...prev, [property.property_id]: false }));
+              }}
+            />
+          </View>
+        ) : (
+          <View className="w-[35%] items-center justify-center rounded-bl-xl rounded-tl-xl bg-muted">
+            <ImageIcon size={28} color="#EFEFEF" />
+          </View>
+        )}
+
+        {/* Details (65%) */}
+        <View className="flex-1 justify-between p-2.5">
+          {/* Title and Location */}
+          <View className="mb-1">
+            <Text numberOfLines={1} className="text-base font-bold text-primary">
+              {property.title}
+            </Text>
+            <Text numberOfLines={1} className="text-sm text-muted-foreground">
+              {[property.barangay, property.city].filter(Boolean).join(', ')}
+            </Text>
           </View>
 
-          {/* Search Bar and Filter */}
-          <View className="mb-4 flex-row items-center">
-            <View className="mr-2 flex-1 flex-row items-center rounded-lg bg-gray-100 p-3">
-              <Ionicons name="search" size={20} color="gray" />
-              <TextInput
-                placeholder="Search for rooms..."
-                className="ml-2 flex-1 overflow-visible"
-                value={searchQuery}
-                onChangeText={setSearchQuery}
-                autoCapitalize="none"
-              />
-              {searchQuery.length > 0 && (
-                <TouchableOpacity onPress={() => setSearchQuery('')}>
-                  <Ionicons name="close-circle" size={20} color="gray" />
-                </TouchableOpacity>
+          {/* Price */}
+          <View className="mb-1 flex-row items-center">
+            <Text
+              className={`text-base font-bold ${property.matchesPriceRange ? 'text-green-600' : 'text-foreground'}`}>
+              ₱{property.rent.toLocaleString()}
+            </Text>
+            <Text className="text-sm text-muted-foreground">/mo</Text>
+          </View>
+
+          {/* Rating and Occupancy */}
+          <View className="mb-1 flex-row items-center justify-between">
+            <View className="flex-row items-center">
+              {property.rating && property.rating > 0 ? (
+                <>
+                  <Star size={14} color="rgb(250, 204, 21)" fill="rgb(250, 204, 21)" />
+                  <Text className="ml-1 text-sm text-muted-foreground">
+                    {property.rating.toFixed(1)} ({property.number_reviews || 0})
+                  </Text>
+                </>
+              ) : (
+                <Text className="text-sm text-muted-foreground">No reviews</Text>
               )}
             </View>
-            <TouchableOpacity className="rounded-lg bg-gray-100 p-3">
-              <Ionicons name="filter" size={20} color="gray" />
-            </TouchableOpacity>
+            <View className="flex-row items-center">
+              <Users size={14} color="#644A40" />
+              <Text className="ml-1 text-sm text-muted-foreground">
+                {property.currentRenters || 0}/{property.max_renters}
+              </Text>
+            </View>
           </View>
 
-          {/* Categories (Tabs style) */}
-          <View className="mb-4 flex-row border-b border-gray-200">
-            {['All', 'Rooms', 'Apartments', 'Bedspace'].map((category) => (
-              <TouchableOpacity
-                key={category}
-                className={`flex-1 items-center pb-2 ${selectedCategory === category ? 'border-b-2 border-blue-600 bg-transparent' : 'bg-transparent'}`}
-                onPress={() => setSelectedCategory(category)}>
-                <Text
-                  className={`text-xs font-semibold ${selectedCategory === category ? 'text-blue-600' : 'text-gray-400'}`}>
-                  {category}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-
-          {/* Room Cards */}
-          <View className="mt-4">
-            {filteredRooms.map((room) => (
-              <TouchableOpacity
-                key={room.id}
-                className="mb-3 h-48 flex-row overflow-hidden rounded-lg bg-white shadow-md"
-                onPress={() => {
-                  setSelectedRoom(room);
-                  setModalVisible(true);
-                }}>
-                {/* Image (40%) */}
-                <Image source={room.image} className="h-full w-[40%]" resizeMode="cover" />
-
-                {/* Details (60%) */}
-                <View className="flex-1 p-3">
-                  {/* Title and Location */}
-                  <View className="mb-1">
-                    <Text numberOfLines={1} className="text-base font-bold text-gray-800">
-                      {room.title}
-                    </Text>
-                    <Text className="text-xs text-gray-500">{room.location}</Text>
-                  </View>
-
-                  {/* Category Tag */}
-                  <View className="mb-1 self-start rounded-sm bg-blue-100 px-2 py-0.5">
-                    <Text className="text-xs text-blue-600">{room.category}</Text>
-                  </View>
-
-                  {/* Price */}
-                  <Text className="mb-1 text-base font-bold text-green-600">
-                    ₱{room.price}/month
-                  </Text>
-
-                  {/* Rating */}
-                  <View className="mb-2 flex-row items-center">
-                    {[...Array(5)].map((_, index) => (
-                      <Ionicons
-                        key={index}
-                        name={index < Math.floor(room.rating) ? 'star' : 'star-outline'}
-                        size={12}
-                        color="#FFD700"
-                      />
-                    ))}
-                    <Text className="ml-1 text-xs text-gray-600">{room.rating}</Text>
-                  </View>
-
-                  {/* Amenities */}
-                  <View className="flex-row flex-wrap">
-                    {room.amenities.map((amenity, index) => (
-                      <View key={index} className="mb-1 mr-1.5 rounded-sm bg-gray-100 px-2 py-1">
-                        <Text className="text-xs text-gray-600">{amenity}</Text>
-                      </View>
-                    ))}
-                  </View>
-                </View>
-              </TouchableOpacity>
-            ))}
+          {/* Distance and Room Type Badge */}
+          <View className="flex-row items-center justify-between">
+            <View className="flex-row items-center">
+              <MapPin size={14} color="#644A40" />
+              <Text className="ml-1 text-xs text-muted-foreground">
+                {property.distance !== null
+                  ? `${formatDistance(property.distance)} from work/school`
+                  : 'Set location to see distance'}
+              </Text>
+            </View>
+            <View className="rounded-full border border-primary/20 bg-secondary/30 px-2 py-0.5">
+              <Text className="text-xs font-medium text-secondary-foreground">
+                {getCategoryLabel(property.category)}
+              </Text>
+            </View>
           </View>
         </View>
-      </ScrollView>
-    </>
+      </TouchableOpacity>
+    );
+  };
+
+  const renderFooter = () => {
+    if (isLoadingMore) {
+      return (
+        <View className="items-center py-4">
+          <ActivityIndicator color="#644A40" />
+          <Text className="mt-2 text-sm text-muted-foreground">Loading more properties...</Text>
+        </View>
+      );
+    }
+
+    // Show "Pull up to load more" when near the end but not loading
+    if (hasMore && filteredProperties.length > 0 && !isLoading) {
+      return (
+        <View className="items-center py-4">
+          <Text className="text-sm text-muted-foreground">Pull up to load more</Text>
+        </View>
+      );
+    }
+
+    // Show end of results
+    if (!hasMore && filteredProperties.length > 0) {
+      return (
+        <View className="items-center py-4">
+          <Text className="text-sm text-muted-foreground">You&apos;ve reached the end</Text>
+        </View>
+      );
+    }
+
+    return null;
+  };
+
+  const renderEmpty = () => {
+    if (isLoading) return null;
+    return (
+      <View className="flex-1 items-center justify-center py-20">
+        <Home size={64} color="#A0A0A0" />
+        <Text className="mt-4 text-lg font-semibold text-foreground">No properties found</Text>
+        <Text className="mt-2 text-center text-muted-foreground">
+          {searchQuery ? 'Try adjusting your search terms' : 'Check back later for new listings'}
+        </Text>
+      </View>
+    );
+  };
+
+  return (
+    <View
+      className="flex-1 bg-background"
+      style={{ paddingTop: Platform.OS === 'ios' ? 0 : insets.top + 8 }}>
+      {/* Fixed Header Section */}
+      <View className="bg-background px-4" style={{ paddingTop: Platform.OS === 'ios' ? 50 : 0 }}>
+        {/* Header Text */}
+        <View className="mb-4">
+          <Text className="text-3xl font-bold text-primary">Find Your Room</Text>
+          <Text className="mt-2 text-base text-muted-foreground">{userCity}</Text>
+        </View>
+
+        {/* Search Bar */}
+        <View
+          className={`mb-4 flex-row items-center rounded-lg border border-input bg-card ${
+            isSearching ? 'opacity-60' : 'opacity-100'
+          }`}>
+          <TextInput
+            placeholder="Search for rooms..."
+            placeholderTextColor="#646464"
+            className="flex-1 px-4 py-3 text-foreground"
+            value={searchInput}
+            onChangeText={setSearchInput}
+            onSubmitEditing={handleSearch}
+            autoCapitalize="none"
+            returnKeyType="search"
+            editable={!isSearching}
+          />
+          {searchInput.length > 0 && (
+            <TouchableOpacity onPress={handleClearSearch} className="px-2" disabled={isSearching}>
+              <X size={20} color="#646464" />
+            </TouchableOpacity>
+          )}
+          <View className="h-full w-px bg-input" />
+          <TouchableOpacity className="px-3 py-3" onPress={handleSearch} disabled={isSearching}>
+            {isSearching ? (
+              <ActivityIndicator size="small" color="#644A40" />
+            ) : (
+              <Search size={20} color="#644A40" />
+            )}
+          </TouchableOpacity>
+        </View>
+
+        {/* Categories (Tabs style) */}
+        <View className="flex-row border-b border-border">
+          {(['All', 'room', 'apartment', 'bedspace'] as const).map((category) => (
+            <TouchableOpacity
+              key={category}
+              className={`flex-1 items-center pb-3 ${
+                selectedCategory === category
+                  ? 'border-b-2 border-primary bg-transparent'
+                  : 'bg-transparent'
+              }`}
+              onPress={() => setSelectedCategory(category)}>
+              <Text
+                className={`font-semibold ${
+                  selectedCategory === category ? 'text-primary' : 'text-muted-foreground'
+                }`}>
+                {category === 'All' ? 'All' : getCategoryLabel(category)}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </View>
+
+      {/* Scrollable Property List */}
+      {isLoading && properties.length === 0 ? (
+        <View className="flex-1 px-4 pt-1">
+          {[...Array(8)].map((_, index) => (
+            <PropertyCardSkeleton key={index} />
+          ))}
+        </View>
+      ) : (
+        <FlatList
+          data={filteredProperties}
+          renderItem={renderPropertyCard}
+          keyExtractor={(item) => item.property_id.toString()}
+          ListFooterComponent={renderFooter}
+          ListEmptyComponent={renderEmpty}
+          contentContainerStyle={{
+            paddingHorizontal: 16,
+            paddingTop: 4,
+            paddingBottom: 12,
+          }}
+          refreshControl={
+            <RefreshControl
+              refreshing={isRefreshing}
+              onRefresh={handleRefresh}
+              colors={['#644A40']}
+              tintColor="#644A40"
+              title="Refreshing..."
+              titleColor="#646464"
+            />
+          }
+          onEndReached={handleLoadMore}
+          onEndReachedThreshold={0.5}
+          keyboardShouldPersistTaps="handled"
+        />
+      )}
+    </View>
   );
 }

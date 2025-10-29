@@ -1,118 +1,310 @@
-import { View, Text, FlatList, Image } from 'react-native';
-import { useState } from 'react';
-import { Star, ThumbsUp, ThumbsDown } from 'lucide-react-native';
+import {
+  View,
+  Text,
+  FlatList,
+  ActivityIndicator,
+  Platform,
+  RefreshControl,
+  TouchableOpacity,
+} from 'react-native';
+import { useState, useEffect } from 'react';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
+import { Star, X } from 'lucide-react-native';
+import { supabase } from '../../utils/supabase';
+import { useLoggedIn } from '../../store/useLoggedIn';
+import { Review } from '../../types/property';
+import ReviewCard from '../../components/ReviewCard';
+import { RootTabParamList } from '../../utils/navigation';
 
-interface Review {
-  id: string;
-  userName: string;
-  userAvatar: string;
-  rating: number;
-  comment: string;
-  date: string;
-  helpful: number;
-  unhelpful: number;
-  propertyName: string;
+interface ReviewWithProperty extends Review {
+  property?: {
+    title: string;
+  };
 }
 
-export default function ViewReviewsScreen() {
-  const [reviews] = useState<Review[]>([
-    {
-      id: '1',
-      userName: 'Juan Dela Cruz',
-      userAvatar: 'https://ui-avatars.com/api/?name=John+Doe',
-      rating: 3,
-      comment:
-        'Great property! Very clean and well maintained. The location is perfect and the amenities are excellent.',
-      date: '2025-09-01',
-      helpful: 12,
-      unhelpful: 2,
-      propertyName: 'Silliman Residences',
-    },
-    {
-      id: '2',
-      userName: 'Viktor Magtatanggol',
-      userAvatar: 'https://ui-avatars.com/api/?name=John+Doe',
-      rating: 5,
-      comment:
-        'Nindot kaayo nga property! Limpyo gyud kaayo ug maayo pagkamentinar. Ang lokasyon perpekto, ug ang mga amenities nindot kaayo.',
-      date: '2025-08-04',
-      helpful: 652,
-      unhelpful: 15,
-      propertyName: 'Portal West Apartments',
-    },
-    {
-      id: '3',
-      userName: 'Ricardo  Milos',
-      userAvatar: 'https://ui-avatars.com/api/?name=John+Doe',
-      rating: 4,
-      comment:
-        'Ang ganda ng property! Talagang sobrang linis at inaalagaan. Hindi matatawaran ang lokasyon, at pang-best talaga ang mga kagamitan at pasilidad.',
-      date: '2025-05-21',
-      helpful: 18,
-      unhelpful: 0,
-      propertyName: 'Rizal Boulevard Suites',
-    },
-  ]);
+type ViewReviewsScreenRouteProp = RouteProp<RootTabParamList, 'ViewReviews'>;
 
-  const renderStars = (rating: number) => {
+export default function ViewReviewsScreen() {
+  const insets = useSafeAreaInsets();
+  const route = useRoute<ViewReviewsScreenRouteProp>();
+  const navigation = useNavigation();
+  const { userProfile } = useLoggedIn();
+  const [reviews, setReviews] = useState<ReviewWithProperty[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+  const [currentPage, setCurrentPage] = useState(0);
+  const [averageRating, setAverageRating] = useState<number | null>(null);
+  const REVIEWS_PER_PAGE = 12;
+
+  // Get propertyId from route params if provided (for filtering)
+  const filterPropertyId = route.params?.propertyId;
+
+  useEffect(() => {
+    fetchReviews(false);
+  }, [filterPropertyId]); // Refetch when filterPropertyId changes
+
+  const fetchReviews = async (loadMore: boolean = false) => {
+    try {
+      if (loadMore) {
+        setIsLoadingMore(true);
+      } else {
+        setIsLoading(true);
+        setCurrentPage(0);
+        setHasMore(true);
+      }
+
+      // If filterPropertyId is provided, only get reviews for that property
+      // Otherwise, get all properties owned by the current user
+      let propertyIds: number[];
+
+      if (filterPropertyId) {
+        // Verify the property belongs to the current user
+        const { data: property, error: propertyError } = await supabase
+          .from('properties')
+          .select('property_id')
+          .eq('property_id', filterPropertyId)
+          .eq('owner_id', userProfile?.user_id)
+          .single();
+
+        if (propertyError || !property) {
+          setReviews([]);
+          setHasMore(false);
+          setAverageRating(null);
+          return;
+        }
+
+        propertyIds = [filterPropertyId];
+      } else {
+        // Get all properties owned by the current user
+        const { data: properties, error: propertiesError } = await supabase
+          .from('properties')
+          .select('property_id')
+          .eq('owner_id', userProfile?.user_id);
+
+        if (propertiesError) throw propertiesError;
+
+        if (!properties || properties.length === 0) {
+          setReviews([]);
+          setHasMore(false);
+          setAverageRating(null);
+          return;
+        }
+
+        propertyIds = properties.map((p) => p.property_id);
+      }
+
+      const page = loadMore ? currentPage + 1 : 0;
+      const from = page * REVIEWS_PER_PAGE;
+      const to = from + REVIEWS_PER_PAGE - 1;
+
+      // Fetch reviews for those properties
+      const { data, error } = await supabase
+        .from('reviews')
+        .select(
+          `
+          review_id,
+          user_id,
+          property_id,
+          rating,
+          comment,
+          date_created,
+          user:user_id (
+            first_name,
+            last_name,
+            profile_picture
+          ),
+          property:property_id (
+            title
+          )
+        `
+        )
+        .in('property_id', propertyIds)
+        .order('date_created', { ascending: false })
+        .range(from, to);
+
+      if (error) throw error;
+
+      const reviewsData = (data as any) || [];
+
+      // Check if there are more items
+      if (reviewsData.length < REVIEWS_PER_PAGE) {
+        setHasMore(false);
+      }
+
+      if (loadMore) {
+        setReviews((prev) => [...prev, ...reviewsData]);
+        setCurrentPage(page);
+      } else {
+        setReviews(reviewsData);
+        setCurrentPage(0);
+
+        // Calculate average rating (only on initial load/refresh)
+        if (reviewsData.length > 0) {
+          const totalRating = reviewsData.reduce((sum: number, r: any) => sum + r.rating, 0);
+          setAverageRating(totalRating / reviewsData.length);
+        } else {
+          setAverageRating(null);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching reviews:', error);
+    } finally {
+      setIsLoading(false);
+      setIsLoadingMore(false);
+    }
+  };
+
+  const handleRefresh = () => {
+    setIsRefreshing(true);
+    fetchReviews(false).finally(() => {
+      setIsRefreshing(false);
+    });
+  };
+
+  const handleLoadMore = () => {
+    if (!isLoadingMore && hasMore && !isLoading) {
+      fetchReviews(true);
+    }
+  };
+
+  const handleRemoveFilter = () => {
+    // Navigate back to ViewReviews without params to show all reviews
+    // The useEffect will automatically refresh when filterPropertyId changes
+    navigation.navigate('ViewReviews' as never, undefined as never);
+  };
+
+  const renderFooter = () => {
+    if (isLoadingMore) {
+      return (
+        <View className="items-center py-4">
+          <ActivityIndicator color="#644A40" />
+          <Text className="mt-2 text-sm text-muted-foreground">Loading more reviews...</Text>
+        </View>
+      );
+    }
+
+    if (hasMore && reviews.length > 0 && !isLoading) {
+      return (
+        <View className="items-center py-4">
+          <Text className="text-sm text-muted-foreground">Pull up to load more</Text>
+        </View>
+      );
+    }
+
+    if (!hasMore && reviews.length > 0) {
+      return (
+        <View className="items-center py-4">
+          <Text className="text-sm text-muted-foreground">You&apos;ve reached the end</Text>
+        </View>
+      );
+    }
+
+    return null;
+  };
+
+  const renderEmpty = () => {
+    if (isLoading || isRefreshing) {
+      return (
+        <View className="flex-1 items-center justify-center" style={{ minHeight: 300 }}>
+          <ActivityIndicator size="large" color="#644A40" />
+          <Text className="mt-4 text-muted-foreground">Loading reviews...</Text>
+        </View>
+      );
+    }
     return (
-      <View className="flex-row">
-        {[1, 2, 3, 4, 5].map((star) => (
-          <Star
-            key={star}
-            size={16}
-            color="#FBC02D"
-            fill={star <= rating ? '#FBC02D' : 'transparent'}
-          />
-        ))}
+      <View className="flex-1 items-center justify-center py-20">
+        <Star size={64} color="#EFEFEF" />
+        <Text className="mt-4 text-lg font-semibold text-foreground">No reviews yet</Text>
+        <Text className="mt-2 text-center text-muted-foreground">
+          Reviews from renters will appear here
+        </Text>
       </View>
     );
   };
 
-  const renderReview = ({ item }: { item: Review }) => (
-    <View className="mb-4 rounded-xl bg-white p-4 shadow-sm">
-      <View className="mb-3 flex-row items-center">
-        <Image source={{ uri: item.userAvatar }} className="h-10 w-10 rounded-full" />
-        <View className="ml-3 flex-1">
-          <Text className="font-semibold text-gray-900">{item.userName}</Text>
-          <Text className="text-sm text-gray-500">{item.propertyName}</Text>
-        </View>
-        <Text className="text-sm text-gray-500">{new Date(item.date).toLocaleDateString()}</Text>
-      </View>
-
-      {renderStars(item.rating)}
-
-      <Text className="my-3 leading-6 text-gray-700">{item.comment}</Text>
-
-      <View className="flex-row space-x-4">
-        <View className="flex-row items-center">
-          <ThumbsUp size={16} color="#6B7280" />
-          <Text className="ml-1 text-gray-600">{item.helpful}</Text>
-        </View>
-        <View className="flex-row items-center">
-          <ThumbsDown size={16} color="#6B7280" />
-          <Text className="ml-1 text-gray-600">{item.unhelpful}</Text>
-        </View>
-      </View>
-    </View>
-  );
-
   return (
-    <View className="flex-1 bg-gray-50">
-      <View className="border-b border-gray-200 bg-white p-4">
-        <Text className="text-2xl font-bold text-gray-900">Property Reviews</Text>
-        <View className="mt-2 flex-row items-center">
-          <Star size={20} color="#FBC02D" fill="#FBC02D" />
-          <Text className="ml-1 text-lg font-semibold">4</Text>
-          <Text className="ml-1 text-gray-600">• {reviews.length} reviews</Text>
+    <View
+      className="flex-1 bg-background"
+      style={{ paddingTop: Platform.OS === 'ios' ? 0 : insets.top + 8 }}>
+      {/* Fixed Header Section */}
+      <View
+        className="border-b border-border bg-background px-4 pb-4"
+        style={{ paddingTop: Platform.OS === 'ios' ? 50 : 0 }}>
+        <View className="flex-row items-center justify-between" style={{ minHeight: 40 }}>
+          {/* Left side: Title and stats */}
+          <View className="flex-1">
+            <View className="flex-row items-center gap-3">
+              <Text className="text-3xl font-bold text-primary">Property Reviews</Text>
+              <View className="flex-row items-center">
+                <Star size={18} color="rgb(250, 204, 21)" fill="rgb(250, 204, 21)" />
+                <Text className="ml-1 text-base font-semibold text-foreground">
+                  {averageRating ? averageRating.toFixed(1) : 'N/A'}
+                </Text>
+                <Text className="ml-1 text-sm text-muted-foreground">({reviews.length})</Text>
+              </View>
+            </View>
+          </View>
+
+          {/* Right side: Remove filter button - fixed width to prevent layout shift */}
+          <View className="ml-3" style={{ width: 40, height: 40 }}>
+            {filterPropertyId && (
+              <TouchableOpacity onPress={handleRemoveFilter} className="p-2" activeOpacity={0.7}>
+                <X size={24} color="#644A40" />
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
+
+        {/* Subtitle - fixed height container */}
+        <View style={{ minHeight: 24 }}>
+          {filterPropertyId && reviews.length > 0 && reviews[0].property?.title ? (
+            <Text className="mt-1 text-sm text-muted-foreground" numberOfLines={1}>
+              {reviews[0].property.title}
+            </Text>
+          ) : filterPropertyId && reviews.length === 0 ? (
+            <Text className="mt-1 text-sm text-muted-foreground">
+              No reviews for this property yet
+            </Text>
+          ) : (
+            <Text className="mt-1 text-sm text-muted-foreground">
+              View and manage reviews across all your properties
+            </Text>
+          )}
         </View>
       </View>
 
+      {/* Reviews List */}
       <FlatList
         data={reviews}
-        renderItem={renderReview}
-        keyExtractor={(item) => item.id}
-        contentContainerClassName="p-4"
+        renderItem={({ item }) => (
+          <ReviewCard
+            review={item}
+            showPropertyName={true}
+            propertyName={item.property?.title || 'Unknown Property'}
+          />
+        )}
+        keyExtractor={(item) => item.review_id.toString()}
+        ListFooterComponent={renderFooter}
+        ListEmptyComponent={renderEmpty}
+        contentContainerStyle={{
+          paddingHorizontal: 16,
+          paddingTop: 12,
+          paddingBottom: 16,
+          flexGrow: 1,
+        }}
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefreshing}
+            onRefresh={handleRefresh}
+            colors={['#644A40']}
+            tintColor="#644A40"
+          />
+        }
+        onEndReached={handleLoadMore}
+        onEndReachedThreshold={0.5}
       />
     </View>
   );

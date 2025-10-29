@@ -1,144 +1,350 @@
-import { View, Text, FlatList, TouchableOpacity, Image, Modal, Pressable } from 'react-native';
-import { useState } from 'react';
+import {
+  View,
+  Text,
+  ActivityIndicator,
+  Alert,
+  Platform,
+  RefreshControl,
+  FlatList,
+  Linking,
+} from 'react-native';
+import { useState, useEffect } from 'react';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useLoggedIn } from '../../store/useLoggedIn';
+import { supabase } from '../../utils/supabase';
+import { ApplicationWithProperty } from '../../types/property';
+import ApplicationCard from '../../components/ApplicationCard';
+import ConfirmationModal from '../../components/ConfirmationModal';
 
 export default function ApplicationsScreen() {
-  // Define Application type
-  type Application = {
-    id: string;
-    property: string;
-    address: string;
-    image: any;
-    status: 'Pending' | 'Approved' | 'Rejected';
-    date: string;
-    message: string;
+  const insets = useSafeAreaInsets();
+  const { userProfile } = useLoggedIn();
+
+  const [applications, setApplications] = useState<ApplicationWithProperty[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [selectedApplicationId, setSelectedApplicationId] = useState<number | null>(null);
+
+  useEffect(() => {
+    fetchApplications();
+  }, []);
+
+  const fetchApplications = async () => {
+    if (!userProfile?.user_id) return;
+
+    try {
+      console.log('[ApplicationsScreen] Fetching applications for renter_id:', userProfile.user_id);
+
+      const { data, error } = await supabase
+        .from('applications')
+        .select(
+          `
+          application_id,
+          property_id,
+          renter_id,
+          owner_id,
+          status,
+          message,
+          date_applied,
+          date_updated,
+          property:properties (
+            property_id,
+            owner_id,
+            title,
+            description,
+            category,
+            street,
+            barangay,
+            city,
+            coordinates,
+            image_url,
+            rent,
+            amenities,
+            rating,
+            max_renters,
+            is_available,
+            is_verified,
+            has_internet,
+            allows_pets,
+            is_furnished,
+            has_ac,
+            is_secure,
+            has_parking,
+            number_reviews
+          )
+        `
+        )
+        .eq('renter_id', userProfile.user_id)
+        .order('date_applied', { ascending: false });
+
+      if (error) throw error;
+
+      console.log('[ApplicationsScreen] Applications fetched:', data?.length || 0);
+
+      // Transform the data to match ApplicationWithProperty type
+      const transformedData: ApplicationWithProperty[] = (data || []).map((app: any) => ({
+        application_id: app.application_id,
+        property_id: app.property_id,
+        renter_id: app.renter_id,
+        owner_id: app.owner_id,
+        status: app.status,
+        message: app.message,
+        date_applied: app.date_applied,
+        date_updated: app.date_updated,
+        property: app.property,
+      }));
+
+      console.log('[ApplicationsScreen] Status breakdown:', {
+        approved: transformedData.filter((a) => a.status === 'approved').length,
+        pending: transformedData.filter((a) => a.status === 'pending').length,
+        rejected: transformedData.filter((a) => a.status === 'rejected').length,
+        cancelled: transformedData.filter((a) => a.status === 'cancelled').length,
+        completed: transformedData.filter((a) => a.status === 'completed').length,
+      });
+
+      setApplications(transformedData);
+    } catch (error) {
+      console.error('[ApplicationsScreen] Error fetching applications:', error);
+      Alert.alert('Error', 'Failed to load applications. Please try again.');
+    } finally {
+      setIsLoading(false);
+      setIsRefreshing(false);
+    }
   };
 
-  // Mock data for applications
-  const [selected, setSelected] = useState<Application | null>(null);
-  const [modalVisible, setModalVisible] = useState(false);
-  const applications: Application[] = [
-    {
-      id: '1',
-      property: 'Sunny Apartment',
-      address: '123 Main St',
-      image: require('../../assets/room1.jpg'),
-      status: 'Pending',
-      date: '2025-09-20',
-      message: 'Your application is under review.',
-    },
-    {
-      id: '2',
-      property: 'Cozy Loft',
-      address: '456 Oak Ave',
-      image: require('../../assets/room2.jpg'),
-      status: 'Approved',
-      date: '2025-09-15',
-      message: 'Congratulations! You have been approved.',
-    },
-    {
-      id: '3',
-      property: 'Modern Studio',
-      address: '789 Pine Rd',
-      image: require('../../assets/room3.jpg'),
-      status: 'Rejected',
-      date: '2025-09-10',
-      message: 'Sorry, your application was not successful.',
-    },
-  ];
-
-  const statusColors: Record<Application['status'], string> = {
-    Pending: 'bg-yellow-100 text-yellow-800',
-    Approved: 'bg-green-100 text-green-800',
-    Rejected: 'bg-red-100 text-red-800',
+  const handleRefresh = () => {
+    setIsRefreshing(true);
+    fetchApplications();
   };
 
-  const renderItem = ({ item }: { item: Application }) => (
-    <TouchableOpacity
-      className="mb-4 flex-row items-center overflow-hidden rounded-xl border border-gray-100 bg-white p-0.5 shadow-md"
-      onPress={() => {
-        setSelected(item);
-        setModalVisible(true);
-      }}
-      activeOpacity={0.85}>
-      <Image source={item.image} className="m-2 h-24 w-24 rounded-xl" resizeMode="cover" />
-      <View className="flex-1 pr-2">
-        <Text className="mb-0.5 text-base font-bold text-gray-900">{item.property}</Text>
-        <Text className="mb-1 text-xs text-gray-600">{item.address}</Text>
-        <View className="mb-1 flex-row items-center">
-          <View className={`rounded-full px-2 py-0.5 ${statusColors[item.status]}`}>
-            <Text className="text-xs font-semibold">{item.status}</Text>
-          </View>
-          <Text className="ml-2 text-xs text-gray-400">{item.date}</Text>
+  const handleCancelApplication = async (applicationId: number) => {
+    setSelectedApplicationId(applicationId);
+    setShowCancelModal(true);
+  };
+
+  const confirmCancelApplication = async () => {
+    if (!selectedApplicationId) return;
+
+    setShowCancelModal(false);
+
+    try {
+      console.log('[ApplicationsScreen] Cancelling application_id:', selectedApplicationId);
+
+      const { error } = await supabase
+        .from('applications')
+        .update({
+          status: 'cancelled',
+          message: 'Cancelled by applicant',
+          date_updated: new Date().toISOString(),
+        })
+        .eq('application_id', selectedApplicationId);
+
+      if (error) throw error;
+
+      console.log('[ApplicationsScreen] Application cancelled successfully');
+      Alert.alert('Success', 'Application cancelled successfully.');
+      await fetchApplications();
+    } catch (error) {
+      console.error('[ApplicationsScreen] Error cancelling application:', error);
+      throw error;
+    } finally {
+      setSelectedApplicationId(null);
+    }
+  };
+
+  const handleContactOwner = async (ownerId: number) => {
+    try {
+      console.log('[ApplicationsScreen] Fetching owner phone for owner_id:', ownerId);
+
+      // Fetch owner's phone number
+      const { data: ownerData, error: ownerError } = await supabase
+        .from('users')
+        .select('phone_number')
+        .eq('user_id', ownerId)
+        .single();
+
+      if (ownerError) throw ownerError;
+
+      if (!ownerData?.phone_number) {
+        Alert.alert('Error', 'Owner phone number not available');
+        return;
+      }
+
+      console.log('[ApplicationsScreen] Opening SMS to owner');
+      const url = `sms:${ownerData.phone_number}`;
+      const canOpen = await Linking.canOpenURL(url);
+
+      if (canOpen) {
+        await Linking.openURL(url);
+      } else {
+        Alert.alert('Error', 'Cannot open messaging app');
+      }
+    } catch (error) {
+      console.error('[ApplicationsScreen] Error contacting owner:', error);
+      Alert.alert('Error', 'Failed to open messaging app');
+    }
+  };
+
+  // Organize applications into sections
+  const approvedApplications = applications.filter((app) => app.status === 'approved');
+  const pendingApplications = applications.filter((app) => app.status === 'pending');
+  const cancelledApplications = applications.filter((app) => app.status === 'cancelled');
+  const rejectedApplications = applications.filter((app) => app.status === 'rejected');
+  const completedApplications = applications.filter((app) => app.status === 'completed');
+
+  // Flatten all applications in order for FlatList
+  const flattenedApplications: {
+    type: 'header' | 'item';
+    title?: string;
+    application?: ApplicationWithProperty;
+  }[] = [];
+
+  // Determine which section goes first
+  const topApplications =
+    approvedApplications.length > 0 ? approvedApplications : pendingApplications;
+  const showPendingBelow = approvedApplications.length > 0;
+
+  // Top Section: Approved OR Pending
+  if (topApplications.length > 0) {
+    flattenedApplications.push({
+      type: 'header',
+      title: approvedApplications.length > 0 ? 'Approved' : 'Pending',
+    });
+    topApplications.forEach((app) => {
+      flattenedApplications.push({ type: 'item', application: app });
+    });
+  }
+
+  // Pending Section (if approved exists)
+  if (showPendingBelow && pendingApplications.length > 0) {
+    flattenedApplications.push({ type: 'header', title: 'Pending' });
+    pendingApplications.forEach((app) => {
+      flattenedApplications.push({ type: 'item', application: app });
+    });
+  }
+
+  // Bottom Section: Completed, Cancelled & Rejected
+  if (
+    completedApplications.length > 0 ||
+    cancelledApplications.length > 0 ||
+    rejectedApplications.length > 0
+  ) {
+    flattenedApplications.push({ type: 'header', title: 'Past Applications' });
+
+    completedApplications.forEach((app) => {
+      flattenedApplications.push({ type: 'item', application: app });
+    });
+
+    cancelledApplications.forEach((app) => {
+      flattenedApplications.push({ type: 'item', application: app });
+    });
+
+    rejectedApplications.forEach((app) => {
+      flattenedApplications.push({ type: 'item', application: app });
+    });
+  }
+
+  const renderItem = ({ item }: { item: (typeof flattenedApplications)[number] }) => {
+    if (item.type === 'header') {
+      const isMuted = item.title === 'Past Applications';
+      return (
+        <View className="mb-3 mt-6 first:mt-0">
+          <Text
+            className={`text-xl font-bold ${isMuted ? 'text-muted-foreground' : 'text-foreground'}`}>
+            {item.title}
+          </Text>
         </View>
+      );
+    }
+
+    if (item.type === 'item' && item.application) {
+      const app = item.application;
+      return (
+        <ApplicationCard
+          application={app}
+          onCancel={app.status === 'pending' ? handleCancelApplication : undefined}
+          onContactOwner={app.status === 'pending' ? handleContactOwner : undefined}
+        />
+      );
+    }
+
+    return null;
+  };
+
+  const renderEmpty = () => {
+    if (isLoading || isRefreshing) {
+      return (
+        <View className="flex-1 items-center justify-center" style={{ minHeight: 300 }}>
+          <ActivityIndicator size="large" color="#644A40" />
+          <Text className="mt-4 text-muted-foreground">Loading applications...</Text>
+        </View>
+      );
+    }
+    return (
+      <View className="flex-1 items-center justify-center py-20">
+        <Text className="text-lg font-semibold text-foreground">No Applications Yet</Text>
+        <Text className="mt-2 text-center text-base text-muted-foreground">
+          Start browsing properties and apply to the ones you like!
+        </Text>
       </View>
-    </TouchableOpacity>
-  );
+    );
+  };
 
   return (
-    <View className="flex-1 bg-white">
-      <View className="px-4 pb-2 pt-6">
-        <Text className="text-3xl font-bold text-gray-900">My Applications</Text>
-        <Text className="text-gray-600">Track your property applications and their status.</Text>
+    <View
+      className="flex-1 bg-background"
+      style={{ paddingTop: Platform.OS === 'ios' ? 0 : insets.top + 8 }}>
+      {/* Fixed Header Section */}
+      <View
+        className="border-b border-border bg-background px-4 pb-4"
+        style={{ paddingTop: Platform.OS === 'ios' ? 50 : 0 }}>
+        <Text className="text-3xl font-bold text-primary">My Applications</Text>
+        <Text className="mt-2.5 text-muted-foreground">
+          Track your property applications and their status
+        </Text>
       </View>
 
-      {applications.length === 0 ? (
-        <View className="flex-1 items-center justify-center">
-          <Image source={require('../../assets/room5.jpg')} className="mb-4 h-32 w-32 opacity-60" />
-          <Text className="text-base text-gray-500">No applications yet.</Text>
-        </View>
-      ) : (
-        <FlatList
-          data={applications}
-          renderItem={renderItem}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={{ paddingBottom: 90, paddingTop: 4, paddingHorizontal: 16 }}
-          showsVerticalScrollIndicator={false}
-        />
-      )}
+      {/* Applications List */}
+      <FlatList
+        data={flattenedApplications}
+        renderItem={renderItem}
+        keyExtractor={(item, index) =>
+          item.type === 'header'
+            ? `header-${item.title}`
+            : `app-${item.application?.application_id}-${index}`
+        }
+        ListEmptyComponent={renderEmpty}
+        contentContainerStyle={{
+          paddingHorizontal: 16,
+          paddingTop: 16,
+          paddingBottom: 16,
+          flexGrow: 1,
+        }}
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefreshing}
+            onRefresh={handleRefresh}
+            colors={['#644A40']}
+            tintColor="#644A40"
+          />
+        }
+      />
 
-      {/* Application Details Modal */}
-      <Modal
-        visible={modalVisible}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => setModalVisible(false)}>
-        <View className="flex-1 items-center justify-center bg-black/40">
-          <View className="h-[37%] w-[95%] overflow-hidden rounded-xl bg-white shadow-lg">
-            {selected && (
-              <>
-                <View>
-                  <Image source={selected.image} className="h-40 w-full" resizeMode="cover" />
-                  <Pressable
-                    onPress={() => setModalVisible(false)}
-                    className="absolute left-2 top-2 rounded-full bg-white/80 p-1">
-                    {/* Use Ionicons or similar for close icon if available */}
-                    <Text className="text-lg font-bold text-gray-700">×</Text>
-                  </Pressable>
-                </View>
-                <View className="flex-1 gap-2 px-4 pb-6 pt-3">
-                  <Text className="mb-0.5 text-xl font-bold text-gray-900">
-                    {selected.property}
-                  </Text>
-                  <Text className="mb-1 text-xs text-gray-600">{selected.address}</Text>
-                  <View className="mb-1 flex-row items-center">
-                    <View className={`rounded-full px-2 py-0.5 ${statusColors[selected.status]}`}>
-                      <Text className="text-xs font-semibold">{selected.status}</Text>
-                    </View>
-                    <Text className="ml-2 text-xs text-gray-400">{selected.date}</Text>
-                  </View>
-                  <Text className="mb-2 text-xs text-gray-700">Applied on: {selected.date}</Text>
-                  <Text className="mb-4 text-sm text-gray-600">{selected.message}</Text>
-                  <Pressable
-                    className="mb-2 w-full items-center rounded-lg bg-blue-500 py-3"
-                    onPress={() => setModalVisible(false)}>
-                    <Text className="font-bold text-white">Close</Text>
-                  </Pressable>
-                </View>
-              </>
-            )}
-          </View>
-        </View>
-      </Modal>
+      {/* Cancel Confirmation Modal */}
+      <ConfirmationModal
+        visible={showCancelModal}
+        title="Cancel Application"
+        message="Are you sure you want to cancel this application? This action cannot be undone."
+        confirmText="Cancel"
+        cancelText="Keep"
+        confirmVariant="destructive"
+        onConfirm={confirmCancelApplication}
+        onCancel={() => {
+          setShowCancelModal(false);
+          setSelectedApplicationId(null);
+        }}
+      />
     </View>
   );
 }

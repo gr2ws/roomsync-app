@@ -19,6 +19,7 @@ interface PropertyCardProps {
     is_available: boolean;
     is_verified: boolean;
     amenities: string[];
+    number_reviews: number;
   };
   currentRenters: number;
   isUploading?: boolean;
@@ -163,7 +164,7 @@ export default function PropertyCard({
             <View className="flex-row items-center justify-center">
               <Star size={18} color="#644A40" />
               <Text className="ml-2 text-base font-semibold text-secondary-foreground">
-                Reviews
+                Reviews ({property.number_reviews || 0})
               </Text>
             </View>
           </Button>

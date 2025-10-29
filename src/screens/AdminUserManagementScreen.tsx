@@ -165,18 +165,18 @@ export default function AdminUserManagementScreen() {
 
       // Update notification table
       const { error: notifError } = await supabase.from('notifications').insert([
-      {
-        user_auth_id: user.auth_id,
-        notif_type: 'user_account_verified',
-      },
-    ]);
+        {
+          user_auth_id: user.auth_id,
+          notif_type: 'user_account_verified',
+        },
+      ]);
 
-    if (notifError) {
-      console.error('Failed to insert verification notification:', notifError);
-      setToastMessage('Failed to notify user @ verification');
-      setTimeout(() => setToastMessage(null), 2000);
-      return;
-    }
+      if (notifError) {
+        console.error('Failed to insert verification notification:', notifError);
+        setToastMessage('Failed to notify user @ verification');
+        setTimeout(() => setToastMessage(null), 2000);
+        return;
+      }
 
       // Locally update state for instant UI feedback
       setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, isVerified: true } : u)));
@@ -185,7 +185,6 @@ export default function AdminUserManagementScreen() {
       setTimeout(() => setToastMessage(null), 2000);
 
       await fetchUsers();
-
     } catch (err) {
       console.error('Unexpected error verifying user:', err);
       setToastMessage('Error verifying user');
@@ -262,17 +261,17 @@ Should you find reason for us to consider an appeal from you, please send us an 
       }
 
       const { error: notifError } = await supabase.from('notifications').insert([
-      {
-        user_auth_id: user.auth_id,
-        notif_type: 'user_account_warned',
-      },
-    ]);
+        {
+          user_auth_id: user.auth_id,
+          notif_type: 'user_account_warned',
+        },
+      ]);
 
-    if (notifError) {
-     console.error('Failed to insert warning notification:', notifError);
-     setToastMessage('Failed to notify user @ verification');
-     setTimeout(() => setToastMessage(null), 2000);
-    }
+      if (notifError) {
+        console.error('Failed to insert warning notification:', notifError);
+        setToastMessage('Failed to notify user @ verification');
+        setTimeout(() => setToastMessage(null), 2000);
+      }
 
       // Update local UI state instantly
       setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, isWarned: true } : u)));
@@ -281,7 +280,6 @@ Should you find reason for us to consider an appeal from you, please send us an 
       setTimeout(() => setToastMessage(null), 2000);
 
       await fetchUsers();
-      
     } catch (err) {
       console.error('Error sending warning:', err);
       setToastMessage('Unable to open mail app');
@@ -358,7 +356,7 @@ Should you find reason for us to consider an appeal from you, please send us an 
 
         {/* Search and Filter Section */}
         <View className="mb-4 rounded-2xl p-5 shadow-sm">
-          <View className="mb-4 flex-row items-center rounded-full bg-white px-4 py-2 border border-gray-200">
+          <View className="mb-4 flex-row items-center rounded-full border border-gray-200 bg-white px-4 py-2">
             <Ionicons name="search" size={20} color="#6B7280" className="mr-3" />
             <TextInput
               className="flex-1 text-base text-gray-900"
@@ -486,7 +484,7 @@ Should you find reason for us to consider an appeal from you, please send us an 
           ))}
         </View>
       </ScrollView>
-      
+
       {verifyConfirmVisible && userToVerify && (
         <View className="absolute inset-0 z-50 flex items-center justify-center bg-black/50">
           <View className="w-80 rounded-2xl bg-white p-6 shadow-lg">
@@ -549,34 +547,34 @@ Should you find reason for us to consider an appeal from you, please send us an 
               </View>
 
               <View className="mb-3">
-                <Text className="text-sm text-gray-700 mb-1">
+                <Text className="mb-1 text-sm text-gray-700">
                   Phone: {userToView.phoneNumber || 'N/A'}
                 </Text>
-                <Text className="text-sm text-gray-700 mb-1"> 
-                  Role: {userToView.role === 'renter' ? "Renter" : "Owner"}
-                  </Text>
-                <Text className="text-sm text-gray-700 mb-1">
+                <Text className="mb-1 text-sm text-gray-700">
+                  Role: {userToView.role === 'renter' ? 'Renter' : 'Owner'}
+                </Text>
+                <Text className="mb-1 text-sm text-gray-700">
                   Verified: {userToView.isVerified ? 'Yes' : 'No'}
                 </Text>
-                <Text className="text-sm text-gray-700 mb-1">
+                <Text className="mb-1 text-sm text-gray-700">
                   Received Warning/s? {userToView.isWarned ? 'Yes' : 'No'}
                 </Text>
-                <Text className="text-sm text-gray-700 mb-1">
+                <Text className="mb-1 text-sm text-gray-700">
                   Is Banned: {userToView.isBanned ? 'Yes' : 'No'}
                 </Text>
-                <Text className="text-sm text-gray-700 mb-1">
+                <Text className="mb-1 text-sm text-gray-700">
                   Last Active:{' '}
                   {userToView.last_login_date
                     ? new Date(userToView.last_login_date).toLocaleDateString()
                     : 'Unknown'}
                 </Text>
                 {userToView.role === 'owner' && (
-                  <Text className="text-sm text-gray-700 mb-1">
+                  <Text className="mb-1 text-sm text-gray-700">
                     Properties Listed: {userToView.propertiesListed}
                   </Text>
                 )}
                 {userToView.role === 'renter' && (
-                  <Text className="text-sm text-gray-700 mb-1">
+                  <Text className="mb-1 text-sm text-gray-700">
                     Applications: {userToView.applications}
                   </Text>
                 )}

@@ -140,14 +140,15 @@ export default function AddPropertyScreen() {
       setStreet(propertyData.street || '');
       setBarangay(propertyData.barangay || '');
       setCity(propertyData.city);
-      setCoordinates(propertyData.coordinates);
+      setCoordinates(propertyData.coordinates || '');
       setRent(propertyData.rent.toString());
       setMaxRenters(propertyData.max_renters);
       setImages(propertyData.image_url);
 
       // Parse amenities
-      const bedroomMatch = propertyData.amenities.find((a) => a.includes('Bedroom'));
-      const bathroomMatch = propertyData.amenities.find((a) => a.includes('Bathroom'));
+      const amenitiesList = propertyData.amenities || [];
+      const bedroomMatch = amenitiesList.find((a) => a.includes('Bedroom'));
+      const bathroomMatch = amenitiesList.find((a) => a.includes('Bathroom'));
 
       if (bedroomMatch) {
         const bedroomCount = parseInt(bedroomMatch.split(' ')[0]);
@@ -160,18 +161,18 @@ export default function AddPropertyScreen() {
       }
 
       // Get custom amenities (exclude bedrooms and bathrooms)
-      const customAms = propertyData.amenities.filter(
+      const customAms = amenitiesList.filter(
         (a) => !a.includes('Bedroom') && !a.includes('Bathroom')
       );
       setCustomAmenities(customAms);
 
       // Set features
-      setHasInternet(propertyData.has_internet);
-      setAllowsPets(propertyData.allows_pets);
-      setIsFurnished(propertyData.is_furnished);
-      setHasAc(propertyData.has_ac);
-      setIsSecure(propertyData.is_secure);
-      setHasParking(propertyData.has_parking);
+      setHasInternet(propertyData.has_internet ?? false);
+      setAllowsPets(propertyData.allows_pets ?? false);
+      setIsFurnished(propertyData.is_furnished ?? false);
+      setHasAc(propertyData.has_ac ?? false);
+      setIsSecure(propertyData.is_secure ?? false);
+      setHasParking(propertyData.has_parking ?? false);
     }
   }, [isEditing, propertyData]);
 
