@@ -41,6 +41,7 @@ import ReportScreen from './src/screens/ReportScreen';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useEffect, useState } from 'react';
 import ErrorBoundary from './src/components/ErrorBoundary';
+import { setupAuthListener } from './src/services/authService';
 import { supabase } from './src/utils/supabase';
 
 const Tab = createBottomTabNavigator<RootTabParamList>();
@@ -354,12 +355,42 @@ function MainApp() {
 }
 
 export default function App() {
-  const { isLoggedIn } = useLoggedIn();
+  const { isLoggedIn, setIsLoggedIn, setUserRole, setUserProfile } = useLoggedIn();
   const [initialRoute, setInitialRoute] = useState<'Introduction' | 'Auth' | 'Home'>(
     'Introduction'
   );
   const [isCheckingOnboarding, setIsCheckingOnboarding] = useState(true);
   const [navigationError, setNavigationError] = useState<string | null>(null);
+
+  // Handle persistent authentication with Supabase
+  useEffect(() => {
+    const cleanup = setupAuthListener({
+      onSignedIn: (profile) => {
+        setUserProfile(profile);
+        setUserRole(profile.user_type);
+        setIsLoggedIn(true);
+      },
+      onSignedOut: () => {
+        setIsLoggedIn(false);
+        setUserRole(null);
+        setUserProfile(null);
+      },
+      onTokenRefreshed: () => {
+        // Token refreshed successfully, no action needed
+      },
+      onInitialSession: (profile) => {
+        if (profile) {
+          // Restore user session on app start
+          setUserProfile(profile);
+          setUserRole(profile.user_type);
+          setIsLoggedIn(true);
+        }
+      },
+    });
+
+    // Cleanup auth listener on unmount
+    return cleanup;
+  }, [setIsLoggedIn, setUserRole, setUserProfile]);
 
   useEffect(() => {
     const checkOnboarding = async () => {

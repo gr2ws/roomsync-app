@@ -187,7 +187,7 @@ function ReportCard({
           }`}
           onPress={() => {
             setProofVisible(true);
-            console.log("showing photo");
+            console.log('showing photo');
             console.log(report.proof);
           }}
           disabled={isInactive}>
@@ -248,11 +248,11 @@ function ReportCard({
         <View className="flex-1 items-center justify-center bg-black/80 px-4">
           {Array.isArray(report.proof) && report.proof.length > 0 ? (
             <ScrollView horizontal pagingEnabled>
-              {report.proof.map((uri : any, index : number) => (
+              {report.proof.map((uri: any, index: number) => (
                 <Image
                   key={index}
                   source={{ uri }}
-                  className = "h-[100dvh]"
+                  className="h-[100dvh]"
                   style={{
                     width: width * 0.9,
                     resizeMode: 'contain',
@@ -269,8 +269,8 @@ function ReportCard({
           <TouchableOpacity
             className="absolute right-6 top-12 rounded-full bg-black/50 p-2"
             onPress={() => {
-                setProofVisible(false);
-                if (report.status === 'pending') onViewProof();
+              setProofVisible(false);
+              if (report.status === 'pending') onViewProof();
             }}>
             <Ionicons name="close" size={26} color="#fff" />
           </TouchableOpacity>
@@ -313,8 +313,8 @@ function ReportsSafetyTab({ reports, refresh }: { reports: any[]; refresh: () =>
           key={report.report_id}
           report={report}
           onViewProof={() => {
-            console.log(`viewing proof for report id: ${report.report_id}`)
-            handleViewProof(report.report_id)
+            console.log(`viewing proof for report id: ${report.report_id}`);
+            handleViewProof(report.report_id);
           }}
           onResolve={() => handleResolve(report.report_id)}
           onDismiss={() => handleDismiss(report.report_id)}

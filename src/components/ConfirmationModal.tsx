@@ -87,7 +87,9 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
             <TouchableOpacity
               onPress={handleConfirm}
               style={[
-                confirmVariant === 'primary' ? modalStyles.primaryButton : modalStyles.destructiveButton,
+                confirmVariant === 'primary'
+                  ? modalStyles.primaryButton
+                  : modalStyles.destructiveButton,
                 modalStyles.flexButton,
                 isLoading && modalStyles.disabledButton,
               ]}

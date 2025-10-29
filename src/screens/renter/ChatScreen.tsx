@@ -236,6 +236,13 @@ const ChatScreen: React.FC = () => {
         parts: msg.text,
       }));
 
+      // Inject user profile context as the first user message (only if chat history is empty)
+      let messageToSend = userMessageText;
+      if (chatHistory.length === 0 && userProfile) {
+        messageToSend = `[USER_PROFILE: price_range=${userProfile.price_range || 'not_set'}, room_preference=${userProfile.room_preference || 'not_set'}, place_of_work_study=${userProfile.place_of_work_study || 'not_set'}]\n\n${userMessageText}`;
+        console.log('[ChatScreen] Including user profile context in first message');
+      }
+
       console.log(
         '[ChatScreen] Sending request to AI with',
         chatHistory.length,
@@ -244,7 +251,7 @@ const ChatScreen: React.FC = () => {
 
       // Send message to Gemini AI with tool call handler
       const aiResponse = await sendMessageToAI(
-        userMessageText,
+        messageToSend,
         chatHistory,
         async (toolName, args) => {
           console.log('[ChatScreen] Tool called by AI:', toolName, args);
@@ -553,13 +560,13 @@ const ChatScreen: React.FC = () => {
               />
             ) : (
               <View className="ml-2 h-8 w-8 items-center justify-center rounded-full border border-primary bg-primary">
-                <Text className="text-sm font-semibold text-primary-foreground">
+                <Text className="text-sm font-semibold text-secondary">
                   {userProfile?.first_name?.[0]?.toUpperCase() || 'U'}
                 </Text>
               </View>
             )
           ) : (
-            <View className="mr-2 mt-1.5 h-8 w-8 items-center justify-center rounded-full border border-primary bg-accent">
+            <View className="mr-2 mt-1.5 h-8 w-8 items-center justify-center rounded-full border border-primary bg-secondary">
               <Bot size={18} color="#644A40" />
             </View>
           )}
@@ -589,10 +596,9 @@ const ChatScreen: React.FC = () => {
           </View>
         )}
 
-        {/* Timestamp - Now below property cards */}
-        <View className={isUser ? 'items-end' : 'ml-10'}>
-          <Text
-            className={`mt-1 text-xs text-muted-foreground ${isUser ? 'text-right' : 'text-left'}`}>
+        {/* Timestamp - Always aligned to the right */}
+        <View className="items-end">
+          <Text className="mt-1 text-right text-xs text-muted-foreground">
             {formatTime(item.timestamp)}
           </Text>
         </View>
@@ -606,7 +612,7 @@ const ChatScreen: React.FC = () => {
     return (
       <View className="my-2 flex-row items-start">
         {/* Bot Icon */}
-        <View className="mr-2 mt-1.5 h-8 w-8 items-center justify-center rounded-full bg-accent">
+        <View className="mr-2 mt-1.5 h-8 w-8 items-center justify-center rounded-full border border-primary bg-secondary">
           <Bot size={18} color="#644A40" />
         </View>
 

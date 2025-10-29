@@ -76,32 +76,31 @@ function OverviewTab() {
   };
 
   // [TEST NOTE] disable here when debugging
-useFocusEffect(
-  React.useCallback(() => {
-    let isActive = true;
+  useFocusEffect(
+    React.useCallback(() => {
+      let isActive = true;
 
-    const fetchCounts = async () => {
-      setLoading(true);
-      const results: any = await fetchAllCounts();
+      const fetchCounts = async () => {
+        setLoading(true);
+        const results: any = await fetchAllCounts();
 
-      // optional artificial delay
-      setTimeout(() => {
-        if (isActive) {
-          setMetrics(results);
-          setLoading(false);
-        }
-      }, 100);
-    };
+        // optional artificial delay
+        setTimeout(() => {
+          if (isActive) {
+            setMetrics(results);
+            setLoading(false);
+          }
+        }, 100);
+      };
 
-    fetchCounts();
+      fetchCounts();
 
-    // cleanup when leaving screen
-    return () => {
-      isActive = false;
-    };
-  }, [])
-);
-
+      // cleanup when leaving screen
+      return () => {
+        isActive = false;
+      };
+    }, [])
+  );
 
   const [propertyCityData, setPropertyCityData] = useState<any[]>([]);
 
@@ -402,7 +401,7 @@ async function fetchMonthlyUserGrowth() {
     .lt('account_created_date', '2026-01-01');
 
   if (error) {
-    console.error("Error fetching user growth:"  + error);
+    console.error('Error fetching user growth:' + error);
     return [];
   }
 
@@ -480,7 +479,7 @@ function StatSection({ title, children }: { title: string; children: React.React
 
 /* ------------------- Small Components ------------------- */
 interface StatCardProps {
-  icon: keyof typeof Ionicons.glyphMap; 
+  icon: keyof typeof Ionicons.glyphMap;
   label: string;
   value: string;
   color: string;

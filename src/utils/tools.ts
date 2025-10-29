@@ -22,7 +22,7 @@ export const resetConversationTool = {
 export const getRecommendationsTool = {
   name: 'get_recommendations',
   description:
-    'Get properties filtered by ONE priority. Ask user conversationally what matters most first. Priorities: "distance" (2-5km from work/study), "price" (within budget), "room_type" (preferred category). Returns first property + count. Properties ranked by amenity match.',
+    'Get properties filtered by ONE priority. CRITICAL: Check user profile FIRST. For "distance": requires place_of_work_study (if not_set, ask user to set in Profile). For "price": requires price_range (if not_set, ask user to set in Profile). For "room_type": requires room_preference (if not_set, ask user to set in Profile). NEVER call if required preference is missing. Priorities: "distance" (2-5km from work/study), "price" (within budget), "room_type" (preferred category). Returns first property + count. Properties ranked by amenity match.',
   parameters: {
     type: 'object' as const,
     properties: {
@@ -30,7 +30,7 @@ export const getRecommendationsTool = {
         type: 'string' as const,
         enum: ['distance', 'price', 'room_type'],
         description:
-          'User-selected priority: "distance", "price", or "room_type"',
+          'User-selected priority: "distance", "price", or "room_type". CHECK user profile BEFORE calling - distance needs place_of_work_study, price needs price_range, room_type needs room_preference.',
       },
     },
     required: ['priority'],

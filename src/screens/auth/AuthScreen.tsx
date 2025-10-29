@@ -1,4 +1,4 @@
-import { View, Text, TextInput, Alert, Platform, Image } from 'react-native';
+import { View, Text, TextInput, Alert, Platform, Image, ActivityIndicator } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import { useLoggedIn } from '../../store/useLoggedIn';
 import Button from '../../components/Button';
@@ -23,6 +23,7 @@ export default function AuthScreen({ navigation }: Props) {
   const [loading, setLoading] = useState(false);
   const [authenticating, setAuthenticating] = useState(false);
   const [deviceOnboarded, setDeviceOnboarded] = useState(false);
+  const [checkingInitialSession, setCheckingInitialSession] = useState(true);
 
   const insets = useSafeAreaInsets();
 
@@ -32,6 +33,18 @@ export default function AuthScreen({ navigation }: Props) {
       setDeviceOnboarded(onboardingStatus === 'true');
     };
     checkOnboarding();
+
+    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'INITIAL_SESSION') {
+        if (!session) {
+          setCheckingInitialSession(false);
+        }
+      }
+    });
+
+    return () => {
+      authListener.subscription.unsubscribe();
+    };
   }, []);
 
   const handleLogin = async () => {
@@ -134,6 +147,14 @@ export default function AuthScreen({ navigation }: Props) {
     navigation.navigate('Introduction', { fromAuth: true });
   };
 
+  if (checkingInitialSession) {
+    return (
+      <View className="flex-1 items-center justify-center bg-background">
+        <ActivityIndicator size="large" />
+      </View>
+    );
+  }
+
   return (
     <View
       className="flex-1 bg-background"
@@ -152,21 +173,21 @@ export default function AuthScreen({ navigation }: Props) {
         )}
         <View className="flex-1 items-center justify-center">
           <View className="w-full max-w-sm">
-            <Image 
+            <Image
               source={require('../../assets/logo.png')}
               style={{
                 width: 400,
                 height: 400,
                 alignSelf: 'center',
                 marginBottom: -80,
-                marginTop: -180
+                marginTop: -180,
               }}
               resizeMode="contain"
             />
             <Text className="mb-4 text-center text-4xl font-bold text-primary">Welcome back!</Text>
             <Text className="mb-8 text-center text-base text-muted-foreground">
-              Sign in to continue...
-            </Text> 
+              Sign in to continue
+            </Text>
 
             <View className="flex w-full justify-center gap-4">
               <View className="">

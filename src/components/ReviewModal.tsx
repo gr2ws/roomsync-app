@@ -137,7 +137,11 @@ const ReviewModal: React.FC<ReviewModalProps> = ({
             </TouchableOpacity>
             <TouchableOpacity
               onPress={handleConfirm}
-              style={[modalStyles.primaryButton, modalStyles.flexButton, isLoading && modalStyles.disabledButton]}
+              style={[
+                modalStyles.primaryButton,
+                modalStyles.flexButton,
+                isLoading && modalStyles.disabledButton,
+              ]}
               disabled={isLoading}>
               {isLoading ? (
                 <ActivityIndicator size="small" color="#fff" />

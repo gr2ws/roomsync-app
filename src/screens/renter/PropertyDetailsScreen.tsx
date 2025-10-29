@@ -1096,13 +1096,13 @@ export default function PropertyDetailsScreen({ navigation, route }: PropertyDet
               {isSubmittingApplication ? (
                 <ActivityIndicator size="small" color="#fff" />
               ) : userProfile?.is_banned ? (
-                'Account Banned'
+                'Banned'
               ) : !userProfile?.is_verified ? (
-                'Account Not Verified'
+                'Unverified'
               ) : hasPendingApplicationToThisProperty ? (
-                'Application Pending'
+                'Pending'
               ) : hasApprovedApplication ? (
-                'Apply (Approved)'
+                'Renting'
               ) : pendingApplicationsCount >= 5 ? (
                 'Apply (5/5)'
               ) : pendingApplicationsCount > 0 ? (

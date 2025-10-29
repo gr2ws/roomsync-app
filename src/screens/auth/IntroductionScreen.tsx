@@ -44,17 +44,17 @@ const IntroductionScreen: React.FC<Props> = ({ navigation, route }) => {
       <View className="flex-1 items-center justify-center px-6">
         {fromAuth && <BackButton className="z-10 mt-8" onPress={handleBackToAuth} />}
         <View className="h-full w-full max-w-sm items-center justify-center gap-6">
-          <Image 
-              source={require('../../assets/logo.png')}
-              style={{
-                width: 400,
-                height: 400,
-                alignSelf: 'center',
-                marginBottom: -110,
-                marginTop: -150
-              }}
-              resizeMode="contain"
-            />
+          <Image
+            source={require('../../assets/logo.png')}
+            style={{
+              width: 400,
+              height: 400,
+              alignSelf: 'center',
+              marginBottom: -110,
+              marginTop: -150,
+            }}
+            resizeMode="contain"
+          />
           <Text className="mt-2 px-6 text-center text-lg leading-relaxed text-foreground">
             Find safe, affordable living spaces in Dumaguete City with AI-powered recommendations.
             Discover your perfect place today.

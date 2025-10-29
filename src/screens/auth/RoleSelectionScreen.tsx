@@ -47,14 +47,14 @@ const RoleSelectionScreen: React.FC<Props> = ({ navigation }) => {
 
         <View className="flex-1 items-center justify-center px-6">
           <View className="w-full max-w-sm">
-            <Image 
+            <Image
               source={require('../../assets/onboarding-gfx.png')}
               style={{
                 width: 400,
                 height: 500,
                 alignSelf: 'center',
                 marginBottom: -160,
-                marginTop: -280
+                marginTop: -280,
               }}
               resizeMode="contain"
             />
