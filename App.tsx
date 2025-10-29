@@ -312,17 +312,8 @@ function MainApp() {
           ),
         }}
       />,
-      <Tab.Screen
-        key="AdminProfile"
-        name="AdminProfile"
-        component={ProfileScreen}
-        options={{
-          tabBarLabel: 'Admin Profile',
-          tabBarIcon: ({ focused, color, size }) => (
-            <Ionicons name={focused ? 'person' : 'person-outline'} size={size} color={color} />
-          ),
-        }}
-      />,
+      notificationsScreen, 
+      profileScreen
     ];
   } else {
     // fallback for unknown role
