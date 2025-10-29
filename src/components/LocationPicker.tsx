@@ -11,6 +11,7 @@ import {
   TouchableWithoutFeedback,
   Animated,
   ScrollView,
+  StyleSheet,
 } from 'react-native';
 import { MapPin, X, Search } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -378,7 +379,12 @@ const LocationPicker: React.FC<LocationPickerProps> = ({
 
       {error && <Text className="mt-1 text-sm text-destructive">{error}</Text>}
 
-      <Modal visible={isModalOpen} animationType="slide" onRequestClose={handleCancel}>
+      <Modal
+        visible={isModalOpen}
+        animationType="slide"
+        onRequestClose={handleCancel}
+        statusBarTranslucent={false}
+        transparent={false}>
         <View
           className="flex-1 bg-background"
           style={{ paddingTop: Platform.OS === 'ios' ? 0 : insets.top + 8 }}>
@@ -424,22 +430,25 @@ const LocationPicker: React.FC<LocationPickerProps> = ({
               />
 
               {/* Search Button */}
-              <Button
-                variant="primary"
+              <TouchableOpacity
                 onPress={handleAddressSearch}
-                disabled={isSearching || !searchCity}>
+                disabled={isSearching || !searchCity}
+                style={[
+                  modalStyles.primaryButton,
+                  (isSearching || !searchCity) && modalStyles.disabledButton,
+                ]}>
                 {isSearching ? (
-                  <View className="flex-row items-center justify-center">
+                  <View style={modalStyles.buttonContent}>
                     <ActivityIndicator size="small" color="white" />
-                    <Text className="ml-2 font-medium text-white">Searching...</Text>
+                    <Text style={modalStyles.buttonText}>Searching...</Text>
                   </View>
                 ) : (
-                  <View className="flex-row items-center justify-center">
+                  <View style={modalStyles.buttonContent}>
                     <Search size={20} color="white" />
-                    <Text className="ml-2 font-medium text-white">Search Location</Text>
+                    <Text style={modalStyles.buttonText}>Search Location</Text>
                   </View>
                 )}
-              </Button>
+              </TouchableOpacity>
             </Animated.View>
           )}
 
@@ -496,37 +505,40 @@ const LocationPicker: React.FC<LocationPickerProps> = ({
             )}
 
             {MapView && (
-              <View className="mb-3">
-                <Button
-                  variant="secondary"
+              <View style={modalStyles.currentLocationContainer}>
+                <TouchableOpacity
                   onPress={getCurrentLocation}
-                  disabled={isLoadingLocation}>
+                  disabled={isLoadingLocation}
+                  style={[
+                    modalStyles.secondaryButton,
+                    isLoadingLocation && modalStyles.disabledButton,
+                  ]}>
                   {isLoadingLocation ? (
-                    <View className="flex-row items-center justify-center">
+                    <View style={modalStyles.buttonContent}>
                       <ActivityIndicator size="small" color="#644A40" />
-                      <Text className="ml-2 text-sm font-medium text-primary">Loading...</Text>
+                      <Text style={modalStyles.secondaryButtonText}>Loading...</Text>
                     </View>
                   ) : (
-                    <View className="flex-row items-center justify-center">
+                    <View style={modalStyles.buttonContent}>
                       <MapPin size={20} color="#644A40" />
-                      <Text className="ml-2 font-medium text-primary">Use Current Location</Text>
+                      <Text style={modalStyles.secondaryButtonText}>Use Current Location</Text>
                     </View>
                   )}
-                </Button>
+                </TouchableOpacity>
               </View>
             )}
 
-            <View className="flex-row gap-2">
-              <View className="flex-1">
-                <Button variant="destructive" onPress={handleCancel}>
-                  Cancel
-                </Button>
-              </View>
-              <View className="flex-1">
-                <Button variant="primary" onPress={handleConfirm}>
-                  Confirm Location
-                </Button>
-              </View>
+            <View style={modalStyles.buttonRow}>
+              <TouchableOpacity
+                onPress={handleCancel}
+                style={[modalStyles.destructiveButton, modalStyles.flexButton]}>
+                <Text style={modalStyles.destructiveButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={handleConfirm}
+                style={[modalStyles.primaryButton, modalStyles.flexButton]}>
+                <Text style={modalStyles.buttonText}>Confirm Location</Text>
+              </TouchableOpacity>
             </View>
           </View>
         </View>
@@ -534,5 +546,71 @@ const LocationPicker: React.FC<LocationPickerProps> = ({
     </View>
   );
 };
+
+const modalStyles = StyleSheet.create({
+  primaryButton: {
+    backgroundColor: 'rgb(100, 74, 64)', // primary color
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  secondaryButton: {
+    backgroundColor: 'rgb(250, 244, 235)', // secondary color
+    borderWidth: 1,
+    borderColor: 'rgb(100, 74, 64)', // primary color
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  destructiveButton: {
+    backgroundColor: 'rgb(250, 244, 235)', // secondary color
+    borderWidth: 1,
+    borderColor: 'rgb(229, 77, 46)', // destructive color
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  disabledButton: {
+    opacity: 0.5,
+  },
+  buttonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  buttonText: {
+    color: 'white',
+    fontSize: 18,
+    fontWeight: '600',
+    marginLeft: 8,
+  },
+  secondaryButtonText: {
+    color: 'rgb(100, 74, 64)', // primary color
+    fontSize: 18,
+    fontWeight: '600',
+    marginLeft: 8,
+  },
+  destructiveButtonText: {
+    color: 'rgb(229, 77, 46)', // destructive color
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  buttonRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  flexButton: {
+    flex: 1,
+  },
+  currentLocationContainer: {
+    marginBottom: 12,
+  },
+});
 
 export default LocationPicker;

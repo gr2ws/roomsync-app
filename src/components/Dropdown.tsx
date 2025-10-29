@@ -49,7 +49,8 @@ const Dropdown: React.FC<DropdownProps> = ({
         visible={isOpen}
         transparent
         animationType="fade"
-        onRequestClose={() => setIsOpen(false)}>
+        onRequestClose={() => setIsOpen(false)}
+        statusBarTranslucent={false}>
         <Pressable
           className="flex-1 items-center justify-center bg-black/50"
           onPress={() => setIsOpen(false)}>

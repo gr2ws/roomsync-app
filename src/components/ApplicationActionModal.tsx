@@ -1,6 +1,13 @@
 import React, { useState } from 'react';
-import { Modal, View, Text, Pressable, ActivityIndicator } from 'react-native';
-import Button from './Button';
+import {
+  Modal,
+  View,
+  Text,
+  Pressable,
+  ActivityIndicator,
+  TouchableOpacity,
+  StyleSheet,
+} from 'react-native';
 import Input from './Input';
 
 interface ApplicationActionModalProps {
@@ -64,7 +71,12 @@ const ApplicationActionModal: React.FC<ApplicationActionModalProps> = ({
   };
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={handleCancel}>
+    <Modal
+      visible={visible}
+      transparent
+      animationType="fade"
+      onRequestClose={handleCancel}
+      statusBarTranslucent={false}>
       <Pressable className="flex-1 items-center justify-center bg-black/50" onPress={handleCancel}>
         <Pressable
           className="mx-6 w-full max-w-md rounded-lg bg-card p-6 shadow-xl"
@@ -85,32 +97,97 @@ const ApplicationActionModal: React.FC<ApplicationActionModalProps> = ({
             numberOfLines={4}
           />
 
-          <View className="mt-4 flex-row justify-end gap-3">
-            <Button
-              variant="secondary"
+          <View style={modalStyles.buttonRow}>
+            <TouchableOpacity
               onPress={handleCancel}
-              className="flex-1"
+              style={[modalStyles.secondaryButton, modalStyles.flexButton]}
               disabled={isLoading}>
-              Cancel
-            </Button>
-            <Button
-              variant={getConfirmVariant()}
+              <Text style={modalStyles.secondaryButtonText}>Cancel</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
               onPress={handleConfirm}
-              className="flex-1"
+              style={[
+                action === 'approve' ? modalStyles.primaryButton : modalStyles.destructiveButton,
+                modalStyles.flexButton,
+                isLoading && modalStyles.disabledButton,
+              ]}
               disabled={isLoading}>
               {isLoading ? (
                 <ActivityIndicator size="small" color="#fff" />
-              ) : action === 'approve' ? (
-                'Approve'
               ) : (
-                'Reject'
+                <Text
+                  style={
+                    action === 'approve'
+                      ? modalStyles.primaryButtonText
+                      : modalStyles.destructiveButtonText
+                  }>
+                  {action === 'approve' ? 'Approve' : 'Reject'}
+                </Text>
               )}
-            </Button>
+            </TouchableOpacity>
           </View>
         </Pressable>
       </Pressable>
     </Modal>
   );
 };
+
+const modalStyles = StyleSheet.create({
+  buttonRow: {
+    marginTop: 16,
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 12,
+  },
+  primaryButton: {
+    backgroundColor: 'rgb(100, 74, 64)',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  secondaryButton: {
+    backgroundColor: 'rgb(250, 244, 235)',
+    borderWidth: 1,
+    borderColor: 'rgb(100, 74, 64)',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  destructiveButton: {
+    backgroundColor: 'rgb(250, 244, 235)', // secondary color
+    borderWidth: 1,
+    borderColor: 'rgb(229, 77, 46)', // destructive color
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  disabledButton: {
+    opacity: 0.5,
+  },
+  primaryButtonText: {
+    color: 'white',
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  secondaryButtonText: {
+    color: 'rgb(100, 74, 64)',
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  destructiveButtonText: {
+    color: 'rgb(229, 77, 46)', // destructive color
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  flexButton: {
+    flex: 1,
+  },
+});
 
 export default ApplicationActionModal;

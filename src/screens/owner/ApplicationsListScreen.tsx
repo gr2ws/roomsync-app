@@ -740,7 +740,8 @@ export default function ApplicationsListScreen({ route, navigation }: Applicatio
     }
     return (
       <View className="flex-1 items-center justify-center py-20">
-        <Text className="text-center text-base text-muted-foreground">
+        <MessageCircle size={48} color="#9CA3AF" />
+        <Text className="mt-4 text-center text-base text-muted-foreground">
           No one has applied to this property yet
         </Text>
       </View>

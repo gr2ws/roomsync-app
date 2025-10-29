@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { useState, useEffect } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { FileText } from 'lucide-react-native';
 import { useLoggedIn } from '../../store/useLoggedIn';
 import { supabase } from '../../utils/supabase';
 import { ApplicationWithProperty } from '../../types/property';
@@ -283,9 +284,10 @@ export default function ApplicationsScreen() {
     }
     return (
       <View className="flex-1 items-center justify-center py-20">
-        <Text className="text-lg font-semibold text-foreground">No Applications Yet</Text>
+        <FileText size={48} color="#9CA3AF" />
+        <Text className="mt-4 text-lg font-semibold text-foreground">No Applications Yet</Text>
         <Text className="mt-2 text-center text-base text-muted-foreground">
-          Start browsing properties and apply to the ones you like!
+          Start browsing properties and apply to the ones you like
         </Text>
       </View>
     );

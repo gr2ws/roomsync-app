@@ -1,6 +1,13 @@
 import React, { useState } from 'react';
-import { Modal, View, Text, Pressable, ActivityIndicator } from 'react-native';
-import Button from './Button';
+import {
+  Modal,
+  View,
+  Text,
+  Pressable,
+  ActivityIndicator,
+  TouchableOpacity,
+  StyleSheet,
+} from 'react-native';
 import Input from './Input';
 import { Star } from 'lucide-react-native';
 
@@ -87,7 +94,12 @@ const ReviewModal: React.FC<ReviewModalProps> = ({
   };
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={handleCancel}>
+    <Modal
+      visible={visible}
+      transparent
+      animationType="fade"
+      onRequestClose={handleCancel}
+      statusBarTranslucent={false}>
       <Pressable className="flex-1 items-center justify-center bg-black/50" onPress={handleCancel}>
         <Pressable
           className="mx-6 w-full max-w-md rounded-lg border border-primary bg-card p-6 shadow-xl"
@@ -116,26 +128,71 @@ const ReviewModal: React.FC<ReviewModalProps> = ({
             className="mb-2"
           />
 
-          <View className="mt-4 flex-row justify-end gap-3">
-            <Button
-              variant="secondary"
+          <View style={modalStyles.buttonRow}>
+            <TouchableOpacity
               onPress={handleCancel}
-              className="flex-1"
+              style={[modalStyles.secondaryButton, modalStyles.flexButton]}
               disabled={isLoading}>
-              Cancel
-            </Button>
-            <Button
-              variant="primary"
+              <Text style={modalStyles.secondaryButtonText}>Cancel</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
               onPress={handleConfirm}
-              className="flex-1"
+              style={[modalStyles.primaryButton, modalStyles.flexButton, isLoading && modalStyles.disabledButton]}
               disabled={isLoading}>
-              {isLoading ? <ActivityIndicator size="small" color="#fff" /> : 'Submit Review'}
-            </Button>
+              {isLoading ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <Text style={modalStyles.primaryButtonText}>Submit Review</Text>
+              )}
+            </TouchableOpacity>
           </View>
         </Pressable>
       </Pressable>
     </Modal>
   );
 };
+
+const modalStyles = StyleSheet.create({
+  buttonRow: {
+    marginTop: 16,
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 12,
+  },
+  primaryButton: {
+    backgroundColor: 'rgb(100, 74, 64)',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  secondaryButton: {
+    backgroundColor: 'rgb(250, 244, 235)',
+    borderWidth: 1,
+    borderColor: 'rgb(100, 74, 64)',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  disabledButton: {
+    opacity: 0.5,
+  },
+  primaryButtonText: {
+    color: 'white',
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  secondaryButtonText: {
+    color: 'rgb(100, 74, 64)',
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  flexButton: {
+    flex: 1,
+  },
+});
 
 export default ReviewModal;

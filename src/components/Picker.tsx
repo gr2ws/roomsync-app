@@ -54,7 +54,8 @@ const Picker: React.FC<PickerProps> = ({
         visible={isModalOpen}
         animationType="slide"
         transparent
-        onRequestClose={() => setIsModalOpen(false)}>
+        onRequestClose={() => setIsModalOpen(false)}
+        statusBarTranslucent={false}>
         <Pressable
           onPress={() => setIsModalOpen(false)}
           className="flex-1 items-center justify-center bg-black/50">

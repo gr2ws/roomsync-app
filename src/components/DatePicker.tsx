@@ -107,7 +107,8 @@ const DatePicker: React.FC<DatePickerProps> = ({
           transparent
           animationType="fade"
           visible={showPicker}
-          onRequestClose={() => setShowPicker(false)}>
+          onRequestClose={() => setShowPicker(false)}
+          statusBarTranslucent={false}>
           <Pressable
             className="flex-1 justify-end"
             style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}
