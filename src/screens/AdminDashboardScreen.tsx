@@ -2,6 +2,7 @@ import * as React from 'react';
 import { useMemo, useRef, useState, useEffect } from 'react';
 import { useAdminData } from '../store/useAdminData';
 import { supabase } from '../utils/supabase';
+import { useFocusEffect } from '@react-navigation/native';
 import {
   View,
   Text,
@@ -75,20 +76,32 @@ function OverviewTab() {
   };
 
   // [TEST NOTE] disable here when debugging
-  useEffect(() => {
+useFocusEffect(
+  React.useCallback(() => {
+    let isActive = true;
+
     const fetchCounts = async () => {
       setLoading(true);
       const results: any = await fetchAllCounts();
 
-      // Artificial delay for smooth UI (1.5 seconds)
+      // optional artificial delay
       setTimeout(() => {
-        setMetrics(results);
-        setLoading(false);
+        if (isActive) {
+          setMetrics(results);
+          setLoading(false);
+        }
       }, 100);
     };
 
     fetchCounts();
-  }, []);
+
+    // cleanup when leaving screen
+    return () => {
+      isActive = false;
+    };
+  }, [])
+);
+
 
   const [propertyCityData, setPropertyCityData] = useState<any[]>([]);
 
@@ -301,7 +314,7 @@ async function fetchAllCounts() {
     const { count: totalUsers, error: usersError } = await supabase
       .from('users')
       .select('*', { count: 'exact', head: true });
-    if (usersError) throw new Error(`Users count failed: ${JSON.stringify(usersError, null, 2)}`);
+    //if (usersError) throw new Error(Users count failed: ${JSON.stringify(usersError, null, 2)});
 
     const { count: renters } = await supabase
       .from('users')
@@ -360,20 +373,20 @@ async function fetchAllCounts() {
 
     // SET STATE HELPER
     return {
-      totalUsers: totalUsers || -1,
-      renters: renters || -1,
-      propertyOwners: propertyOwners || -1,
-      administrators: administrators || -1,
+      totalUsers: totalUsers || 0,
+      renters: renters || 0,
+      propertyOwners: propertyOwners || 0,
+      administrators: administrators || 0,
 
-      totalListings: totalListings || -1,
-      activeListings: activeListings || -1,
-      pendingApprovals: pendingApprovals || -1,
+      totalListings: totalListings || 0,
+      activeListings: activeListings || 0,
+      pendingApprovals: pendingApprovals || 0,
 
-      totalReports: totalReports || -1,
-      pendingReports: pendingReports || -1,
-      underInvestigationReports: underInvestigationReports || -1,
-      resolvedReports: resolvedReports || -1,
-      dismissedReports: dismissedReports || -1,
+      totalReports: totalReports || 0,
+      pendingReports: pendingReports || 0,
+      underInvestigationReports: underInvestigationReports || 0,
+      resolvedReports: resolvedReports || 0,
+      dismissedReports: dismissedReports || 0,
     };
   } catch (err) {
     console.error('Error fetching metrics:', err);
@@ -389,7 +402,7 @@ async function fetchMonthlyUserGrowth() {
     .lt('account_created_date', '2026-01-01');
 
   if (error) {
-    console.error(`Error fetching user growth: ` + error);
+    console.error("Error fetching user growth:"  + error);
     return [];
   }
 
@@ -448,7 +461,6 @@ async function fetchPropertyDistributionByCity() {
   }));
 }
 
-// Utility: simple hash → color
 function getRandomColor(key: string) {
   const colors = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#6366F1', '#F97316', '#84CC16'];
   let hash = 0;
@@ -468,7 +480,7 @@ function StatSection({ title, children }: { title: string; children: React.React
 
 /* ------------------- Small Components ------------------- */
 interface StatCardProps {
-  icon: keyof typeof Ionicons.glyphMap; // ✅ restricts to valid Ionicons names
+  icon: keyof typeof Ionicons.glyphMap; 
   label: string;
   value: string;
   color: string;
