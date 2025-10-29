@@ -153,7 +153,7 @@ export default function ReportScreen({ route, navigation }: ReportScreenProps) {
         property_id: propertyId,
         report_title: reportTitle.trim(),
         description: description.trim(),
-        proof: JSON.stringify(uploadedUrls),
+        proof: uploadedUrls,
         status: 'pending',
         date_created: new Date().toISOString(),
       };

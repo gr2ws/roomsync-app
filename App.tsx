@@ -306,14 +306,14 @@ function MainApp() {
         name="AdminUsers"
         component={AdminUserManagementScreen}
         options={{
-          tabBarLabel: 'User Management',
+          tabBarLabel: 'Users & Properties',
           tabBarIcon: ({ focused, color, size }) => (
             <Ionicons name={focused ? 'people' : 'people-outline'} size={size} color={color} />
           ),
         }}
       />,
-      notificationsScreen, 
-      profileScreen
+      notificationsScreen,
+      profileScreen,
     ];
   } else {
     // fallback for unknown role

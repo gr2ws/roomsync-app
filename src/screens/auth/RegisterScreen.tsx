@@ -81,6 +81,7 @@ export default function RegisterScreen({ navigation }: Props) {
   );
 
   const handleSignUp = async () => {
+    console.log('[RegisterScreen] handleSignUp started');
     // Validate with Zod
     const result = registerSchema.safeParse({
       firstName,
@@ -93,6 +94,7 @@ export default function RegisterScreen({ navigation }: Props) {
     });
 
     if (!result.success) {
+      console.log('[RegisterScreen] Validation failed:', result.error);
       // Map errors to fields
       const errors: Partial<Record<keyof RegisterFormFields, string>> = {};
       (result.error as z.ZodError<RegisterFormFields>).issues.forEach((err) => {
@@ -104,51 +106,63 @@ export default function RegisterScreen({ navigation }: Props) {
     }
     setFormErrors({});
     setLoading(true);
+    console.log('[RegisterScreen] Starting registration process');
 
     try {
       // Check for unique email in users table
+      console.log('[RegisterScreen] Checking email uniqueness');
       const { data: existingEmailUsers, error: emailCheckError } = await supabase
         .from('users')
         .select('user_id, email')
         .eq('email', email);
 
       if (emailCheckError) {
+        console.error('[RegisterScreen] Email check error:', emailCheckError);
         throw new Error('Could not verify email uniqueness.');
       }
 
       if (existingEmailUsers && existingEmailUsers.length > 0) {
+        console.log('[RegisterScreen] Email already in use');
         setLoading(false);
         setFormErrors({ email: 'Email already in use' });
         return;
       }
 
       // Check for unique phone number in users table
+      console.log('[RegisterScreen] Checking phone number uniqueness');
       const { data: existingPhoneUsers, error: phoneCheckError } = await supabase
         .from('users')
         .select('user_id, phone_number')
         .eq('phone_number', phoneNumber);
 
       if (phoneCheckError) {
+        console.error('[RegisterScreen] Phone check error:', phoneCheckError);
         throw new Error('Could not verify phone number uniqueness.');
       }
 
       if (existingPhoneUsers && existingPhoneUsers.length > 0) {
+        console.log('[RegisterScreen] Phone number already in use');
         setLoading(false);
         setFormErrors({ phoneNumber: 'Phone number already in use' });
         return;
       }
 
       // All checks passed - now create auth user
+      console.log('[RegisterScreen] Creating auth user');
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email,
         password,
       });
 
       if (authError || !authData.user) {
+        console.error('[RegisterScreen] Auth error:', authError);
         throw new Error(authError?.message || 'Could not create authentication account.');
       }
 
+      console.log('[RegisterScreen] Auth user created:', authData.user.id);
+
       if (!authData.session) {
+        console.log('[RegisterScreen] No session, email verification required');
         setLoading(false);
         Alert.alert(
           'Email Verification Required',
@@ -157,13 +171,8 @@ export default function RegisterScreen({ navigation }: Props) {
         return;
       }
 
-      // Set session context
-      await supabase.auth.setSession({
-        access_token: authData.session.access_token,
-        refresh_token: authData.session.refresh_token,
-      });
-
-      // Create user profile (this should succeed since we checked uniqueness)
+      // Create user profile immediately after auth user is created
+      console.log('[RegisterScreen] Creating user profile in database');
       const createdDate = new Date().toISOString().split('T')[0]; // Format: YYYY-MM-DD
       const timestamp = new Date().toISOString().replace('Z', ''); // Remove 'Z' for timestamp without time zone
 
@@ -182,11 +191,13 @@ export default function RegisterScreen({ navigation }: Props) {
       ]);
 
       if (userError) {
+        console.error('[RegisterScreen] User profile creation error:', userError);
         // This shouldn't happen since we pre-checked, but if it does, clean up
         await supabase.auth.signOut();
         throw new Error('Failed to create user profile: ' + userError.message);
       }
 
+      console.log('[RegisterScreen] User profile created, fetching complete profile');
       // Fetch the complete user profile including user_id
       const { data: userData, error: fetchError } = await supabase
         .from('users')
@@ -195,22 +206,30 @@ export default function RegisterScreen({ navigation }: Props) {
         .single();
 
       if (fetchError || !userData) {
+        console.error('[RegisterScreen] Profile fetch error:', fetchError);
         await supabase.auth.signOut();
         throw new Error('Failed to fetch user profile after registration.');
       }
 
+      console.log('[RegisterScreen] Profile fetched successfully:', userData.user_id);
+
       // Success - update local state with complete user profile
+      // DO NOT set isLoggedIn yet - let the user complete onboarding flow first
+      console.log('[RegisterScreen] Updating local state');
       setUserRole(userData.user_type);
       setUserProfile(userData);
-
-      setLoading(false);
 
       // Set device flag - this device has now been onboarded
       await AsyncStorage.setItem('DeviceOnboarded', 'true');
 
-      // Navigate to Welcome screen for all users
+      console.log('[RegisterScreen] Registration complete, navigating to Welcome');
+      setLoading(false);
+
+      // Navigate to Welcome screen to continue onboarding
+      // Note: Don't set isLoggedIn yet - Welcome screen is in the logged-out stack
       navigation.navigate('Welcome');
     } catch (error) {
+      console.error('[RegisterScreen] Registration error:', error);
       setLoading(false);
       Alert.alert(
         'Registration Error',

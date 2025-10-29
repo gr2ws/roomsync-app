@@ -43,7 +43,14 @@ export const fetchUserProfile = async (authId: string): Promise<UserProfile | nu
       .eq('auth_id', authId)
       .single();
 
-    if (error) throw error;
+    if (error) {
+      // PGRST116 means no rows found - this is expected during registration
+      if (error.code === 'PGRST116') {
+        console.log('[AuthService] No profile found for auth_id (expected during registration)');
+        return null;
+      }
+      throw error;
+    }
 
     return profile as UserProfile;
   } catch (error) {
@@ -70,6 +77,8 @@ export const setupAuthListener = (callbacks: AuthStateCallbacks) => {
           if (profile) {
             console.log('[AuthService] Profile fetched:', profile.user_type);
             callbacks.onSignedIn(profile);
+          } else {
+            console.log('[AuthService] SIGNED_IN but no profile found - likely mid-registration, ignoring');
           }
         }
         break;
@@ -93,7 +102,7 @@ export const setupAuthListener = (callbacks: AuthStateCallbacks) => {
             console.log('[AuthService] Profile restored:', profile.user_type);
             callbacks.onInitialSession(profile);
           } else {
-            console.log('[AuthService] Session found but no profile, signing out.');
+            console.log('[AuthService] Session found but no profile - orphaned session, signing out.');
             await supabase.auth.signOut();
             callbacks.onInitialSession(null);
           }
