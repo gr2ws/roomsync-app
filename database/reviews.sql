@@ -13,3 +13,7 @@ create table public.reviews (
 create trigger trigger_new_review
 after INSERT on reviews for EACH row
 execute FUNCTION notify_new_review ();
+
+create trigger trigger_update_property_review_stats
+after INSERT on reviews for EACH row
+execute FUNCTION update_property_review_stats ();
