@@ -587,7 +587,7 @@ Should you find reason for us to consider an appeal from you, please send us an 
         contentContainerStyle={{ paddingBottom: insets.bottom + 16 }}>
         {/* Header */}
         <View className="mb-6 pt-1">
-          <Text className="mb-2 text-3xl font-bold text-gray-900">User Management</Text>
+          <Text className="mb-2 text-3xl font-bold text-primary">User Management</Text>
         </View>
 
         {/* User Statistics Cards */}

@@ -35,7 +35,7 @@ export default function AdminDashboard() {
         contentContainerStyle={{ paddingBottom: insets.bottom + 16 }}>
         {/* Header */}
         <View className="mb-6 pt-1">
-          <Text className="mb-2 text-3xl font-bold text-gray-900">Admin Dashboard</Text>
+          <Text className="mb-2 text-3xl font-bold text-primary">Admin Dashboard</Text>
         </View>
         <OverviewTab />
       </ScrollView>

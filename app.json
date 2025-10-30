@@ -11,12 +11,12 @@
     },
     "plugins": [],
     "orientation": "portrait",
-    "icon": "./src/assets/icon.png",
+    "icon": "./src/assets/Logo.png",
     "userInterfaceStyle": "light",
     "splash": {
-      "image": "./src/assets/splash.png",
+      "image": "./src/assets/Logo.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#F9F5F0"
     },
     "assetBundlePatterns": ["**/*"],
     "ios": {
@@ -24,8 +24,8 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./src/assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "foregroundImage": "./src/assets/Logo.png",
+        "backgroundColor": "#F9F5F0"
       },
       "package": "com.anonymous.roomsyncdev"
     }

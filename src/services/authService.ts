@@ -78,7 +78,9 @@ export const setupAuthListener = (callbacks: AuthStateCallbacks) => {
             console.log('[AuthService] Profile fetched:', profile.user_type);
             callbacks.onSignedIn(profile);
           } else {
-            console.log('[AuthService] SIGNED_IN but no profile found - likely mid-registration, ignoring');
+            console.log(
+              '[AuthService] SIGNED_IN but no profile found - likely mid-registration, ignoring'
+            );
           }
         }
         break;
@@ -102,7 +104,9 @@ export const setupAuthListener = (callbacks: AuthStateCallbacks) => {
             console.log('[AuthService] Profile restored:', profile.user_type);
             callbacks.onInitialSession(profile);
           } else {
-            console.log('[AuthService] Session found but no profile - orphaned session, signing out.');
+            console.log(
+              '[AuthService] Session found but no profile - orphaned session, signing out.'
+            );
             await supabase.auth.signOut();
             callbacks.onInitialSession(null);
           }

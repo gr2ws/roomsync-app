@@ -174,13 +174,13 @@ export default function AuthScreen({ navigation }: Props) {
         <View className="flex-1 items-center justify-center">
           <View className="w-full max-w-sm">
             <Image
-              source={require('../../assets/logo.png')}
+              source={require('../../assets/Log In.png')}
               style={{
-                width: 400,
-                height: 400,
+                width: 350,
+                height: 350,
                 alignSelf: 'center',
-                marginBottom: -80,
-                marginTop: -180,
+                marginBottom: 0,
+                marginTop: -100,
               }}
               resizeMode="contain"
             />

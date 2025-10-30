@@ -87,7 +87,7 @@ export default function AdminReportsScreen() {
         }>
         {/* Header */}
         <View className="mb-6 pt-1">
-          <Text className="mb-2 text-3xl font-bold text-gray-900">Reports and Safety</Text>
+          <Text className="mb-2 text-3xl font-bold text-primary">Reports and Safety</Text>
         </View>
 
         {/* Filter Tabs */}

@@ -45,13 +45,13 @@ const IntroductionScreen: React.FC<Props> = ({ navigation, route }) => {
         {fromAuth && <BackButton className="z-10 mt-8" onPress={handleBackToAuth} />}
         <View className="h-full w-full max-w-sm items-center justify-center gap-6">
           <Image
-            source={require('../../assets/logo.png')}
+            source={require('../../assets/Log In.png')}
             style={{
-              width: 400,
-              height: 400,
+              width: 350,
+              height: 350,
               alignSelf: 'center',
-              marginBottom: -110,
-              marginTop: -150,
+              marginBottom: -30,
+              marginTop: -100,
             }}
             resizeMode="contain"
           />

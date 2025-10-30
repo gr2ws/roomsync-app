@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, ScrollView, Platform } from 'react-native';
+import { View, Text, ScrollView, Platform, Image } from 'react-native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../../utils/navigation';
 import { useLoggedIn } from '../../store/useLoggedIn';
@@ -66,6 +66,19 @@ const WelcomeScreen: React.FC<Props> = ({ navigation }) => {
   const features = getRoleFeatures();
   const firstName = userProfile?.first_name || 'there';
 
+  const getRoleImage = () => {
+    switch (userRole) {
+      case 'renter':
+        return require('../../assets/Renter.png');
+      case 'owner':
+        return require('../../assets/Owner.png');
+      case 'admin':
+        return require('../../assets/Admin.png');
+      default:
+        return require('../../assets/Renter.png');
+    }
+  };
+
   return (
     <View
       className="flex-1 bg-background"
@@ -76,6 +89,21 @@ const WelcomeScreen: React.FC<Props> = ({ navigation }) => {
         contentContainerStyle={{ flexGrow: 1 }}
         showsVerticalScrollIndicator={false}>
         <View className="flex-1 justify-center px-8 py-8">
+          {/* Role-based Graphic */}
+          <View className="mb-6 items-center">
+            <Image
+              source={getRoleImage()}
+              style={{
+                width: 300,
+                height: 300,
+                alignSelf: 'center',
+                marginTop: 30,
+                marginBottom: 30,
+              }}
+              resizeMode="contain"
+            />
+          </View>
+
           {/* Header Section */}
           <View className="mb-6">
             <Text className="mb-1 text-center text-3xl font-bold text-primary">
