@@ -1402,6 +1402,7 @@ function UserCard({
           disabled={user.isBanned}
           style={{ opacity: user.isBanned ? 0.4 : 1 }}>
           <Ionicons name="close-circle-outline" size={16} color="#dc2626" />
+          <Text className="ml-2 text-sm font-medium text-red-800">Ban</Text>
         </TouchableOpacity>
       </View>
     </View>
