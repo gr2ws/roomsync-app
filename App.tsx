@@ -43,6 +43,7 @@ import { useEffect, useState } from 'react';
 import ErrorBoundary from './src/components/ErrorBoundary';
 import { setupAuthListener } from './src/services/authService';
 import { supabase } from './src/utils/supabase';
+import { preloadAssets, hideSplashScreen } from './src/utils/preloadAssets';
 
 const Tab = createBottomTabNavigator<RootTabParamList>();
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -352,6 +353,7 @@ export default function App() {
   );
   const [isCheckingOnboarding, setIsCheckingOnboarding] = useState(true);
   const [navigationError, setNavigationError] = useState<string | null>(null);
+  const [assetsLoaded, setAssetsLoaded] = useState(false);
 
   // Handle persistent authentication with Supabase
   useEffect(() => {
@@ -382,6 +384,16 @@ export default function App() {
     // Cleanup auth listener on unmount
     return cleanup;
   }, [setIsLoggedIn, setUserRole, setUserProfile]);
+
+  // Preload assets on app startup
+  useEffect(() => {
+    const loadAssets = async () => {
+      await preloadAssets();
+      setAssetsLoaded(true);
+    };
+
+    loadAssets();
+  }, []);
 
   useEffect(() => {
     const checkOnboarding = async () => {
@@ -415,7 +427,14 @@ export default function App() {
     }
   }, [isLoggedIn]);
 
-  if (isCheckingOnboarding) {
+  // Hide splash screen once everything is ready
+  useEffect(() => {
+    if (assetsLoaded && !isCheckingOnboarding) {
+      hideSplashScreen();
+    }
+  }, [assetsLoaded, isCheckingOnboarding]);
+
+  if (isCheckingOnboarding || !assetsLoaded) {
     return (
       <View className="flex-1 items-center justify-center bg-background">
         <ActivityIndicator size="large" color="rgb(100, 74, 64)" />

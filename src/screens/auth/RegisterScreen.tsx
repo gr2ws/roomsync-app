@@ -350,14 +350,14 @@ export default function RegisterScreen({ navigation }: Props) {
 
           <View className="mt-4 items-center">
             <View className="flex-row flex-wrap justify-center">
-              <Text className="text-center text-xs text-muted-foreground">
+              <Text className="text-center  text-muted-foreground">
                 By creating an account, you agree with our{' '}
               </Text>
-              <Button onPress={handleTermsOfService} variant="text" size="sm">
+              <Button onPress={handleTermsOfService} variant="text">
                 Terms of Service
               </Button>
-              <Text className="text-xs text-muted-foreground"> and </Text>
-              <Button onPress={handlePrivacyPolicy} variant="text" size="sm">
+              <Text className=" text-muted-foreground"> and </Text>
+              <Button onPress={handlePrivacyPolicy} variant="text">
                 Privacy Policy
               </Button>
             </View>

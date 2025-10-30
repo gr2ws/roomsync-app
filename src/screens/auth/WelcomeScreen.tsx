@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Text, ScrollView, Platform, Image } from 'react-native';
+import { View, Text, ScrollView, Platform } from 'react-native';
+import { Image } from 'expo-image';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../../utils/navigation';
 import { useLoggedIn } from '../../store/useLoggedIn';
@@ -100,7 +101,8 @@ const WelcomeScreen: React.FC<Props> = ({ navigation }) => {
                 marginTop: 30,
                 marginBottom: 30,
               }}
-              resizeMode="contain"
+              contentFit="contain"
+              transition={200}
             />
           </View>
 

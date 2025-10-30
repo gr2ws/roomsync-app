@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
-import { View, Text, SafeAreaView, Platform, Image } from 'react-native';
+import { View, Text, SafeAreaView, Platform } from 'react-native';
+import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RouteProp } from '@react-navigation/native';
@@ -53,16 +54,17 @@ const IntroductionScreen: React.FC<Props> = ({ navigation, route }) => {
               marginBottom: -30,
               marginTop: -100,
             }}
-            resizeMode="contain"
+            contentFit="contain"
+            transition={200}
           />
           <Text className="mt-2 px-6 text-center text-lg leading-relaxed text-foreground">
-            Find safe, affordable living spaces in Dumaguete City with AI-powered recommendations.
-            Discover your perfect place today.
+            Find safe, affordable living spaces in Dumaguete City and surrounding areas with
+            AI-powered recommendations. Discover your perfect place today.
           </Text>
           <Button
             variant="primary"
             onPress={() => navigation.navigate('RoleSelection')}
-            className="w-100">
+            className="w-100 mt-10">
             Get Started
           </Button>
         </View>

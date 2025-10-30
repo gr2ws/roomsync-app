@@ -1,4 +1,5 @@
-import { View, Text, TextInput, Alert, Platform, Image, ActivityIndicator } from 'react-native';
+import { View, Text, TextInput, Alert, Platform, ActivityIndicator } from 'react-native';
+import { Image } from 'expo-image';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import { useLoggedIn } from '../../store/useLoggedIn';
 import Button from '../../components/Button';
@@ -182,7 +183,8 @@ export default function AuthScreen({ navigation }: Props) {
                 marginBottom: 0,
                 marginTop: -100,
               }}
-              resizeMode="contain"
+              contentFit="contain"
+              transition={200}
             />
             <Text className="mb-4 text-center text-4xl font-bold text-primary">Welcome back!</Text>
             <Text className="mb-8 text-center text-base text-muted-foreground">
