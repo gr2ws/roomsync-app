@@ -65,58 +65,74 @@ export default function PreferencesScreen({ navigation, route }: PreferencesScre
   }, []);
 
   const loadPreferences = async () => {
+    console.log('[PreferencesScreen] loadPreferences called');
     try {
       const stored = await AsyncStorage.getItem('room_preferences');
+      console.log('[PreferencesScreen] Stored preferences:', stored);
       if (stored) {
         const storedLabels = JSON.parse(stored);
         // Reorder based on stored preferences
         const reordered = storedLabels
           .map((label: string) => DEFAULT_PREFERENCES.find((p) => p.label === label))
           .filter(Boolean) as PreferenceItem[];
+        console.log('[PreferencesScreen] Loaded and reordered preferences');
         setPreferences(reordered);
+      } else {
+        console.log('[PreferencesScreen] No stored preferences found, using defaults');
       }
     } catch (error) {
-      console.error('Error loading preferences:', error);
+      console.error('[PreferencesScreen] Error loading preferences:', error);
     }
   };
 
   const handleSkip = async () => {
+    console.log('[PreferencesScreen] handleSkip called');
     try {
       // Set user-specific onboarding flag
       if (userProfile?.user_id) {
+        console.log('[PreferencesScreen] Setting onboarding flag for user_id:', userProfile.user_id);
         await AsyncStorage.setItem(`user_${userProfile.user_id}_hasCompletedOnboarding`, 'true');
       }
+      console.log('[PreferencesScreen] Setting isLoggedIn to true');
       // Setting isLoggedIn will trigger NavigationContainer remount in App.tsx
       // which automatically navigates to Home (no manual reset needed)
       setIsLoggedIn(true);
     } catch (error) {
-      console.error('Error in handleSkip:', error);
+      console.error('[PreferencesScreen] Error in handleSkip:', error);
     }
   };
 
   const handleSave = async () => {
+    console.log('[PreferencesScreen] handleSave called');
+    console.log('[PreferencesScreen] isFromProfile:', isFromProfile);
+    console.log('[PreferencesScreen] Preferences order:', preferences.map((p) => p.label));
     try {
       setLoading(true);
       // Store as simple array of labels
       const labels = preferences.map((p) => p.label);
+      console.log('[PreferencesScreen] Saving preferences to AsyncStorage:', labels);
       await AsyncStorage.setItem('room_preferences', JSON.stringify(labels));
 
       if (isFromProfile) {
         // Just go back to profile
+        console.log('[PreferencesScreen] Came from profile, going back');
         setLoading(false);
         navigation.goBack();
       } else {
         // Complete onboarding - set user-specific flag
+        console.log('[PreferencesScreen] Completing onboarding');
         if (userProfile?.user_id) {
+          console.log('[PreferencesScreen] Setting onboarding flag for user_id:', userProfile.user_id);
           await AsyncStorage.setItem(`user_${userProfile.user_id}_hasCompletedOnboarding`, 'true');
         }
+        console.log('[PreferencesScreen] Setting isLoggedIn to true');
         // Setting isLoggedIn will trigger NavigationContainer remount in App.tsx
         // which automatically navigates to Home (no manual reset needed)
         setIsLoggedIn(true);
         setLoading(false);
       }
     } catch (error) {
-      console.error('Error saving preferences:', error);
+      console.error('[PreferencesScreen] Error saving preferences:', error);
       setLoading(false);
     }
   };

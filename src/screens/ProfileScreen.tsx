@@ -487,25 +487,31 @@ export default function ProfileScreen() {
   ]);
 
   const handleProfilePictureChange = async (newUrl: string) => {
+    console.log('[ProfileScreen] handleProfilePictureChange called with URL:', newUrl);
     setProfilePicture(newUrl);
 
     // Update the database with the new profile picture URL
     if (userProfile?.auth_id && newUrl) {
+      console.log('[ProfileScreen] Updating database with new profile picture URL...');
       const { error } = await supabase
         .from('users')
         .update({ profile_picture: newUrl })
         .eq('auth_id', userProfile.auth_id);
 
       if (error) {
-        console.error('Error updating profile picture in database:', error);
+        console.error('[ProfileScreen] Error updating profile picture in database:', error);
+      } else {
+        console.log('[ProfileScreen] Database updated successfully');
       }
     }
 
     // Update global state to reflect the change immediately in UI
+    console.log('[ProfileScreen] Updating global state with new profile picture...');
     setUserProfile({
       ...userProfile,
       profile_picture: newUrl,
     });
+    console.log('[ProfileScreen] Global state updated');
   };
 
   const handleLogout = () => {

@@ -25,16 +25,20 @@ const IntroductionScreen: React.FC<Props> = ({ navigation, route }) => {
   const insets = useSafeAreaInsets();
 
   useEffect(() => {
+    console.log('[IntroductionScreen] Setting default role to renter');
     setUserRole('renter');
   }, [setUserRole]);
 
   const handleBackToAuth = async () => {
+    console.log('[IntroductionScreen] handleBackToAuth called');
     // Set device flag to true when going back to Auth
     try {
       await AsyncStorage.setItem('DeviceOnboarded', 'true');
+      console.log('[IntroductionScreen] DeviceOnboarded flag set to true');
     } catch (error) {
-      console.error('Error setting onboarding flag:', error);
+      console.error('[IntroductionScreen] Error setting onboarding flag:', error);
     }
+    console.log('[IntroductionScreen] Navigating to Auth screen');
     navigation.replace('Auth');
   };
 

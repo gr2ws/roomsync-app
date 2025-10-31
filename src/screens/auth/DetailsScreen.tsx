@@ -82,22 +82,69 @@ export default function DetailsScreen({ navigation }: Props) {
     }
   });
 
+  const handleProfilePictureChange = async (newUrl: string) => {
+    console.log('[DetailsScreen] handleProfilePictureChange called with URL:', newUrl);
+    setProfilePicture(newUrl);
+
+    // Update the database with the new profile picture URL immediately
+    if (userProfile?.auth_id && newUrl) {
+      console.log('[DetailsScreen] Updating database with new profile picture URL...');
+      const { error } = await supabase
+        .from('users')
+        .update({ profile_picture: newUrl })
+        .eq('auth_id', userProfile.auth_id);
+
+      if (error) {
+        console.error('[DetailsScreen] Error updating profile picture in database:', error);
+      } else {
+        console.log('[DetailsScreen] Database updated successfully');
+      }
+    }
+
+    // Update global state to reflect the change immediately in UI
+    console.log('[DetailsScreen] Updating global state with new profile picture...');
+    setUserProfile({
+      ...userProfile,
+      profile_picture: newUrl,
+    });
+    console.log('[DetailsScreen] Global state updated');
+  };
+
   const handleSkip = async () => {
+    console.log('[DetailsScreen] handleSkip called');
+    console.log('[DetailsScreen] userRole:', userRole);
+
     // Navigate to Preferences for renters, otherwise set logged in
     if (userRole === 'renter') {
+      console.log('[DetailsScreen] Navigating to Preferences screen');
       navigation.navigate('Preferences');
     } else {
       // Set user-specific onboarding flag for owners
       if (userProfile?.user_id) {
+        console.log('[DetailsScreen] Setting onboarding flag for user_id:', userProfile.user_id);
         await AsyncStorage.setItem(`user_${userProfile.user_id}_hasCompletedOnboarding`, 'true');
       }
+      console.log('[DetailsScreen] Setting isLoggedIn to true');
       setIsLoggedIn(true);
     }
   };
 
   const handleSaveDetails = async () => {
+    console.log('[DetailsScreen] handleSaveDetails called');
+    console.log('[DetailsScreen] userRole:', userRole);
+    console.log('[DetailsScreen] Form values:', {
+      profilePicture,
+      birthDate,
+      minBudget,
+      maxBudget,
+      roomPreference,
+      occupation,
+      placeOfWorkStudy,
+    });
+
     // Validate based on role
     if (userRole === 'renter') {
+      console.log('[DetailsScreen] Validating renter fields...');
       const result = renterSchema.safeParse({
         profilePicture,
         birthDate,
@@ -109,6 +156,7 @@ export default function DetailsScreen({ navigation }: Props) {
       });
 
       if (!result.success) {
+        console.log('[DetailsScreen] Renter validation failed:', result.error.issues);
         const errors: Partial<Record<keyof RenterFormFields, string>> = {};
         (result.error as z.ZodError<RenterFormFields>).issues.forEach((err) => {
           const field = err.path[0] as keyof RenterFormFields;
@@ -117,14 +165,17 @@ export default function DetailsScreen({ navigation }: Props) {
         setFormErrors(errors);
         return;
       }
+      console.log('[DetailsScreen] Renter validation passed');
     } else {
       // Owner validation
+      console.log('[DetailsScreen] Validating owner fields...');
       const result = ownerSchema.safeParse({
         profilePicture,
         birthDate,
       });
 
       if (!result.success) {
+        console.log('[DetailsScreen] Owner validation failed:', result.error.issues);
         const errors: Partial<Record<keyof OwnerFormFields, string>> = {};
         (result.error as z.ZodError<OwnerFormFields>).issues.forEach((err) => {
           const field = err.path[0] as keyof OwnerFormFields;
@@ -133,6 +184,7 @@ export default function DetailsScreen({ navigation }: Props) {
         setFormErrors(errors);
         return;
       }
+      console.log('[DetailsScreen] Owner validation passed');
     }
 
     setFormErrors({});
@@ -140,6 +192,7 @@ export default function DetailsScreen({ navigation }: Props) {
     // Build price range string for renters
     const priceRange =
       userRole === 'renter' && minBudget && maxBudget ? `${minBudget}-${maxBudget}` : null;
+    console.log('[DetailsScreen] Price range:', priceRange);
 
     // Update details in Supabase
     if (userProfile?.auth_id) {
@@ -156,18 +209,22 @@ export default function DetailsScreen({ navigation }: Props) {
         updateData.place_of_work_study = placeOfWorkStudy || null;
       }
 
+      console.log('[DetailsScreen] Updating database with data:', updateData);
       const { error } = await supabase
         .from('users')
         .update(updateData)
         .eq('auth_id', userProfile.auth_id);
 
       if (error) {
+        console.error('[DetailsScreen] Database update error:', error);
         Alert.alert('Error', 'Failed to save details: ' + error.message);
         return;
       }
+      console.log('[DetailsScreen] Database updated successfully');
     }
 
     // Update local state
+    console.log('[DetailsScreen] Updating global state...');
     setUserProfile({
       ...userProfile,
       profile_picture: profilePicture || null,
@@ -179,17 +236,22 @@ export default function DetailsScreen({ navigation }: Props) {
         place_of_work_study: placeOfWorkStudy || null,
       }),
     });
+    console.log('[DetailsScreen] Global state updated');
 
     // Navigate to Preferences for renters (they'll set flag there), otherwise set logged in
     if (userRole === 'renter') {
+      console.log('[DetailsScreen] Navigating to Preferences screen');
       navigation.navigate('Preferences');
     } else {
       // Set user-specific onboarding flag for owners
       if (userProfile?.user_id) {
+        console.log('[DetailsScreen] Setting onboarding flag for user_id:', userProfile.user_id);
         await AsyncStorage.setItem(`user_${userProfile.user_id}_hasCompletedOnboarding`, 'true');
       }
+      console.log('[DetailsScreen] Setting isLoggedIn to true');
       setIsLoggedIn(true);
     }
+    console.log('[DetailsScreen] handleSaveDetails completed');
   };
 
   return (
@@ -211,7 +273,7 @@ export default function DetailsScreen({ navigation }: Props) {
           {/* Profile Picture Picker - All roles */}
           <ProfilePicturePicker
             value={profilePicture}
-            onChange={setProfilePicture}
+            onChange={handleProfilePictureChange}
             authId={userProfile?.auth_id || ''}
           />
 

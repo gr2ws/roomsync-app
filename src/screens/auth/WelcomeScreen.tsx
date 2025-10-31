@@ -49,15 +49,22 @@ const WelcomeScreen: React.FC<Props> = ({ navigation }) => {
   };
 
   const handleContinue = async () => {
+    console.log('[WelcomeScreen] handleContinue called');
+    console.log('[WelcomeScreen] userRole:', userRole);
+
     if (userRole === 'admin') {
+      console.log('[WelcomeScreen] Admin detected, skipping Details screen');
       // Admins skip Details screen and go directly to Home
       // Set user-specific onboarding flag
       if (userProfile?.user_id) {
+        console.log('[WelcomeScreen] Setting onboarding flag for user_id:', userProfile.user_id);
         await AsyncStorage.setItem(`user_${userProfile.user_id}_hasCompletedOnboarding`, 'true');
       }
+      console.log('[WelcomeScreen] Setting isLoggedIn to true');
       setIsLoggedIn(true);
     } else {
       // Renters and owners go to Details screen
+      console.log('[WelcomeScreen] Navigating to Details screen');
       navigation.navigate('Details');
     }
   };

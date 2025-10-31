@@ -19,20 +19,27 @@ const RoleSelectionScreen: React.FC<Props> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
 
   const handleSelectRole = (role: 'renter' | 'owner') => {
+    console.log('[RoleSelectionScreen] handleSelectRole called with role:', role);
     setUserRole(role);
+    console.log('[RoleSelectionScreen] Navigating to Register screen');
     navigation.navigate('Register');
   };
 
   const handleLogin = () => {
+    console.log('[RoleSelectionScreen] handleLogin called');
     // Do not change role here, let AuthScreen handle it
+    console.log('[RoleSelectionScreen] Navigating to Auth screen');
     navigation.navigate('Auth');
   };
 
   const handleGoBack = () => {
+    console.log('[RoleSelectionScreen] handleGoBack called');
     // Go back to Introduction screen
     if (navigation.canGoBack()) {
+      console.log('[RoleSelectionScreen] Going back');
       navigation.goBack();
     } else {
+      console.log('[RoleSelectionScreen] Navigating to Introduction screen');
       navigation.navigate('Introduction');
     }
   };
