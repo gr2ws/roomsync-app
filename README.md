@@ -8,7 +8,7 @@ Finding safe, affordable, and convenient living spaces in Dumaguete City is chal
 
 RoomSync addresses this gap by providing a digital platform for apartment, room, and bed space listings tailored to user preferences. Features include location-based filtering, machine learning recommendations, and peer ratings to empower informed choices.
 
-The project integrates data analytics to uncover trends in rental preferences and availability across Dumaguete City and nearby municipalities (Valencia, Sibulan, Bacong), with visualizations like heatmaps and charts for data-driven insights.
+The project integrates data analytics to uncover trends in rental preferences and availability across Dumaguete City and nearby municipalities (Valencia, Sibulan, Bacong), with visualizations and statistics for data-driven insights.
 
 By combining essential functionalities, modern design, AI features, and APIs (Recommendation Systems, Google Maps), RoomSync offers a user-centered solution to real-world housing problems.
 
