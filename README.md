@@ -39,6 +39,7 @@ By combining essential functionalities, modern design, AI features, and APIs (Re
 - **Expo Location** - Geolocation services
 - **React Native Chart Kit** - Data visualization for analytics
 - **Zod** - Schema validation
+- **Zustand** - State management 
 
 ## Project Objectives
 
@@ -50,7 +51,7 @@ By combining essential functionalities, modern design, AI features, and APIs (Re
 - Implement operations for managing property listings and user interactions.
 - Enable filtering and searching by location, budget, and amenities.
 - Incorporate feedback-based recommendation systems using machine learning.
-- Integrate Google Maps API for geolocation and route visualization.
+- Integrate Native Maps API for geolocation and distance visualization.
 - Allow users to submit rental applications and contact property owners.
 - Provide rental business owners with insights via data analytics.
 
@@ -60,7 +61,7 @@ By combining essential functionalities, modern design, AI features, and APIs (Re
 - **User Authentication:** Signup and login with email/password
 - **Property Listings:** Browse apartments, rooms, and bed spaces with photos, rates, amenities, and policies
 - **Advanced Search:** Filter by location (city, barangay), budget, room type, and amenities
-- **Google Maps Integration:** View exact property locations and nearby landmarks
+- **Maps Integration:** View exact property locations and distance
 - **Rating & Review System:** View and submit property ratings with detailed feedback
 - **Chat Functionality:** Real-time messaging between renters and property owners
 - **Notifications:** Stay updated on applications, messages, and system alerts
@@ -68,10 +69,9 @@ By combining essential functionalities, modern design, AI features, and APIs (Re
 
 ### Renter Features
 - **Property Discovery:** Browse feed with personalized recommendations
-- **Save Favorites:** Like and save properties for later viewing
 - **Rental Applications:** Submit applications directly to property owners
 - **Application Tracking:** Monitor application status (pending, approved, rejected)
-- **AI Recommendations:** ML-based property suggestions based on preferences and behavior
+- **AI Recommendations:** ML-based property suggestions based on filters and preferences
 
 ### Owner Features
 - **Property Management:** Add and manage property listings
@@ -88,10 +88,10 @@ By combining essential functionalities, modern design, AI features, and APIs (Re
 - **Platform Analytics:** Access detailed insights on rental trends and user behavior
 
 ### AI Components
-- **ML Recommendation Engine:** Personalized property suggestions based on user preferences, search history, and ratings
-- **AI Chatbot:** Assist users with FAQs and general inquiries using Google Generative AI
-- **Smart Analytics:** Automated calculation of average ratings and review counts
-
+- **ML Recommendation Engine:** Personalized property suggestions based on user preferences
+- **AI Chatbot:** Assist users with questions and general inquiries about properties using Google Generative AI
+- **LLM Tools:** get recommendations, view next recommendations, reset conversation (safeguard) and reject recommendations
+  
 ## User Roles
 
 ### Renter (Student/Employee)
@@ -101,23 +101,22 @@ Primary users who search for rental properties.
 - Register and login with email/password
 - Create and manage user profile with preferences (budget, room type, location)
 - Browse property feed with search and filter options
-- View detailed property information with photos, amenities, and Google Maps location
-- Save favorite properties
-- Submit rental applications
+- View detailed property information with photos, amenities, and location
+- Submit rental applications (requires admin verification)
 - Track application status
-- Chat with property owners
+- Contact property owners with native SMS platform
 - Leave reviews and ratings for properties
-- Receive notifications about applications and messages
+- Receive notifications about applications and other events
 
 ### Owner (Property Owner)
 Users who list their properties for rent.
 
 **Capabilities:**
-- Register as property owner (requires admin verification)
-- Add new property listings with photos, amenities, pricing, and location
+- Register as property owner
+- Add new property listings with photos, amenities, pricing, and location (requires admin verification)
 - Manage existing property listings
 - View and respond to rental applications
-- Chat with potential renters
+- Get in contact with potential renters via native SMS messaging platform
 - Monitor reviews and ratings on their properties
 - Receive notifications about applications and messages
 - Note: All listings require admin approval before going live
@@ -131,14 +130,13 @@ System administrators with full platform access.
 - Verify property owner accounts
 - Manage user accounts (warn, ban users)
 - Handle user reports and content moderation
-- View platform analytics with data visualizations (charts, heatmaps)
+- View platform analytics with data visualizations (charts, statistics)
 - Monitor system activity and user behavior
 - Oversee all platform operations
 
 ## Stakeholders
 
-- Students
-- Employees
+- Students/Employees
 - Property Owners
 
 ## Location Coverage
@@ -158,7 +156,6 @@ RoomSync uses **Supabase** (PostgreSQL) for backend services. Key tables include
 - **applications** - Rental applications linking renters and properties with status tracking
 - **reviews** - Property reviews and ratings from users
 - **reports** - User and property reports for moderation
-- **chats** / **messages** - Real-time messaging between users
 - **notifications** - System notifications for users
 
 ### Key Relationships
@@ -178,11 +175,10 @@ roomsync-app/
 │   │   ├── Button.tsx
 │   │   ├── Input.tsx
 │   │   └── layout/
-│   ├── screens/           # Screen components organized by feature
+│   ├── screens/          # Screen components organized by feature
 │   │   ├── auth/         # Authentication screens
 │   │   ├── renter/       # Renter-specific screens
-│   │   ├── owner/        # Owner-specific screens
-│   │   └── admin/        # Admin-specific screens
+│   │   └── owner/         # Owner-specific screens
 │   ├── store/            # Zustand state management
 │   ├── utils/            # Utility functions and navigation types
 │   ├── style/            # Global styles (global.css)
@@ -223,7 +219,6 @@ This project uses **Expo** for development and testing. You can run the app on A
    ```
    EXPO_PUBLIC_SUPABASE_URL=your_supabase_url
    EXPO_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
-   EXPO_PUBLIC_GOOGLE_MAPS_API_KEY=your_google_maps_api_key
    EXPO_PUBLIC_GEMINI_API_KEY=your_gemini_api_key
    ```
 
